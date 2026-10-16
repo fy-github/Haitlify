@@ -1,0 +1,3 @@
+.playwright-browsers/
+artifacts/
+node_modules/

@@ -1,0 +1,95 @@
+> **Archival record:** Preserved historical design/evidence from its original point in time. It does not claim Hermes integration is implemented.
+
+<style>
+  .intro { max-width: 940px; margin-bottom: 18px; }
+  .change-list { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+  .change-list span { padding:5px 8px; border-radius:6px; background:#eaf8f1; color:#217a54; font-size:11px; }
+  .board { overflow:hidden; border:1px solid #dfe2e7; border-radius:8px; background:#f4f5f8; box-shadow:0 8px 24px rgba(15,23,42,.06); color:#30343d; font-family:-apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif; }
+  .global { height:40px; display:flex; align-items:center; gap:11px; padding:0 13px; border-bottom:1px solid #e5e7eb; background:rgba(255,255,255,.98); color:#626975; font-size:10px; }
+  .toggle { width:26px; height:26px; display:grid; place-items:center; border:1px solid #e5e7eb; border-radius:6px; }
+  .brand { color:#30343d; font-weight:600; }
+  .search { width:170px; margin-left:auto; padding:5px 8px; border:1px solid #e5e7eb; border-radius:6px; color:#737a86; }
+  .shell { display:grid; grid-template-columns:145px minmax(0,1fr); min-height:440px; }
+  .sidebar { padding:10px 8px; border-right:1px solid #e5e7eb; background:#fbfbfd; }
+  .nav-title { margin:11px 9px 5px; color:#8a909b; font-size:8px; }
+  .nav-item { padding:7px 9px; margin-bottom:3px; border-radius:6px; color:#656c78; font-size:9px; }
+  .nav-item.active { position:relative; color:#2854a6; background:#e8effb; font-weight:600; }
+  .nav-item.active::before { content:''; position:absolute; left:-8px; top:6px; width:2px; height:17px; background:#2854a6; }
+  .work { min-width:0; display:grid; grid-template-rows:64px minmax(0,1fr); }
+  .workflow-header { display:grid; grid-template-columns:minmax(175px,.78fr) minmax(390px,2.45fr) auto; align-items:center; gap:18px; padding:9px 14px; border-bottom:1px solid #e5e7eb; background:rgba(255,255,255,.98); }
+  .identity { min-width:0; display:grid; gap:3px; }
+  .identity strong { overflow:hidden; color:#30343d; font-size:13px; font-weight:600; text-overflow:ellipsis; white-space:nowrap; }
+  .identity span { color:#626975; font-size:9px; }
+  .steps { height:100%; display:flex; align-items:stretch; }
+  .step { position:relative; min-width:0; flex:1 1 0; display:flex; align-items:center; padding:10px 8px 6px; border-top:2px solid #e5e7eb; color:#656c78; font-size:9px; font-weight:560; }
+  .step.done { color:#217a54; border-top-color:#217a54; }
+  .step.active { color:#1b3d78; border-top-color:#2854a6; font-weight:620; }
+  .step.disabled { color:#8a909b; }
+  .header-actions { display:flex; gap:6px; white-space:nowrap; }
+  .btn { min-height:26px; display:inline-flex; align-items:center; gap:4px; padding:0 8px; border:1px solid #dfe2e7; border-radius:6px; background:#fff; color:#555c68; font-size:9px; }
+  .btn.icon { width:26px; justify-content:center; padding:0; }
+  .btn.primary { border-color:#2854a6; background:#2854a6; color:#fff; box-shadow:0 3px 9px rgba(40,84,166,.16); }
+  .canvas { min-width:0; padding:11px 13px 13px; }
+  .zones { height:100%; display:grid; grid-template-columns:180px minmax(430px,1fr) 210px; gap:8px; }
+  .zone { min-width:0; overflow:hidden; border:1px solid #e7e8ec; border-radius:7px; background:#fff; }
+  .zone-head { min-height:33px; display:flex; align-items:center; justify-content:space-between; padding:0 9px; border-bottom:1px solid #eef0f3; font-size:9px; font-weight:600; }
+  .zone-body { padding:8px; }
+  .source { padding:7px; margin-bottom:6px; border-radius:5px; background:#e8effb; color:#2854a6; font-size:8px; line-height:1.5; }
+  .field-label { margin:8px 0 3px; color:#626975; font-size:8px; font-weight:560; }
+  .field { min-height:23px; display:flex; align-items:center; padding:0 6px; border:1px solid #dfe2e7; border-radius:5px; color:#737a86; font-size:8px; }
+  .seg { display:grid; grid-template-columns:repeat(3,1fr); padding:2px; border:1px solid #dfe2e7; border-radius:5px; background:#f5f5f8; }
+  .seg span { padding:4px 2px; text-align:center; color:#737a86; font-size:7px; }
+  .seg .on { border-radius:4px; background:#fff; color:#2854a6; }
+  .case-toolbar { display:flex; align-items:center; gap:5px; padding:7px 8px; border-bottom:1px solid #eef0f3; background:#fafafd; }
+  .tool-input { min-width:110px; flex:1; padding:5px 7px; border:1px solid #dfe2e7; border-radius:5px; background:#fff; color:#737a86; font-size:8px; }
+  .tool-select { padding:5px 6px; border:1px solid #dfe2e7; border-radius:5px; background:#fff; color:#656c78; font-size:8px; }
+  .selection { margin-left:auto; color:#626975; font-size:8px; white-space:nowrap; }
+  .table { padding:0 7px 7px; }
+  .row { display:grid; grid-template-columns:24px 42px minmax(115px,1.5fr) minmax(68px,.8fr) 46px 58px; align-items:center; gap:5px; min-height:30px; padding:0 5px; border-bottom:1px solid #eef0f3; color:#555c68; font-size:7.5px; }
+  .row.header { min-height:25px; background:#fafafd; color:#5f6672; font-weight:560; }
+  .check { width:10px; height:10px; border:1px solid #bcc5d2; border-radius:3px; }
+  .method { color:#2854a6; font-weight:650; }
+  .risk { color:#b42335; }
+  .row-actions { display:flex; gap:3px; color:#2854a6; }
+  .row-actions span { width:16px; height:16px; display:grid; place-items:center; border-radius:4px; background:#f4f7fd; }
+  .score { display:flex; align-items:baseline; gap:4px; padding-bottom:8px; border-bottom:1px solid #eef0f3; color:#2854a6; }
+  .score strong { font-size:22px; }.score span { color:#737a86; font-size:8px; }
+  .finding { padding:7px; margin-top:7px; border-left:2px solid #c77b00; border-radius:4px; background:#fff6df; color:#76551f; font-size:8px; line-height:1.45; }
+  .annotation { display:grid; grid-template-columns:1fr 1fr; gap:9px; margin-top:14px; }
+  .annotation div { padding:10px 11px; border-left:2px solid #2854a6; background:#f4f7fd; color:#555c68; font-size:11px; line-height:1.5; }
+  .annotation strong { display:block; margin-bottom:3px; color:#252831; }
+  @media (max-width:900px) { .workflow-header{grid-template-columns:minmax(0,1fr) auto}.steps{grid-column:1/-1;overflow-x:auto}.work{grid-template-rows:auto minmax(0,1fr)}.zones{grid-template-columns:165px minmax(390px,1fr)}.review{display:none} }
+</style>
+
+<div class="intro">
+  <h2>设计章节 1 · 修订版</h2>
+  <p class="subtitle">顶部阶段导航严格沿用 Web 的 WorkflowHeader：同一高度、顶边状态线、完成/当前/禁用状态、标题与操作区。生成用例区域同时补充顶部工具栏和表格操作列。</p>
+  <div class="change-list"><span>✓ 与 Web 阶段图同组件</span><span>✓ 新增搜索与批量操作工具栏</span><span>✓ 新增查看 / 编辑 / 删除操作列</span></div>
+</div>
+
+<div class="board">
+  <div class="global"><div class="toggle">☰</div><span class="brand">haitlify AI 测试平台</span><span>项目：零售云</span><div class="search">搜索用例、接口、任务</div><span>帮助</span><span>示例用户</span></div>
+  <div class="shell">
+    <aside class="sidebar"><div class="nav-title">测试设计</div><div class="nav-item active">◇ 智能用例设计</div><div class="nav-item">▤ 用例库</div><div class="nav-title">自动化</div><div class="nav-item">⌁ API 自动化</div><div class="nav-item">▣ Web 自动化</div><div class="nav-title">质量洞察</div><div class="nav-item">◫ 执行报告</div><div class="nav-item">△ 缺陷管理</div></aside>
+    <main class="work">
+      <header class="workflow-header">
+        <div class="identity"><strong>订单服务 · 接口用例</strong><span>自动保存于 15:42</span></div>
+        <nav class="steps"><div class="step done">✓ 导入接口</div><div class="step done">✓ 配置生成</div><div class="step active">3 AI 评审</div><div class="step disabled">4 保存 / 交付</div></nav>
+        <div class="header-actions"><span class="btn">新建任务</span><span class="btn primary">继续交付</span></div>
+      </header>
+      <div class="canvas">
+        <div class="zones">
+          <section class="zone"><div class="zone-head"><span>接口与生成配置</span><span style="color:#2854a6">+ 导入</span></div><div class="zone-body"><div class="source"><strong>orders-v3.json</strong><br>32 个接口 · 解析成功</div><div class="field-label">接口筛选</div><div class="field">路径或摘要关键词</div><div class="field-label">请求方法</div><div class="field">全部方法</div><div class="field-label">生成颗粒度</div><div class="seg"><span>基础</span><span class="on">风险</span><span>完整</span></div><div class="field-label">用例模板</div><div class="field">接口用例（内置）</div></div></section>
+          <section class="zone">
+            <div class="zone-head"><span>生成用例</span><span style="color:#626975;font-weight:400">128 条</span></div>
+            <div class="case-toolbar"><div class="tool-input">⌕ 搜索标题 / 接口路径</div><div class="tool-select">全部方法⌄</div><div class="tool-select">全部评审状态⌄</div><span class="selection">已选择 2 条</span><span class="btn">批量接受</span><span class="btn icon" title="更多批量操作">•••</span></div>
+            <div class="table"><div class="row header"><span></span><span>方法</span><span>用例标题</span><span>场景</span><span>评审</span><span>操作</span></div><div class="row"><span class="check"></span><span class="method">POST</span><span>创建订单成功</span><span>正常请求</span><span>通过</span><span class="row-actions"><span title="查看">⌕</span><span title="编辑">✎</span><span title="删除">×</span></span></div><div class="row"><span class="check"></span><span class="method">POST</span><span>重复提交相同订单</span><span>幂等性</span><span class="risk">待改</span><span class="row-actions"><span>⌕</span><span>✎</span><span>×</span></span></div><div class="row"><span class="check"></span><span class="method">GET</span><span>查询不存在订单</span><span>边界场景</span><span>通过</span><span class="row-actions"><span>⌕</span><span>✎</span><span>×</span></span></div><div class="row"><span class="check"></span><span class="method">DELETE</span><span>跨租户删除订单</span><span>权限校验</span><span class="risk">高风险</span><span class="row-actions"><span>⌕</span><span>✎</span><span>×</span></span></div></div>
+          </section>
+          <aside class="zone review"><div class="zone-head"><span>AI 质量评审</span><span style="color:#217a54;font-weight:400">已完成</span></div><div class="zone-body"><div class="score"><strong>86</strong><span>/ 100 覆盖质量</span></div><div class="finding"><strong>缺少幂等性验证</strong><br>补充相同幂等键重复提交后的响应与数据一致性断言。</div><div class="finding"><strong>租户边界风险</strong><br>DELETE 接口需要验证其他租户资源不可访问。</div></div></aside>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<div class="annotation"><div><strong>阶段图复用规则</strong>接口页复用 Web 的 `WorkflowHeader`，只替换阶段数据与动作文案；尺寸、状态线、可达性和响应式行为保持一致。</div><div><strong>生成用例操作区</strong>上方工具栏处理搜索、状态筛选与批量操作；固定右侧“操作”列提供查看、编辑、删除，图标按钮均带 Tooltip 和可访问名称。</div></div>

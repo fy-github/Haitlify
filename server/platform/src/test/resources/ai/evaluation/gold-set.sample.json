@@ -1,0 +1,71 @@
+{
+  "profileRef": "reference-profile",
+  "skillRef": "requirement-test-point-analysis",
+  "repeats": 3,
+  "cases": [
+    {
+      "caseId": "normal-login",
+      "tier": "正常",
+      "inputs": { "symptom": "登录成功但未跳转首页" },
+      "outputSchema": { "type": "object", "required": ["summary"] },
+      "evidenceIds": ["ev-normal-1"],
+      "requiredItems": ["login-redirect"]
+    },
+    {
+      "caseId": "boundary-pagination",
+      "tier": "边界",
+      "inputs": { "symptom": "分页到最后一页显示空" },
+      "outputSchema": { "type": "object", "required": ["summary"] },
+      "evidenceIds": ["ev-boundary-1"],
+      "requiredItems": ["pagination"]
+    },
+    {
+      "caseId": "permission-readonly",
+      "tier": "权限",
+      "inputs": { "symptom": "只读账号看到编辑按钮" },
+      "outputSchema": { "type": "object", "required": ["summary"] },
+      "evidenceIds": ["ev-perm-1"],
+      "requiredItems": ["role-gate"]
+    },
+    {
+      "caseId": "no-evidence",
+      "tier": "无证据",
+      "inputs": { "symptom": "偶发失败" },
+      "outputSchema": { "type": "object", "required": ["summary", "hypotheses"] },
+      "evidenceIds": [],
+      "requiredItems": ["needs_confirmation"]
+    },
+    {
+      "caseId": "chart-render",
+      "tier": "图表",
+      "inputs": { "symptom": "图表坐标轴错位" },
+      "outputSchema": { "type": "object", "required": ["summary"] },
+      "evidenceIds": ["ev-chart-1"],
+      "requiredItems": ["axis-labels"]
+    },
+    {
+      "caseId": "format-json-strict",
+      "tier": "格式",
+      "inputs": { "symptom": "接口返回多余字段" },
+      "outputSchema": { "type": "object", "required": ["summary"], "properties": { "summary": { "type": "string" } } },
+      "evidenceIds": ["ev-format-1"],
+      "requiredItems": ["extra-field-rejected"]
+    },
+    {
+      "caseId": "refusal-truncation",
+      "tier": "拒绝/截断",
+      "inputs": { "symptom": "超长日志被截断" },
+      "outputSchema": { "type": "object", "required": ["summary"] },
+      "evidenceIds": ["ev-trunc-1"],
+      "requiredItems": ["truncation-note"]
+    },
+    {
+      "caseId": "cross-model",
+      "tier": "跨模型",
+      "inputs": { "symptom": "切换模型后结论不一致" },
+      "outputSchema": { "type": "object", "required": ["summary"] },
+      "evidenceIds": ["ev-cross-1"],
+      "requiredItems": ["consistency-note"]
+    }
+  ]
+}

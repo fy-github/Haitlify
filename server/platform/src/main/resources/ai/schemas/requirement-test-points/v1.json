@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "requirement-test-points/v1",
+  "type": "object",
+  "required": ["draftTestPoints"],
+  "additionalProperties": false,
+  "properties": {
+    "draftTestPoints": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["title"],
+        "additionalProperties": true,
+        "properties": {
+          "title": {"type": "string", "minLength": 1, "maxLength": 500},
+          "module": {"type": "string", "maxLength": 200},
+          "pageOrFeature": {"type": "string", "maxLength": 300},
+          "caseKind": {"type": "string", "maxLength": 100},
+          "testType": {"type": "string", "maxLength": 100},
+          "priority": {"type": "string", "enum": ["P0", "P1", "P2", "P3"]},
+          "precondition": {"type": "string", "maxLength": 3000},
+          "objective": {"type": "string", "maxLength": 2000},
+          "steps": {"type": "string", "maxLength": 6000},
+          "expectedResult": {"type": "string", "maxLength": 3000},
+          "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+          "inferred": {"type": "boolean"},
+          "sourceChunkId": {"type": "string", "maxLength": 200},
+          "reviewComment": {"type": "string", "maxLength": 2000}
+        }
+      }
+    },
+    "unclearQuestions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["question"],
+        "properties": {
+          "question": {"type": "string", "minLength": 1},
+          "relatedSourceId": {"type": "string"}
+        }
+      }
+    },
+    "coverageSummary": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  }
+}

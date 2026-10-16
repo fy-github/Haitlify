@@ -1,0 +1,46 @@
+> **Archival record:** Preserved historical design/evidence from its original point in time. It does not claim Hermes integration is implemented.
+
+<style>
+  .intro { max-width: 920px; margin-bottom: 18px; }
+  .flow { display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:8px; align-items:stretch; }
+  .stage-card { position:relative; overflow:hidden; border:1px solid #e1e4ea; border-radius:8px; background:#fff; }
+  .stage-card.active { border-color:#2854a6; box-shadow:0 0 0 2px rgba(40,84,166,.12); }
+  .stage-head { padding:11px 12px; border-top:2px solid #dfe2e7; border-bottom:1px solid #eef0f3; color:#555c68; }
+  .stage-card.done .stage-head { border-top-color:#217a54; color:#217a54; }
+  .stage-card.active .stage-head { border-top-color:#2854a6; color:#1b3d78; }
+  .stage-head strong { display:block; margin-bottom:3px; font-size:12px; }
+  .stage-head span { color:#737a86; font-size:9px; }
+  .stage-body { padding:11px 12px 12px; color:#555c68; font-size:10px; line-height:1.5; }
+  .stage-body ul { padding:0; margin:0 0 12px 15px; }
+  .stage-body li { margin-bottom:5px; }
+  .primary { display:block; width:100%; padding:7px 8px; border:1px solid #2854a6; border-radius:6px; background:#2854a6; color:#fff; text-align:center; font-size:10px; font-weight:600; }
+  .secondary { margin-top:6px; padding:6px 8px; border:1px solid #dfe2e7; border-radius:6px; color:#656c78; text-align:center; font-size:9px; }
+  .connector { position:absolute; top:84px; right:-7px; z-index:2; width:15px; height:15px; display:grid; place-items:center; border-radius:50%; background:#e8effb; color:#2854a6; font-size:11px; }
+  .stage-card:last-child .connector { display:none; }
+  .data-strip { display:grid; grid-template-columns:repeat(3,1fr); gap:9px; margin-top:13px; }
+  .data-item { padding:10px 11px; border:1px solid #e5e7eb; border-radius:7px; background:#fafafd; }
+  .data-item strong { display:block; margin-bottom:4px; color:#30343d; font-size:10px; }
+  .data-item span { color:#656c78; font-size:9px; line-height:1.5; }
+  .states { display:grid; grid-template-columns:1fr 1fr; gap:9px; margin-top:13px; }
+  .state { padding:10px 11px; border-left:2px solid #c77b00; background:#fff6df; color:#76551f; font-size:9px; line-height:1.5; }
+  .state.error { border-left-color:#b42335; background:#fff0f0; color:#9f2438; }
+  .state.success { border-left-color:#217a54; background:#eaf8f1; color:#1f704d; }
+  .state strong { display:block; margin-bottom:3px; color:inherit; font-size:10px; }
+  @media (max-width:820px) { .flow{grid-template-columns:1fr 1fr}.connector{display:none}.data-strip,.states{grid-template-columns:1fr} }
+</style>
+
+<div class="intro">
+  <h2>设计章节 2：阶段行为与数据流</h2>
+  <p class="subtitle">阶段图只负责导航与状态提示；每个阶段保留资源上下文，中央区域承接上一步产物，顶部只保留一个深蓝色主操作。</p>
+</div>
+
+<div class="flow">
+  <div class="stage-card done"><span class="connector">›</span><div class="stage-head"><strong>✓ 1 · 导入接口</strong><span>来源与解析状态</span></div><div class="stage-body"><ul><li>选择 OpenAPI JSON / YAML</li><li>展示来源列表与解析结果</li><li>允许替换、重试、移除来源</li></ul><div class="primary">解析接口</div><div class="secondary">继续到配置生成</div></div></div>
+  <div class="stage-card done"><span class="connector">›</span><div class="stage-head"><strong>✓ 2 · 配置生成</strong><span>接口范围与生成策略</span></div><div class="stage-body"><ul><li>路径、摘要、方法筛选</li><li>模板与基础 / 风险 / 完整颗粒度</li><li>生成进度支持局部失败重试</li></ul><div class="primary">生成用例</div><div class="secondary">查看生成结果</div></div></div>
+  <div class="stage-card active"><span class="connector">›</span><div class="stage-head"><strong>3 · AI 评审</strong><span>当前阶段 · 结果可回写</span></div><div class="stage-body"><ul><li>中央表格支持逐条查看、编辑、删除</li><li>右侧检查器显示风险与证据</li><li>可忽略、应用建议、批量决策</li></ul><div class="primary">运行 AI 评审</div><div class="secondary">评审完成后继续交付</div></div></div>
+  <div class="stage-card"><div class="stage-head"><strong>4 · 保存 / 交付</strong><span>独立保存与后续执行</span></div><div class="stage-body"><ul><li>保存接口用例到用例库</li><li>转 API 自动化，执行前环境预检</li><li>导出 CSV，不依赖执行成功</li></ul><div class="primary">保存用例</div><div class="secondary">转自动化 · 导出</div></div></div>
+</div>
+
+<div class="data-strip"><div class="data-item"><strong>OpenAPI 解析产物</strong><span>接口、参数、请求体、响应结构和来源文件写入当前任务草稿，筛选只改变视图范围。</span></div><div class="data-item"><strong>生成结果</strong><span>每条候选用例有稳定 ID、接口关联和生成状态；局部失败不清空已成功结果。</span></div><div class="data-item"><strong>评审决策</strong><span>AI 建议、用户忽略 / 应用决定和审计信息附着在用例上，保存时一并持久化。</span></div></div>
+
+<div class="states"><div class="state"><strong>部分成功</strong>解析、生成或评审只完成一部分时，阶段显示“部分完成”，保留可用结果，并将“重试失败项”作为次级动作。</div><div class="state error"><strong>错误可恢复</strong>来源错误、AI 评审失败或保存冲突时，错误固定在当前上下文，不阻塞用户查看已生成数据；提供重试、替换或使用本地版本。</div><div class="state success"><strong>保存独立于执行</strong>保存完成后即允许离开页面；转自动化和执行预检是后续动作，不覆盖已保存用例。</div><div class="state"><strong>响应式降级</strong>窄屏时左侧资源区与右侧 AI 检查器变为抽屉，阶段导航横向滚动，中央表格保持操作栏与操作列。</div></div>

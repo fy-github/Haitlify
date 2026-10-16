@@ -1,0 +1,50 @@
+# System files
+.DS_Store
+Thumbs.db
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Node / frontend
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Java / backend future build outputs
+target/
+build/
+.gradle/
+server/platform/.local-data/
+server/platform/src/main/resources/application-local.yml
+
+# Generated HTML article exports
+docs/*.html
+docs/*_files/
+
+# Local tool/runtime artifacts
+.token_cache.json
+.codex/
+.omo/
+.omx/
+.playwright-mcp/
+.superpowers/
+temp/
+
+# Generated QA screenshots and temporary browser artifacts
+ai-test-platform-ui-refined.png
+page-*.png
+*.trace.zip
+
+# Playwright test output
+apps/web/test-results/
+apps/web/playwright-report/
+
+# Nested external repositories kept out of the root repo by default
+redoc-yaml-converter-master-Golutra/

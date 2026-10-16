@@ -1,0 +1,10 @@
+CREATE TABLE projects (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    code VARCHAR(64) NOT NULL,
+    name VARCHAR(128) NOT NULL,
+    description VARCHAR(1024) NOT NULL DEFAULT '',
+    active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL,
+    CONSTRAINT uk_projects_code UNIQUE (code)
+);

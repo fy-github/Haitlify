@@ -1,0 +1,64 @@
+spring:
+  application:
+    name: haitlify-platform
+  datasource:
+    url: ${APP_DB_URL:jdbc:mysql://127.0.0.1:3306/ai_test_platform?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai}
+    username: ${APP_DB_USERNAME:root}
+    password: ${APP_DB_PASSWORD:root}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  jackson:
+    default-property-inclusion: non_null
+    # Jackson 3 将 FAIL_ON_NULL_FOR_PRIMITIVES 默认翻为 true(JSON null 绑定 int/boolean 直接 400)。
+    # 恢复 Jackson 2 行为(null → 0/false),保持既有请求模型兼容。
+    deserialization:
+      fail-on-null-for-primitives: false
+  servlet:
+    multipart:
+      max-file-size: 25MB
+      max-request-size: 25MB
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+server:
+  # 本地开发默认用非常用端口,避免被其他项目占用的 8080 劫持;容器内由 APP_PORT 显式指定
+  port: ${APP_PORT:18080}
+  tomcat:
+    max-swallow-size: 25MB
+
+app:
+  # Web exploration rollout flags are read from ai_system_configs.provider_config_json.
+  # Safe defaults when keys are absent: multi-round/session reuse/criticality aware on,
+  # semantic expansion off. These comments document the contract without duplicating DB state.
+  version: ${APP_VERSION:0.1.0-SNAPSHOT}
+  security:
+    enabled: ${APP_SECURITY_ENABLED:true}
+  jira:
+    enabled: ${APP_JIRA_ENABLED:false}
+    base-url: ${APP_JIRA_BASE_URL:}
+    default-auth-mode: ${APP_JIRA_DEFAULT_AUTH_MODE:service-account}
+    service-account:
+      username: ${APP_JIRA_USERNAME:}
+      token: ${APP_JIRA_TOKEN:}
+    project-jql:
+      Haitlify API: ${APP_JIRA_PROJECT_JQL_HAITLIFY_API:project = HAITLIFY order by created DESC}
+  web-automation:
+    runner:
+      enabled: ${APP_WEB_AUTOMATION_RUNNER_ENABLED:false}
+      base-url: ${APP_WEB_AUTOMATION_RUNNER_BASE_URL:http://127.0.0.1:19323}
+      timeout-ms: ${APP_WEB_AUTOMATION_RUNNER_TIMEOUT_MS:120000}
+  figma:
+    enabled: ${APP_FIGMA_ENABLED:false}
+    token: ${APP_FIGMA_TOKEN:}
+    base-url: ${APP_FIGMA_BASE_URL:https://api.figma.com}
+    timeout-ms: ${APP_FIGMA_TIMEOUT_MS:3000}

@@ -1,0 +1,124 @@
+> **Archival record:** Preserved historical design/evidence from its original point in time. It does not claim Hermes integration is implemented.
+
+<style>
+  :root { --blue:#1f63c6; --blue-soft:#eaf3ff; --teal:#118b78; --teal-soft:#e8f7f3; --amber:#c77712; --amber-soft:#fff5df; --ink:#273244; --muted:#788499; --line:#dce5ef; --wash:#f5f8fc; }
+  .intro { max-width: 900px; margin-bottom: 22px; }
+  .intro h2 { margin-bottom: 6px; color: var(--ink); }
+  .intro p { margin: 0; color: var(--muted); }
+  .layout-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:18px; align-items:stretch; }
+  .direction { position:relative; overflow:hidden; padding:0; border:1px solid var(--line); border-radius:10px; background:#fff; box-shadow:0 7px 22px rgba(34,56,83,.07); cursor:pointer; transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease; }
+  .direction:hover { transform:translateY(-2px); border-color:#a9c5ea; box-shadow:0 10px 28px rgba(34,56,83,.11); }
+  .direction.selected { border-color:var(--blue); box-shadow:0 0 0 2px rgba(31,99,198,.13),0 10px 28px rgba(34,56,83,.11); }
+  .tag { position:absolute; z-index:3; top:10px; right:10px; padding:4px 7px; border-radius:5px; background:var(--blue); color:#fff; font-size:10px; font-weight:700; }
+  .mock { height:285px; padding:8px; background:var(--wash); border-bottom:1px solid var(--line); }
+  .shell { display:grid; grid-template-columns:30px 1fr; height:100%; overflow:hidden; border:1px solid #d8e3ee; background:#fff; }
+  .rail { background:#f6faff; border-right:1px solid #dce7f2; }
+  .rail i { display:block; width:14px; height:14px; margin:11px auto; border-radius:4px; background:#c5d6e8; }
+  .rail i.active { background:var(--blue); }
+  .app { min-width:0; display:flex; flex-direction:column; }
+  .top { height:25px; display:flex; align-items:center; justify-content:space-between; padding:0 8px; border-bottom:1px solid #e5ebf2; color:#59677a; font-size:7px; }
+  .crumb strong { color:var(--ink); }
+  .top-actions { display:flex; gap:4px; }
+  .btn { display:inline-flex; height:15px; align-items:center; padding:0 6px; border:1px solid #cbd9e8; border-radius:4px; background:#fff; color:#536378; font-size:6px; }
+  .btn.primary { border-color:var(--blue); background:var(--blue); color:#fff; }
+  .btn.teal { border-color:var(--teal); background:var(--teal); color:#fff; }
+  .preflight { display:grid; grid-template-columns:1.25fr .9fr .7fr auto; gap:5px; padding:7px 8px; border-bottom:1px solid #e2e9f1; background:#fbfdff; }
+  .field { min-width:0; padding:4px 5px; border:1px solid #d8e3ee; border-radius:4px; background:#fff; color:#526075; font-size:6px; }
+  .field b { display:block; margin-bottom:2px; color:#8a95a5; font-size:5px; font-weight:600; }
+  .body { min-height:0; flex:1; display:grid; }
+  .with-monitor { grid-template-columns:72px minmax(0,1fr) 104px; }
+  .scope { padding:7px 6px; border-right:1px solid #e1e8f0; background:#f9fbfe; }
+  .scope strong,.monitor strong,.table-zone strong { display:block; margin-bottom:6px; color:var(--ink); font-size:7px; }
+  .scope span { display:block; padding:4px 5px; margin-bottom:3px; border-radius:4px; color:#748095; font-size:6px; }
+  .scope span.active { color:var(--blue); background:var(--blue-soft); font-weight:700; }
+  .table-zone { min-width:0; padding:7px; }
+  .table-head { display:flex; align-items:center; justify-content:space-between; gap:4px; }
+  .search { width:62px; height:13px; border:1px solid #dae4ef; border-radius:4px; background:#fff; }
+  .rows { overflow:hidden; border:1px solid #e1e8f0; border-radius:4px; }
+  .row { display:grid; grid-template-columns:18px 1fr 42px 35px; min-height:21px; align-items:center; padding:0 4px; border-bottom:1px solid #edf1f5; color:#6e7b8f; font-size:5px; }
+  .row.header { min-height:17px; background:#f4f7fb; color:#506075; font-weight:700; }
+  .status { width:max-content; padding:2px 4px; border-radius:3px; background:var(--teal-soft); color:var(--teal); }
+  .status.wait { background:var(--amber-soft); color:var(--amber); }
+  .monitor { padding:7px; border-left:1px solid #dce6f0; background:#fbfdff; }
+  .run-state { display:flex; align-items:center; gap:4px; margin-bottom:6px; color:var(--teal); font-size:6px; font-weight:700; }
+  .dot { width:5px; height:5px; border-radius:50%; background:var(--teal); box-shadow:0 0 0 3px rgba(17,139,120,.12); }
+  .screen { height:53px; margin-bottom:7px; border:1px solid #d5e0eb; border-radius:4px; background:linear-gradient(#e9f2fb 0 16px,#fff 16px); }
+  .progress { height:4px; overflow:hidden; margin:5px 0 8px; border-radius:3px; background:#e7edf4; }
+  .progress:before { content:""; display:block; width:64%; height:100%; background:var(--blue); }
+  .step { display:flex; gap:4px; align-items:flex-start; margin:5px 0; color:#68768a; font-size:5px; }
+  .step:before { content:""; flex:0 0 5px; height:5px; margin-top:1px; border-radius:50%; background:#b8c6d5; }
+  .step.done:before { background:var(--teal); }
+  .bottom-monitor { grid-template-rows:minmax(0,1fr) 76px; }
+  .bottom-main { display:grid; grid-template-columns:72px minmax(0,1fr); min-height:0; }
+  .dock { display:grid; grid-template-columns:115px 1fr auto; gap:8px; padding:7px 8px; border-top:1px solid #dbe5ef; background:#fbfdff; }
+  .dock .screen { height:58px; margin:0; }
+  .dock-copy { color:#6c788b; font-size:6px; }
+  .dock-copy strong { display:block; margin-bottom:4px; color:var(--ink); font-size:7px; }
+  .monitor-first { grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr); gap:0; }
+  .live { padding:8px; background:#f7fbff; border-right:1px solid #dce6ef; }
+  .live .screen { height:124px; background:linear-gradient(#dcecfb 0 22px,#fff 22px); }
+  .timeline { padding:8px; }
+  .case-strip { grid-column:1 / -1; display:flex; gap:5px; padding:5px 8px; border-top:1px solid #e0e8f0; background:#fff; }
+  .case-pill { flex:1; padding:4px; border:1px solid #dce6ef; border-radius:4px; color:#66758a; font-size:5px; }
+  .copy { padding:14px 15px 16px; }
+  .copy h3 { display:flex; align-items:center; gap:7px; margin:0 0 7px; color:var(--ink); font-size:15px; }
+  .letter { display:grid; width:22px; height:22px; place-items:center; border-radius:6px; background:var(--blue-soft); color:var(--blue); font-size:11px; font-weight:800; }
+  .copy p { min-height:48px; margin:0 0 10px; color:#6f7c8f; font-size:12px; line-height:1.55; }
+  .trade { display:flex; flex-wrap:wrap; gap:5px; }
+  .trade span { padding:3px 6px; border-radius:4px; background:#f1f5f9; color:#66758a; font-size:10px; }
+  @media (max-width:1050px) { .layout-grid { grid-template-columns:1fr; } .mock { height:330px; } }
+</style>
+
+<div class="intro">
+  <h2>Web 自动化工作台：监控区放在哪里？</h2>
+  <p>三种方案都以“选用例、配环境、执行”为主流程，区别是运行监控与用例表格如何共享首屏空间。</p>
+</div>
+
+<div class="layout-grid">
+  <article class="direction" data-choice="a-right-monitor" onclick="toggleSelect(this)">
+    <span class="tag">推荐</span>
+    <div class="mock">
+      <div class="shell">
+        <aside class="rail"><i></i><i class="active"></i><i></i><i></i></aside>
+        <div class="app">
+          <div class="top"><span class="crumb">自动化 / <strong>Web 自动化</strong></span><span class="top-actions"><span class="btn">运行记录</span><span class="btn">从用例库生成</span></span></div>
+          <div class="preflight"><div class="field"><b>运行环境</b>退款测试环境</div><div class="field"><b>浏览器</b>Chromium</div><div class="field"><b>循环</b>1 次</div><span class="btn primary">执行 12 条</span></div>
+          <div class="body with-monitor">
+            <div class="scope"><strong>运行范围</strong><span class="active">全部模块 12</span><span>退款申请 5</span><span>售后查询 4</span><span>权限校验 3</span></div>
+            <div class="table-zone"><div class="table-head"><strong>执行用例</strong><div class="search"></div></div><div class="rows"><div class="row header"><span></span><span>用例名称</span><span>页面</span><span>状态</span></div><div class="row"><span>□</span><span>发起退款申请</span><span>详情页</span><span class="status">通过</span></div><div class="row"><span>□</span><span>退款金额边界</span><span>退款页</span><span class="status wait">待执行</span></div><div class="row"><span>□</span><span>重复提交拦截</span><span>退款页</span><span class="status">通过</span></div></div></div>
+            <aside class="monitor"><strong>运行监控</strong><div class="run-state"><i class="dot"></i>正在执行 8 / 12</div><div class="screen"></div><div class="progress"></div><div class="step done">登录准备完成</div><div class="step done">进入退款详情</div><div class="step">校验退款状态</div></aside>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="copy"><h3><span class="letter">A</span>右侧监控工作台</h3><p>宽屏同时看用例表与实时截图/步骤；标准屏收为可随时展开的右侧抽屉。任务连续性最好。</p><div class="trade"><span>执行优先</span><span>监控常驻</span><span>响应式清晰</span></div></div>
+  </article>
+
+  <article class="direction" data-choice="b-bottom-dock" onclick="toggleSelect(this)">
+    <div class="mock">
+      <div class="shell">
+        <aside class="rail"><i></i><i class="active"></i><i></i><i></i></aside>
+        <div class="app">
+          <div class="top"><span class="crumb">自动化 / <strong>Web 自动化</strong></span><span class="top-actions"><span class="btn">运行记录</span><span class="btn">从用例库生成</span></span></div>
+          <div class="preflight"><div class="field"><b>运行环境</b>退款测试环境</div><div class="field"><b>浏览器</b>Chromium</div><div class="field"><b>循环</b>1 次</div><span class="btn primary">执行 12 条</span></div>
+          <div class="body bottom-monitor"><div class="bottom-main"><div class="scope"><strong>运行范围</strong><span class="active">全部模块 12</span><span>退款申请 5</span><span>售后查询 4</span></div><div class="table-zone"><div class="table-head"><strong>执行用例</strong><div class="search"></div></div><div class="rows"><div class="row header"><span></span><span>用例名称</span><span>页面</span><span>状态</span></div><div class="row"><span>□</span><span>发起退款申请</span><span>详情页</span><span class="status">通过</span></div><div class="row"><span>□</span><span>退款金额边界</span><span>退款页</span><span class="status wait">执行中</span></div><div class="row"><span>□</span><span>重复提交拦截</span><span>退款页</span><span class="status">通过</span></div><div class="row"><span>□</span><span>售后记录同步</span><span>列表页</span><span class="status wait">待执行</span></div></div></div></div><div class="dock"><div class="screen"></div><div class="dock-copy"><strong>运行监控 · 8 / 12</strong>当前步骤：校验退款状态<div class="progress"></div>退款金额边界 · Chromium</div><span class="btn teal">展开监控</span></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="copy"><h3><span class="letter">B</span>底部运行坞</h3><p>表格横向空间最大，运行状态固定在底部；需要查看完整步骤时再展开。适合列很多的用例表。</p><div class="trade"><span>表格优先</span><span>监控紧凑</span><span>纵向空间较少</span></div></div>
+  </article>
+
+  <article class="direction" data-choice="c-monitor-first" onclick="toggleSelect(this)">
+    <div class="mock">
+      <div class="shell">
+        <aside class="rail"><i></i><i class="active"></i><i></i><i></i></aside>
+        <div class="app">
+          <div class="top"><span class="crumb">自动化 / <strong>Web 自动化</strong></span><span class="top-actions"><span class="btn">用例</span><span class="btn teal">运行中</span><span class="btn">历史</span></span></div>
+          <div class="preflight"><div class="field"><b>运行环境</b>退款测试环境</div><div class="field"><b>浏览器</b>Chromium</div><div class="field"><b>批次</b>RUN-0727</div><span class="btn primary">停止</span></div>
+          <div class="body monitor-first"><div class="live"><div class="run-state"><i class="dot"></i>实时页面 · 8 / 12</div><div class="screen"></div><div class="progress"></div></div><div class="timeline"><strong>步骤时间线</strong><div class="step done">环境准备</div><div class="step done">打开退款详情</div><div class="step done">输入退款金额</div><div class="step">校验状态流转</div><div class="step">退出登录</div></div><div class="case-strip"><div class="case-pill">通过 7</div><div class="case-pill">执行中 1</div><div class="case-pill">待执行 4</div></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="copy"><h3><span class="letter">C</span>监控主视图</h3><p>执行开始后整页切到实时监控，用例表退到独立视图。沉浸感最强，但准备与观察之间切换更多。</p><div class="trade"><span>监控优先</span><span>实时感强</span><span>切换成本高</span></div></div>
+  </article>
+</div>

@@ -1,0 +1,18 @@
+spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+      - org.springframework.boot.autoconfigure.jdbc.JdbcClientAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.jdbc.JdbcRepositoriesAutoConfiguration
+      - org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration
+
+app:
+  jira:
+    enabled: true
+    base-url: ${APP_JIRA_BASE_URL:https://jira.example.test}
+    default-auth-mode: ${APP_JIRA_DEFAULT_AUTH_MODE:service-account}
+    service-account:
+      username: ${APP_JIRA_USERNAME:}
+      token: ${APP_JIRA_TOKEN:}
+    project-jql:
+      HAITLIFY_API: ${APP_JIRA_PROJECT_JQL_HAITLIFY_API:project = HAITLIFY order by created DESC}

@@ -1,0 +1,28 @@
+spring:
+  datasource:
+    url: ${AI_SCHED_IT_DB_URL:jdbc:mysql://127.0.0.1:3306/ai_scheduler_it?createDatabaseIfNotExist=true&useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai}
+    username: ${AI_SCHED_IT_DB_USER:root}
+    password: ${AI_SCHED_IT_DB_PASSWORD:root}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  flyway:
+    enabled: true
+  jackson:
+    default-property-inclusion: non_null
+    deserialization:
+      fail-on-null-for-primitives: false
+
+# 专用本地 MySQL 集成库（docker compose 的 mysql 服务，见根 docker-compose.yml）。
+# 凭据与本地开发约定一致（root/root），可用环境变量覆盖；不用于任何真实环境。
+app:
+  version: mysql-it
+  ai:
+    scheduler:
+      # 第三十轮补审 2：IT 上下文关闭恢复调度器（避免其自动派发与测试夹具互相干扰）；恢复逻辑由测试直接调用覆盖。
+      recovery-enabled: false
+  security:
+    enabled: false
+  jira:
+    enabled: false
+  web-automation:
+    runner:
+      enabled: false

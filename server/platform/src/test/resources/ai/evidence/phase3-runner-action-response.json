@@ -1,0 +1,1058 @@
+{
+  "pageUrl": "http://127.0.0.1:41827/detail",
+  "sourcePointId": "point-phase3-record",
+  "elements": [
+    {
+      "id": "element-1",
+      "evidenceId": "element-a420b7900414686a",
+      "locator": "text=设备详情页, exact=true",
+      "locatorSpec": {
+        "strategy": "text",
+        "text": "设备详情页",
+        "exact": true,
+        "selector": "#detail-title",
+        "framePath": "",
+        "shadowPath": "",
+        "pageScope": "document"
+      },
+      "framePath": "",
+      "shadowPath": "",
+      "frameUrl": "",
+      "partition": "document",
+      "domIndex": 0,
+      "targeted": true,
+      "label": "设备详情页",
+      "role": "h1",
+      "tagName": "h1",
+      "strategy": "text",
+      "contextText": "",
+      "rowContext": "",
+      "accessibleName": "设备详情页",
+      "accessibilityText": "设备详情页",
+      "text": "设备详情页",
+      "visible": true,
+      "enabled": true,
+      "receivesEvents": true,
+      "coveredByBlockingOverlay": false,
+      "semanticType": "heading",
+      "pageScope": "document",
+      "tableColumn": "",
+      "matchedElementCount": 1
+    }
+  ],
+  "exploration": {
+    "status": "blocked",
+    "failureReason": "no_safe_action",
+    "sourcePointId": "point-phase3-record",
+    "rounds": [
+      {
+        "round": 1,
+        "observation": {
+          "url": "http://127.0.0.1:41827/detail",
+          "title": "",
+          "scrollOffset": 0,
+          "breadcrumbs": [],
+          "activeMenus": [],
+          "headings": [
+            "设备详情页"
+          ],
+          "overlays": [],
+          "tabs": [],
+          "scrollContainers": 0,
+          "hasNextPage": false,
+          "hasInactiveTab": false,
+          "hasNavigation": false,
+          "unsupported": {
+            "iframes": false,
+            "shadowDom": false,
+            "frames": [],
+            "closedShadowHosts": [],
+            "closedShadowDetection": "cdp",
+            "unresolvedShadowHosts": []
+          },
+          "fingerprint": "http://127.0.0.1:41827/detail||0|0|设备详情页",
+          "listSignature": "[\"\",\"\",\"\",\"1505\",0]",
+          "paginationIndicator": "",
+          "paginationIndicatorScope": "false",
+          "paginationLoading": false,
+          "paginationPlaceholderOnly": false,
+          "pageKey": "http://127.0.0.1:41827/detail",
+          "elements": [
+            {
+              "id": "element-1",
+              "evidenceId": "element-a420b7900414686a",
+              "locator": "text=设备详情页, exact=true",
+              "locatorSpec": {
+                "strategy": "text",
+                "text": "设备详情页",
+                "exact": true,
+                "selector": "#detail-title",
+                "framePath": "",
+                "shadowPath": "",
+                "pageScope": "document"
+              },
+              "framePath": "",
+              "shadowPath": "",
+              "frameUrl": "",
+              "partition": "document",
+              "domIndex": 0,
+              "targeted": true,
+              "label": "设备详情页",
+              "role": "h1",
+              "tagName": "h1",
+              "strategy": "text",
+              "contextText": "",
+              "rowContext": "",
+              "accessibleName": "设备详情页",
+              "accessibilityText": "设备详情页",
+              "text": "设备详情页",
+              "visible": true,
+              "enabled": true,
+              "receivesEvents": true,
+              "coveredByBlockingOverlay": false,
+              "semanticType": "heading",
+              "pageScope": "document",
+              "tableColumn": "",
+              "matchedElementCount": 1
+            }
+          ],
+          "allElements": [
+            {
+              "id": "element-1",
+              "evidenceId": "element-a420b7900414686a",
+              "locator": "text=设备详情页, exact=true",
+              "locatorSpec": {
+                "strategy": "text",
+                "text": "设备详情页",
+                "exact": true,
+                "selector": "#detail-title",
+                "framePath": "",
+                "shadowPath": "",
+                "pageScope": "document"
+              },
+              "framePath": "",
+              "shadowPath": "",
+              "frameUrl": "",
+              "partition": "document",
+              "domIndex": 0,
+              "targeted": true,
+              "label": "设备详情页",
+              "role": "h1",
+              "tagName": "h1",
+              "strategy": "text",
+              "contextText": "",
+              "rowContext": "",
+              "accessibleName": "设备详情页",
+              "accessibilityText": "设备详情页",
+              "text": "设备详情页",
+              "visible": true,
+              "enabled": true,
+              "receivesEvents": true,
+              "coveredByBlockingOverlay": false,
+              "semanticType": "heading",
+              "pageScope": "document",
+              "tableColumn": "",
+              "matchedElementCount": 1
+            }
+          ],
+          "elementsTruncated": null,
+          "pageFingerprint": "8ab91180c3efb5c8db7d268125415b78d15974f53709fd6caf95799e14b9f9ce",
+          "readiness": {
+            "pageKey": "http://127.0.0.1:41827/detail",
+            "title": "",
+            "headings": [
+              "设备详情页"
+            ],
+            "controlTexts": [],
+            "controlRecords": [],
+            "targetSignals": [
+              "设备详情页"
+            ],
+            "bodyText": "设备详情页",
+            "loginShell": false,
+            "errorPage": false,
+            "emptyShell": false,
+            "readyMarker": false,
+            "captchaState": "",
+            "shellFingerprint": "cf834d25a95213f8b1fb26b692ce5a9592dc2f744b98ee68c7cc87f2c5493e0c",
+            "pageFingerprint": "cf834d25a95213f8b1fb26b692ce5a9592dc2f744b98ee68c7cc87f2c5493e0c",
+            "ready": true,
+            "failureReason": "",
+            "durationMs": 0
+          }
+        },
+        "scores": {
+          "pageScore": 0,
+          "elementScore": 25,
+          "stateScore": 0,
+          "totalScore": 25,
+          "relevantElements": [
+            {
+              "id": "element-1",
+              "evidenceId": "element-a420b7900414686a",
+              "locator": "text=设备详情页, exact=true",
+              "locatorSpec": {
+                "strategy": "text",
+                "text": "设备详情页",
+                "exact": true,
+                "selector": "#detail-title",
+                "framePath": "",
+                "shadowPath": "",
+                "pageScope": "document"
+              },
+              "framePath": "",
+              "shadowPath": "",
+              "frameUrl": "",
+              "partition": "document",
+              "domIndex": 0,
+              "targeted": true,
+              "label": "设备详情页",
+              "role": "h1",
+              "tagName": "h1",
+              "strategy": "text",
+              "contextText": "",
+              "rowContext": "",
+              "accessibleName": "设备详情页",
+              "accessibilityText": "设备详情页",
+              "text": "设备详情页",
+              "visible": true,
+              "enabled": true,
+              "receivesEvents": true,
+              "coveredByBlockingOverlay": false,
+              "semanticType": "heading",
+              "pageScope": "document",
+              "tableColumn": "",
+              "matchedElementCount": 1
+            }
+          ],
+          "matched": false
+        },
+        "sourcePointId": "point-phase3-record",
+        "pageFingerprint": "8ab91180c3efb5c8db7d268125415b78d15974f53709fd6caf95799e14b9f9ce",
+        "lastFailureCategory": "",
+        "sameFailureCount": 0,
+        "reauthenticateCount": 0,
+        "remainingDurationMs": 0,
+        "repairTrail": []
+      }
+    ],
+    "finalObservation": {
+      "url": "http://127.0.0.1:41827/detail",
+      "title": "",
+      "scrollOffset": 0,
+      "breadcrumbs": [],
+      "activeMenus": [],
+      "headings": [
+        "设备详情页"
+      ],
+      "overlays": [],
+      "tabs": [],
+      "scrollContainers": 0,
+      "hasNextPage": false,
+      "hasInactiveTab": false,
+      "hasNavigation": false,
+      "unsupported": {
+        "iframes": false,
+        "shadowDom": false,
+        "frames": [],
+        "closedShadowHosts": [],
+        "closedShadowDetection": "cdp",
+        "unresolvedShadowHosts": []
+      },
+      "fingerprint": "http://127.0.0.1:41827/detail||0|0|设备详情页",
+      "listSignature": "[\"\",\"\",\"\",\"1505\",0]",
+      "paginationIndicator": "",
+      "paginationIndicatorScope": "false",
+      "paginationLoading": false,
+      "paginationPlaceholderOnly": false,
+      "pageKey": "http://127.0.0.1:41827/detail",
+      "elements": [
+        {
+          "id": "element-1",
+          "evidenceId": "element-a420b7900414686a",
+          "locator": "text=设备详情页, exact=true",
+          "locatorSpec": {
+            "strategy": "text",
+            "text": "设备详情页",
+            "exact": true,
+            "selector": "#detail-title",
+            "framePath": "",
+            "shadowPath": "",
+            "pageScope": "document"
+          },
+          "framePath": "",
+          "shadowPath": "",
+          "frameUrl": "",
+          "partition": "document",
+          "domIndex": 0,
+          "targeted": true,
+          "label": "设备详情页",
+          "role": "h1",
+          "tagName": "h1",
+          "strategy": "text",
+          "contextText": "",
+          "rowContext": "",
+          "accessibleName": "设备详情页",
+          "accessibilityText": "设备详情页",
+          "text": "设备详情页",
+          "visible": true,
+          "enabled": true,
+          "receivesEvents": true,
+          "coveredByBlockingOverlay": false,
+          "semanticType": "heading",
+          "pageScope": "document",
+          "tableColumn": "",
+          "matchedElementCount": 1
+        }
+      ],
+      "allElements": [
+        {
+          "id": "element-1",
+          "evidenceId": "element-a420b7900414686a",
+          "locator": "text=设备详情页, exact=true",
+          "locatorSpec": {
+            "strategy": "text",
+            "text": "设备详情页",
+            "exact": true,
+            "selector": "#detail-title",
+            "framePath": "",
+            "shadowPath": "",
+            "pageScope": "document"
+          },
+          "framePath": "",
+          "shadowPath": "",
+          "frameUrl": "",
+          "partition": "document",
+          "domIndex": 0,
+          "targeted": true,
+          "label": "设备详情页",
+          "role": "h1",
+          "tagName": "h1",
+          "strategy": "text",
+          "contextText": "",
+          "rowContext": "",
+          "accessibleName": "设备详情页",
+          "accessibilityText": "设备详情页",
+          "text": "设备详情页",
+          "visible": true,
+          "enabled": true,
+          "receivesEvents": true,
+          "coveredByBlockingOverlay": false,
+          "semanticType": "heading",
+          "pageScope": "document",
+          "tableColumn": "",
+          "matchedElementCount": 1
+        }
+      ],
+      "elementsTruncated": null,
+      "pageFingerprint": "8ab91180c3efb5c8db7d268125415b78d15974f53709fd6caf95799e14b9f9ce",
+      "readiness": {
+        "pageKey": "http://127.0.0.1:41827/detail",
+        "title": "",
+        "headings": [
+          "设备详情页"
+        ],
+        "controlTexts": [],
+        "controlRecords": [],
+        "targetSignals": [
+          "设备详情页"
+        ],
+        "bodyText": "设备详情页",
+        "loginShell": false,
+        "errorPage": false,
+        "emptyShell": false,
+        "readyMarker": false,
+        "captchaState": "",
+        "shellFingerprint": "cf834d25a95213f8b1fb26b692ce5a9592dc2f744b98ee68c7cc87f2c5493e0c",
+        "pageFingerprint": "cf834d25a95213f8b1fb26b692ce5a9592dc2f744b98ee68c7cc87f2c5493e0c",
+        "ready": true,
+        "failureReason": "",
+        "durationMs": 0
+      }
+    },
+    "scores": {
+      "pageScore": 0,
+      "elementScore": 25,
+      "stateScore": 0,
+      "totalScore": 25,
+      "relevantElements": [
+        {
+          "id": "element-1",
+          "evidenceId": "element-a420b7900414686a",
+          "locator": "text=设备详情页, exact=true",
+          "locatorSpec": {
+            "strategy": "text",
+            "text": "设备详情页",
+            "exact": true,
+            "selector": "#detail-title",
+            "framePath": "",
+            "shadowPath": "",
+            "pageScope": "document"
+          },
+          "framePath": "",
+          "shadowPath": "",
+          "frameUrl": "",
+          "partition": "document",
+          "domIndex": 0,
+          "targeted": true,
+          "label": "设备详情页",
+          "role": "h1",
+          "tagName": "h1",
+          "strategy": "text",
+          "contextText": "",
+          "rowContext": "",
+          "accessibleName": "设备详情页",
+          "accessibilityText": "设备详情页",
+          "text": "设备详情页",
+          "visible": true,
+          "enabled": true,
+          "receivesEvents": true,
+          "coveredByBlockingOverlay": false,
+          "semanticType": "heading",
+          "pageScope": "document",
+          "tableColumn": "",
+          "matchedElementCount": 1
+        }
+      ],
+      "matched": false
+    },
+    "pageFingerprint": "8ab91180c3efb5c8db7d268125415b78d15974f53709fd6caf95799e14b9f9ce",
+    "navigationTrail": [],
+    "durationMs": 0,
+    "remainingDurationMs": 0,
+    "repairTrail": [],
+    "lastFailureCategory": "",
+    "sameFailureCount": 0,
+    "reauthenticateCount": 0,
+    "networkBlocked": [],
+    "network": {
+      "criticalBlocked": [],
+      "optionalBlocked": [],
+      "unknownBlocked": [],
+      "authDependencies": []
+    },
+    "readiness": {
+      "pageKey": "http://127.0.0.1:41827/detail",
+      "title": "",
+      "headings": [
+        "设备详情页"
+      ],
+      "controlTexts": [],
+      "controlRecords": [],
+      "targetSignals": [
+        "设备详情页"
+      ],
+      "bodyText": "设备详情页",
+      "loginShell": false,
+      "errorPage": false,
+      "emptyShell": false,
+      "readyMarker": false,
+      "captchaState": "",
+      "shellFingerprint": "cf834d25a95213f8b1fb26b692ce5a9592dc2f744b98ee68c7cc87f2c5493e0c",
+      "pageFingerprint": "cf834d25a95213f8b1fb26b692ce5a9592dc2f744b98ee68c7cc87f2c5493e0c",
+      "ready": true,
+      "failureReason": "",
+      "durationMs": 0
+    }
+  },
+  "finalObservation": {
+    "url": "http://127.0.0.1:41827/detail",
+    "title": "",
+    "scrollOffset": 0,
+    "breadcrumbs": [],
+    "activeMenus": [],
+    "headings": [
+      "设备详情页"
+    ],
+    "overlays": [],
+    "tabs": [],
+    "scrollContainers": 0,
+    "hasNextPage": false,
+    "hasInactiveTab": false,
+    "hasNavigation": false,
+    "unsupported": {
+      "iframes": false,
+      "shadowDom": false,
+      "frames": [],
+      "closedShadowHosts": [],
+      "closedShadowDetection": "cdp",
+      "unresolvedShadowHosts": []
+    },
+    "fingerprint": "http://127.0.0.1:41827/detail||0|0|设备详情页",
+    "listSignature": "[\"\",\"\",\"\",\"1505\",0]",
+    "paginationIndicator": "",
+    "paginationIndicatorScope": "false",
+    "paginationLoading": false,
+    "paginationPlaceholderOnly": false,
+    "pageKey": "http://127.0.0.1:41827/detail",
+    "elements": [
+      {
+        "id": "element-1",
+        "evidenceId": "element-a420b7900414686a",
+        "locator": "text=设备详情页, exact=true",
+        "locatorSpec": {
+          "strategy": "text",
+          "text": "设备详情页",
+          "exact": true,
+          "selector": "#detail-title",
+          "framePath": "",
+          "shadowPath": "",
+          "pageScope": "document"
+        },
+        "framePath": "",
+        "shadowPath": "",
+        "frameUrl": "",
+        "partition": "document",
+        "domIndex": 0,
+        "targeted": true,
+        "label": "设备详情页",
+        "role": "h1",
+        "tagName": "h1",
+        "strategy": "text",
+        "contextText": "",
+        "rowContext": "",
+        "accessibleName": "设备详情页",
+        "accessibilityText": "设备详情页",
+        "text": "设备详情页",
+        "visible": true,
+        "enabled": true,
+        "receivesEvents": true,
+        "coveredByBlockingOverlay": false,
+        "semanticType": "heading",
+        "pageScope": "document",
+        "tableColumn": "",
+        "matchedElementCount": 1
+      }
+    ],
+    "allElements": [
+      {
+        "id": "element-1",
+        "evidenceId": "element-a420b7900414686a",
+        "locator": "text=设备详情页, exact=true",
+        "locatorSpec": {
+          "strategy": "text",
+          "text": "设备详情页",
+          "exact": true,
+          "selector": "#detail-title",
+          "framePath": "",
+          "shadowPath": "",
+          "pageScope": "document"
+        },
+        "framePath": "",
+        "shadowPath": "",
+        "frameUrl": "",
+        "partition": "document",
+        "domIndex": 0,
+        "targeted": true,
+        "label": "设备详情页",
+        "role": "h1",
+        "tagName": "h1",
+        "strategy": "text",
+        "contextText": "",
+        "rowContext": "",
+        "accessibleName": "设备详情页",
+        "accessibilityText": "设备详情页",
+        "text": "设备详情页",
+        "visible": true,
+        "enabled": true,
+        "receivesEvents": true,
+        "coveredByBlockingOverlay": false,
+        "semanticType": "heading",
+        "pageScope": "document",
+        "tableColumn": "",
+        "matchedElementCount": 1
+      }
+    ],
+    "elementsTruncated": null,
+    "pageFingerprint": "8ab91180c3efb5c8db7d268125415b78d15974f53709fd6caf95799e14b9f9ce",
+    "readiness": {
+      "pageKey": "http://127.0.0.1:41827/detail",
+      "title": "",
+      "headings": [
+        "设备详情页"
+      ],
+      "controlTexts": [],
+      "controlRecords": [],
+      "targetSignals": [
+        "设备详情页"
+      ],
+      "bodyText": "设备详情页",
+      "loginShell": false,
+      "errorPage": false,
+      "emptyShell": false,
+      "readyMarker": false,
+      "captchaState": "",
+      "shellFingerprint": "cf834d25a95213f8b1fb26b692ce5a9592dc2f744b98ee68c7cc87f2c5493e0c",
+      "pageFingerprint": "cf834d25a95213f8b1fb26b692ce5a9592dc2f744b98ee68c7cc87f2c5493e0c",
+      "ready": true,
+      "failureReason": "",
+      "durationMs": 0
+    }
+  },
+  "rounds": [
+    {
+      "round": 1,
+      "observation": {
+        "url": "http://127.0.0.1:41827/detail",
+        "title": "",
+        "scrollOffset": 0,
+        "breadcrumbs": [],
+        "activeMenus": [],
+        "headings": [
+          "设备详情页"
+        ],
+        "overlays": [],
+        "tabs": [],
+        "scrollContainers": 0,
+        "hasNextPage": false,
+        "hasInactiveTab": false,
+        "hasNavigation": false,
+        "unsupported": {
+          "iframes": false,
+          "shadowDom": false,
+          "frames": [],
+          "closedShadowHosts": [],
+          "closedShadowDetection": "cdp",
+          "unresolvedShadowHosts": []
+        },
+        "fingerprint": "http://127.0.0.1:41827/detail||0|0|设备详情页",
+        "listSignature": "[\"\",\"\",\"\",\"1505\",0]",
+        "paginationIndicator": "",
+        "paginationIndicatorScope": "false",
+        "paginationLoading": false,
+        "paginationPlaceholderOnly": false,
+        "pageKey": "http://127.0.0.1:41827/detail",
+        "elements": [
+          {
+            "id": "element-1",
+            "evidenceId": "element-a420b7900414686a",
+            "locator": "text=设备详情页, exact=true",
+            "locatorSpec": {
+              "strategy": "text",
+              "text": "设备详情页",
+              "exact": true,
+              "selector": "#detail-title",
+              "framePath": "",
+              "shadowPath": "",
+              "pageScope": "document"
+            },
+            "framePath": "",
+            "shadowPath": "",
+            "frameUrl": "",
+            "partition": "document",
+            "domIndex": 0,
+            "targeted": true,
+            "label": "设备详情页",
+            "role": "h1",
+            "tagName": "h1",
+            "strategy": "text",
+            "contextText": "",
+            "rowContext": "",
+            "accessibleName": "设备详情页",
+            "accessibilityText": "设备详情页",
+            "text": "设备详情页",
+            "visible": true,
+            "enabled": true,
+            "receivesEvents": true,
+            "coveredByBlockingOverlay": false,
+            "semanticType": "heading",
+            "pageScope": "document",
+            "tableColumn": "",
+            "matchedElementCount": 1
+          }
+        ],
+        "allElements": [
+          {
+            "id": "element-1",
+            "evidenceId": "element-a420b7900414686a",
+            "locator": "text=设备详情页, exact=true",
+            "locatorSpec": {
+              "strategy": "text",
+              "text": "设备详情页",
+              "exact": true,
+              "selector": "#detail-title",
+              "framePath": "",
+              "shadowPath": "",
+              "pageScope": "document"
+            },
+            "framePath": "",
+            "shadowPath": "",
+            "frameUrl": "",
+            "partition": "document",
+            "domIndex": 0,
+            "targeted": true,
+            "label": "设备详情页",
+            "role": "h1",
+            "tagName": "h1",
+            "strategy": "text",
+            "contextText": "",
+            "rowContext": "",
+            "accessibleName": "设备详情页",
+            "accessibilityText": "设备详情页",
+            "text": "设备详情页",
+            "visible": true,
+            "enabled": true,
+            "receivesEvents": true,
+            "coveredByBlockingOverlay": false,
+            "semanticType": "heading",
+            "pageScope": "document",
+            "tableColumn": "",
+            "matchedElementCount": 1
+          }
+        ],
+        "elementsTruncated": null,
+        "pageFingerprint": "8ab91180c3efb5c8db7d268125415b78d15974f53709fd6caf95799e14b9f9ce",
+        "readiness": {
+          "pageKey": "http://127.0.0.1:41827/detail",
+          "title": "",
+          "headings": [
+            "设备详情页"
+          ],
+          "controlTexts": [],
+          "controlRecords": [],
+          "targetSignals": [
+            "设备详情页"
+          ],
+          "bodyText": "设备详情页",
+          "loginShell": false,
+          "errorPage": false,
+          "emptyShell": false,
+          "readyMarker": false,
+          "captchaState": "",
+          "shellFingerprint": "cf834d25a95213f8b1fb26b692ce5a9592dc2f744b98ee68c7cc87f2c5493e0c",
+          "pageFingerprint": "cf834d25a95213f8b1fb26b692ce5a9592dc2f744b98ee68c7cc87f2c5493e0c",
+          "ready": true,
+          "failureReason": "",
+          "durationMs": 0
+        }
+      },
+      "scores": {
+        "pageScore": 0,
+        "elementScore": 25,
+        "stateScore": 0,
+        "totalScore": 25,
+        "relevantElements": [
+          {
+            "id": "element-1",
+            "evidenceId": "element-a420b7900414686a",
+            "locator": "text=设备详情页, exact=true",
+            "locatorSpec": {
+              "strategy": "text",
+              "text": "设备详情页",
+              "exact": true,
+              "selector": "#detail-title",
+              "framePath": "",
+              "shadowPath": "",
+              "pageScope": "document"
+            },
+            "framePath": "",
+            "shadowPath": "",
+            "frameUrl": "",
+            "partition": "document",
+            "domIndex": 0,
+            "targeted": true,
+            "label": "设备详情页",
+            "role": "h1",
+            "tagName": "h1",
+            "strategy": "text",
+            "contextText": "",
+            "rowContext": "",
+            "accessibleName": "设备详情页",
+            "accessibilityText": "设备详情页",
+            "text": "设备详情页",
+            "visible": true,
+            "enabled": true,
+            "receivesEvents": true,
+            "coveredByBlockingOverlay": false,
+            "semanticType": "heading",
+            "pageScope": "document",
+            "tableColumn": "",
+            "matchedElementCount": 1
+          }
+        ],
+        "matched": false
+      },
+      "sourcePointId": "point-phase3-record",
+      "pageFingerprint": "8ab91180c3efb5c8db7d268125415b78d15974f53709fd6caf95799e14b9f9ce",
+      "lastFailureCategory": "",
+      "sameFailureCount": 0,
+      "reauthenticateCount": 0,
+      "remainingDurationMs": 0,
+      "repairTrail": []
+    }
+  ],
+  "status": "blocked",
+  "failureReason": "no_safe_action",
+  "authenticated": true,
+  "historicalMatchedIds": [],
+  "historicalRejectedIds": [],
+  "stepEvidence": [
+    {
+      "actionId": "open-detail",
+      "actionType": "click",
+      "sourcePointId": "point-phase3-record",
+      "before": {
+        "pageUrl": "http://127.0.0.1:41827/list",
+        "pageKey": "http://127.0.0.1:41827/list",
+        "pageFingerprint": "460f2f32ff32ab23cea8aa99d0711c2dae64f2c99e2ce40578a2b42a1c2b8ff8",
+        "contentSignature": "[\"\",\"\",\"\",\"1505\",0]",
+        "paginationIndicator": "",
+        "paginationLoading": false,
+        "paginationPlaceholderOnly": false
+      },
+      "resolvedTarget": {
+        "strategy": "role",
+        "role": "link",
+        "name": "设备详情",
+        "exact": true,
+        "locator": "role=link[name=\"设备详情\", exact=true]",
+        "visible": true,
+        "enabled": true,
+        "receivesEvents": true,
+        "unique": true,
+        "evidenceId": "element-c52a044778999202",
+        "pageKey": "http://127.0.0.1:41827/list",
+        "pageFingerprint": "460f2f32ff32ab23cea8aa99d0711c2dae64f2c99e2ce40578a2b42a1c2b8ff8",
+        "locatorSpec": {
+          "strategy": "role",
+          "role": "link",
+          "name": "设备详情",
+          "exact": true,
+          "selector": "#menu-link",
+          "framePath": "",
+          "shadowPath": "",
+          "pageScope": "navigation"
+        },
+        "framePath": "",
+        "shadowPath": "",
+        "observedElement": {
+          "evidenceId": "element-c52a044778999202",
+          "locator": "role=link[name=\"设备详情\", exact=true]",
+          "role": "link",
+          "accessibleName": "设备详情",
+          "pageScope": "navigation",
+          "rowContext": "设备详情",
+          "locatorSpec": {
+            "strategy": "role",
+            "role": "link",
+            "name": "设备详情",
+            "exact": true,
+            "selector": "#menu-link",
+            "framePath": "",
+            "shadowPath": "",
+            "pageScope": "navigation"
+          }
+        }
+      },
+      "evidenceId": "element-c52a044778999202",
+      "execution": {
+        "status": "passed",
+        "postcondition": {
+          "kind": "settled",
+          "polls": 2,
+          "durationMs": 0,
+          "pageChanged": true
+        }
+      },
+      "after": {
+        "pageUrl": "http://127.0.0.1:41827/detail",
+        "pageKey": "http://127.0.0.1:41827/detail",
+        "pageFingerprint": "8ab91180c3efb5c8db7d268125415b78d15974f53709fd6caf95799e14b9f9ce",
+        "contentSignature": "[\"\",\"\",\"\",\"1505\",0]",
+        "paginationIndicator": "",
+        "paginationLoading": false,
+        "paginationPlaceholderOnly": false
+      }
+    },
+    {
+      "actionId": "assert-detail-title",
+      "actionType": "assertVisible",
+      "sourcePointId": "point-phase3-record",
+      "before": {
+        "pageUrl": "http://127.0.0.1:41827/detail",
+        "pageKey": "http://127.0.0.1:41827/detail",
+        "pageFingerprint": "8ab91180c3efb5c8db7d268125415b78d15974f53709fd6caf95799e14b9f9ce",
+        "contentSignature": "[\"\",\"\",\"\",\"1505\",0]",
+        "paginationIndicator": "",
+        "paginationLoading": false,
+        "paginationPlaceholderOnly": false
+      },
+      "resolvedTarget": {
+        "strategy": "text",
+        "text": "设备详情页",
+        "exact": true,
+        "locator": "text=设备详情页, exact=true",
+        "visible": true,
+        "enabled": true,
+        "receivesEvents": true,
+        "unique": true,
+        "evidenceId": "element-a420b7900414686a",
+        "pageKey": "http://127.0.0.1:41827/detail",
+        "pageFingerprint": "8ab91180c3efb5c8db7d268125415b78d15974f53709fd6caf95799e14b9f9ce",
+        "locatorSpec": {
+          "strategy": "text",
+          "text": "设备详情页",
+          "exact": true,
+          "selector": "#detail-title",
+          "framePath": "",
+          "shadowPath": "",
+          "pageScope": "document"
+        },
+        "framePath": "",
+        "shadowPath": "",
+        "observedElement": {
+          "evidenceId": "element-a420b7900414686a",
+          "locator": "text=设备详情页, exact=true",
+          "role": "h1",
+          "accessibleName": "设备详情页",
+          "pageScope": "document",
+          "rowContext": "",
+          "locatorSpec": {
+            "strategy": "text",
+            "text": "设备详情页",
+            "exact": true,
+            "selector": "#detail-title",
+            "framePath": "",
+            "shadowPath": "",
+            "pageScope": "document"
+          }
+        }
+      },
+      "evidenceId": "element-a420b7900414686a",
+      "execution": {
+        "status": "passed",
+        "postcondition": {
+          "kind": "settled",
+          "polls": 3,
+          "durationMs": 0,
+          "pageChanged": false
+        }
+      },
+      "after": {
+        "pageUrl": "http://127.0.0.1:41827/detail",
+        "pageKey": "http://127.0.0.1:41827/detail",
+        "pageFingerprint": "8ab91180c3efb5c8db7d268125415b78d15974f53709fd6caf95799e14b9f9ce",
+        "contentSignature": "[\"\",\"\",\"\",\"1505\",0]",
+        "paginationIndicator": "",
+        "paginationLoading": false,
+        "paginationPlaceholderOnly": false
+      }
+    }
+  ],
+  "pageSnapshots": [
+    {
+      "pageKey": "http://127.0.0.1:41827/list",
+      "pageFingerprint": "460f2f32ff32ab23cea8aa99d0711c2dae64f2c99e2ce40578a2b42a1c2b8ff8",
+      "pageUrl": "http://127.0.0.1:41827/list",
+      "roles": [
+        "before"
+      ],
+      "actionIds": [
+        "open-detail"
+      ],
+      "elements": [
+        {
+          "id": "element-1",
+          "evidenceId": "element-c52a044778999202",
+          "locator": "role=link[name=\"设备详情\", exact=true]",
+          "locatorSpec": {
+            "strategy": "role",
+            "role": "link",
+            "name": "设备详情",
+            "exact": true,
+            "selector": "#menu-link",
+            "framePath": "",
+            "shadowPath": "",
+            "pageScope": "navigation"
+          },
+          "framePath": "",
+          "shadowPath": "",
+          "frameUrl": "",
+          "partition": "navigation",
+          "domIndex": 0,
+          "targeted": true,
+          "label": "设备详情",
+          "role": "link",
+          "tagName": "a",
+          "strategy": "role",
+          "contextText": "设备详情",
+          "rowContext": "设备详情",
+          "accessibleName": "设备详情",
+          "accessibilityText": "设备详情",
+          "text": "设备详情",
+          "visible": true,
+          "enabled": true,
+          "receivesEvents": true,
+          "coveredByBlockingOverlay": false,
+          "semanticType": "action",
+          "pageScope": "navigation",
+          "tableColumn": "",
+          "matchedElementCount": 1
+        }
+      ]
+    },
+    {
+      "pageKey": "http://127.0.0.1:41827/detail",
+      "pageFingerprint": "8ab91180c3efb5c8db7d268125415b78d15974f53709fd6caf95799e14b9f9ce",
+      "pageUrl": "http://127.0.0.1:41827/detail",
+      "roles": [
+        "after",
+        "before",
+        "final"
+      ],
+      "actionIds": [
+        "open-detail",
+        "assert-detail-title"
+      ],
+      "elements": [
+        {
+          "id": "element-1",
+          "evidenceId": "element-a420b7900414686a",
+          "locator": "text=设备详情页, exact=true",
+          "locatorSpec": {
+            "strategy": "text",
+            "text": "设备详情页",
+            "exact": true,
+            "selector": "#detail-title",
+            "framePath": "",
+            "shadowPath": "",
+            "pageScope": "document"
+          },
+          "framePath": "",
+          "shadowPath": "",
+          "frameUrl": "",
+          "partition": "document",
+          "domIndex": 0,
+          "targeted": true,
+          "label": "设备详情页",
+          "role": "h1",
+          "tagName": "h1",
+          "strategy": "text",
+          "contextText": "",
+          "rowContext": "",
+          "accessibleName": "设备详情页",
+          "accessibilityText": "设备详情页",
+          "text": "设备详情页",
+          "visible": true,
+          "enabled": true,
+          "receivesEvents": true,
+          "coveredByBlockingOverlay": false,
+          "semanticType": "heading",
+          "pageScope": "document",
+          "tableColumn": "",
+          "matchedElementCount": 1
+        }
+      ]
+    }
+  ],
+  "unsupported": {
+    "iframes": false,
+    "shadowDom": false,
+    "frames": [],
+    "closedShadowHosts": [],
+    "closedShadowDetection": "cdp",
+    "unresolvedShadowHosts": []
+  },
+  "screenshotUrl": "",
+  "runnerImplementationHash": "9e4416aa82f561f644c6776105700bcb451cbb642f75a01bcf926f2839a70fd5"
+}

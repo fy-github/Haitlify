@@ -1,0 +1,40 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:aitest;MODE=MySQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  flyway:
+    enabled: true
+  jackson:
+    default-property-inclusion: non_null
+    deserialization:
+      fail-on-null-for-primitives: false
+  servlet:
+    multipart:
+      max-file-size: 25MB
+      max-request-size: 25MB
+
+app:
+  version: test
+  ai:
+    scheduler:
+      # 第三十轮补审 2：测试上下文不得运行恢复调度器（共享内存库 + 各上下文时钟不一致 ⇒ 误重排进行中任务）。
+      # 恢复逻辑本身由 IT 直接调用 recoverExpiredRuns 覆盖。
+      recovery-enabled: false
+  security:
+    enabled: false
+  jira:
+    enabled: true
+    base-url: https://pm.example.test
+    default-auth-mode: service-account
+    service-account:
+      username: jira-reader
+      token: test-token
+    project-jql:
+      HAITLIFY_API: project = HAITLIFY order by created DESC
+  web-automation:
+    runner:
+      enabled: true
+      base-url: http://127.0.0.1:19323
+      timeout-ms: 5000

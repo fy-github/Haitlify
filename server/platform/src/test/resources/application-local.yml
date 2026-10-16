@@ -1,0 +1,8 @@
+spring:
+  datasource:
+    url: jdbc:h2:file:./.local-data/ai-test-platform;MODE=MySQL;AUTO_SERVER=TRUE;DATABASE_TO_LOWER=TRUE
+app:
+  web-automation:
+    runner:
+      enabled: true
+      base-url: http://127.0.0.1:19323

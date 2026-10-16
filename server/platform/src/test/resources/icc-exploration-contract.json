@@ -1,0 +1,15 @@
+{
+  "origins": {
+    "web": "https://app-dev.example.test",
+    "login": "https://app-dev.example.test",
+    "auth": "https://api.app-dev.example.test"
+  },
+  "labels": {
+    "module": "威胁情报",
+    "route": "#/open/threat-intelligence",
+    "readonlyTab": "只读详情",
+    "statusAction": "查看状态",
+    "statusState": "只读",
+    "mutationCounter": "mutation-counter"
+  }
+}

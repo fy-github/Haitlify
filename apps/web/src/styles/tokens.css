@@ -1,0 +1,200 @@
+:root {
+  color-scheme: light;
+
+  /* 品牌主色:Teal 青绿 AI 感。主色 #0f766e(teal-700)对白底 ≈4.66:1(AA 正文达标);
+     浅 teal/cyan 只做 soft/subtle/渐变装饰,文字一律用深 teal,防止对比度回退。 */
+  --brand-primary: #0f766e;
+  --brand-primary-hover: #0c625c;
+  --brand-primary-active: #115e59;
+  --brand-primary-soft: #e2f3f0;
+  --brand-primary-subtle: #eef8f6;
+  --brand-primary-border: #a3d5ce;
+  --brand-primary-contrast: #ffffff;
+  --brand-primary-focus: rgba(15, 118, 110, 0.28);
+  --brand-primary-shadow: rgba(15, 118, 110, 0.14);
+  /* 辅助 cyan(仅装饰/渐变/强调,不做正文文字):cyan-700 可作强调文字,cyan-400 仅供渐变。 */
+  --accent-cyan: #0e7490;
+  --accent-cyan-soft: #e1f1f6;
+  --accent-cyan-bright: #22d3ee;
+  /* AI 感渐变 + 玻璃面 */
+  --gradient-primary: linear-gradient(135deg, #0f766e 0%, #0e7490 100%);
+  --surface-glass: rgba(255, 255, 255, 0.72);
+  /* 键盘焦点环:实心品牌色,相对白底对比度 ≥3:1。 */
+  --focus-ring-color: var(--brand-primary);
+
+  /* Compatibility aliases for unmigrated surfaces. */
+  --color-violet: var(--brand-primary);
+  --color-violet-hover: var(--brand-primary-hover);
+  --color-violet-active: var(--brand-primary-active);
+  --color-violet-soft: var(--brand-primary-soft);
+  --color-violet-subtle: var(--brand-primary-subtle);
+  --color-violet-border: var(--brand-primary-border);
+  --color-violet-contrast: var(--brand-primary-contrast);
+  --color-violet-focus: var(--brand-primary-focus);
+
+  --color-success: #18825e;
+  --color-success-soft: #e7f7f0;
+  --color-success-border: #afe0cc;
+  --color-warning: #b86b0c;
+  --color-warning-soft: #fff4df;
+  --color-warning-border: #efd09a;
+  --color-danger: #b83b52;
+  --color-danger-soft: #fff0f3;
+  --color-danger-border: #efbdc8;
+  --color-info: #2f7fc7;
+  --color-info-soft: #eaf5ff;
+  --color-info-border: #b8d9f5;
+
+  --accent-teal: #0f8173;
+  --accent-teal-soft: #e5f7f3;
+  --accent-teal-border: #a8ddd3;
+  --accent-amber: #a8610d;
+  --accent-amber-soft: #fff3df;
+  --accent-amber-border: #efce96;
+  --accent-rose: #b8415c;
+  --accent-rose-soft: #ffeff3;
+  --accent-rose-border: #efbdc9;
+
+  --status-success: var(--color-success);
+  --status-success-soft: var(--color-success-soft);
+  --status-success-text: #1f704d;
+  --status-warning: var(--color-warning);
+  --status-warning-soft: var(--color-warning-soft);
+  --status-warning-text: #76551f;
+  --status-danger: var(--color-danger);
+  --status-danger-soft: var(--color-danger-soft);
+  --status-danger-text: #9f2438;
+  --status-info: var(--color-info);
+  --status-info-soft: var(--color-info-soft);
+  --status-info-text: #356f98;
+
+  /* 质量评分可视化(quality-insight):评分条填充 + 维度钢蓝文本 + 弱项红棕提示。 */
+  --quality-good: #8eb9dc;
+  --quality-weak: #d98a84;
+  --quality-text: #426075;
+  --quality-weak-text: #8f4b46;
+  /* 暗色代码块(只读日志/脚本):light 主题内的深色底衬,与中性灰体系隔离。 */
+  --surface-code: #111827;
+  --text-code: #e5e7eb;
+
+  --text-primary: #222936;
+  --text-regular: #4e5868;
+  --text-secondary: #596679;
+  --text-tertiary: #677182;
+  /* placeholder 从 #8791a2(≈3.18:1)加深到 #677182(对白底 4.63:1),满足 WCAG AA 正文 ≥4.5:1;disabled 输入豁免。 */
+  --text-placeholder: #677182;
+  --text-inverse: #ffffff;
+  /* 中性面:低密度清爽,微偏青绿(冷感、AI 气质);文字仍走中性灰,保证 AA。 */
+  --surface-page: #f2f7f5;
+  --surface-canvas: #fbfdfc;
+  --surface-panel: rgba(255, 255, 255, 0.92);
+  --surface-raised: #ffffff;
+  --surface-subtle: #ecf5f2;
+  --surface-hover: #e3f0ec;
+  /* 下沉面:略深于 subtle,用于禁用态/内凹底衬(原 studio-canvas/平台组件引用但未定义)。 */
+  --surface-sunken: #e2ebe7;
+  --border-subtle: #e2eeea;
+  --border-default: #d1e1dc;
+  --border-strong: #b9d2cb;
+
+  --radius-xs: 5px;
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-control: 8px;
+  --radius-panel: 10px;
+  --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-sm: 0 2px 8px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 8px 24px rgba(15, 23, 42, 0.045);
+  --shadow-lg: 0 18px 48px rgba(15, 23, 42, 0.1);
+  --motion-fast: 140ms;
+  --motion-base: 160ms;
+  --motion-slow: 240ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --font-sans: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Segoe UI", sans-serif;
+  --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  /* 低密度清爽:基准 14px,告别 13px 小字号高密度。 */
+  --font-size-xs: 12px;
+  --font-size-sm: 13px;
+  --font-size-base: 14px;
+  --font-size-lg: 16px;
+  --font-size-xl: 18px;
+  /* 字重收敛:只允许标准权重 400/500/600/700,非标 520/540/550/560/620/650/680/720 一律映射到这些 token。 */
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  --sidebar-rail-width: 56px;
+  --sidebar-width: 168px;
+  --context-panel-width: 220px;
+  --inspector-panel-width: 300px;
+
+  --text-main: var(--text-primary);
+  --text-muted: var(--text-secondary);
+  --text-soft: var(--text-placeholder);
+  --surface-soft: var(--surface-subtle);
+  --border-soft: var(--border-subtle);
+  --border-regular: var(--border-default);
+  --active-blue: var(--brand-primary);
+  --active-blue-soft: var(--brand-primary-soft);
+  --success-green: var(--color-success);
+  --shadow-soft: var(--shadow-md);
+  --shadow-node: var(--shadow-sm);
+
+  --el-color-primary: var(--brand-primary);
+  --el-color-primary-light-3: #5aa7a0;
+  --el-color-primary-light-5: #86c2bc;
+  --el-color-primary-light-7: #b4ddd8;
+  --el-color-primary-light-8: #ceeae6;
+  --el-color-primary-light-9: var(--brand-primary-subtle);
+  --el-color-primary-dark-2: var(--brand-primary-active);
+  --el-button-outline-color: var(--brand-primary);
+  --el-color-success: var(--color-success);
+  --el-color-success-light-9: var(--color-success-soft);
+  --el-color-warning: var(--color-warning);
+  --el-color-warning-light-9: var(--color-warning-soft);
+  --el-color-danger: var(--color-danger);
+  --el-color-danger-light-9: var(--color-danger-soft);
+  --el-color-info: var(--color-info);
+  --el-color-info-light-9: var(--color-info-soft);
+  --el-font-family: var(--font-sans);
+  --el-font-size-base: var(--font-size-base);
+  --el-border-radius-base: var(--radius-md);
+  --el-border-color: var(--border-strong);
+  --el-border-color-light: var(--border-default);
+  --el-border-color-lighter: var(--border-subtle);
+  --el-border-color-extra-light: #f4f6f9;
+  --el-border-color-dark: #ced5e0;
+  --el-border-color-darker: #bcc5d2;
+  --el-text-color-primary: var(--text-primary);
+  --el-text-color-regular: var(--text-regular);
+  --el-text-color-secondary: var(--text-secondary);
+  --el-text-color-placeholder: var(--text-placeholder);
+  --el-bg-color: var(--surface-raised);
+  --el-bg-color-page: var(--surface-page);
+  --el-fill-color: var(--surface-subtle);
+  --el-fill-color-light: #f5f7fa;
+  --el-fill-color-lighter: #f8fafc;
+  /* 表格/输入底色 → near-white 青绿白(canvas),告别纯白;弹出层/对话框仍走 --el-bg-color 纯白保证对比。 */
+  --el-fill-color-blank: var(--surface-canvas);
+  /* 表格主题全局兜底(未用 .case-table/.studio-* 包装的 EP 表格也吃 teal 系);选中行浅青底。 */
+  --el-table-header-bg-color: var(--surface-subtle);
+  --el-table-row-hover-bg-color: var(--surface-hover);
+  --el-table-border-color: var(--border-subtle);
+  --el-table-header-text-color: var(--text-secondary);
+  --el-table-text-color: var(--text-regular);
+  --el-table-current-row-bg-color: var(--brand-primary-subtle);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}

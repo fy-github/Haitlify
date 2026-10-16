@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>ICC 本地只读探索夹具</title>
+  <style>
+    body { margin: 0; font-family: sans-serif; color: #17202a; }
+    nav { display: flex; gap: 8px; padding: 16px; background: #eef2f5; }
+    nav button { padding: 8px 12px; }
+    #menu-search { margin: 16px; padding: 8px; width: 240px; }
+    #menu-results { margin: 0 16px 16px; }
+    #content { padding: 16px; }
+    #readonly-scroll { height: 170px; overflow-y: auto; border: 1px solid #ccd4db; padding: 12px; }
+    #readonly-scroll .spacer { height: 260px; }
+    table { width: 100%; border-collapse: collapse; }
+    td { padding: 10px; border-bottom: 1px solid #e3e8eb; }
+    td:last-child { text-align: right; }
+    .row button { padding: 6px 10px; }
+    [role="dialog"] { position: fixed; inset: 24px; z-index: 5; padding: 24px; background: white; border: 2px solid #52606d; box-shadow: 0 4px 24px rgb(0 0 0 / 20%); }
+  </style>
+</head>
+<body>
+  <nav aria-label="主导航">
+    <button type="button">项目</button>
+    <button type="button">设备</button>
+    <button type="button">服务</button>
+  </nav>
+  <input id="menu-search" aria-label="搜索菜单" placeholder="搜索菜单" autocomplete="off">
+  <div id="menu-results"></div>
+  <main id="content"><h1>项目首页</h1><p>错误首页：需要从隐藏菜单进入目标业务。</p></main>
+  <div data-testid="mutation-counter" aria-label="mutation-counter">0</div>
+  <script>
+    (() => {
+      const params = new URLSearchParams(location.search)
+      const authOrigin = params.get('authOrigin')
+      const externalOrigin = params.get('externalOrigin')
+      const scenario = params.get('scenario') || 'full'
+      const menuSearch = document.querySelector('#menu-search')
+      const menuResults = document.querySelector('#menu-results')
+      const content = document.querySelector('#content')
+      const mutationCounter = document.querySelector('[data-testid="mutation-counter"]')
+      const route = '#/open/threat-intelligence'
+
+      const recordMutation = () => { mutationCounter.textContent = String(Number(mutationCounter.textContent || 0) + 1) }
+      const renderTarget = () => {
+        content.innerHTML = `
+          <h1>威胁情报</h1>
+          <div class="breadcrumb" aria-label="breadcrumb">项目 / 威胁情报</div>
+          <div id="target-overlay" role="dialog" aria-modal="true">
+            <h2>安全提示</h2>
+            <p>本地夹具要求先关闭提示后查看只读内容。</p>
+            <button type="button" id="dismiss-overlay">知道了</button>
+          </div>
+          <div role="tablist" id="threat-tabs">
+            <button role="tab" aria-selected="true" id="overview-tab">概览</button>
+            <button role="tab" aria-selected="false" id="readonly-tab">只读详情</button>
+          </div>
+          <section id="readonly-scroll" aria-label="只读滚动容器">
+            <div id="panel"><p>概览信息</p><div class="spacer"></div><p>请切换只读详情。</p></div>
+          </section>`
+        document.querySelector('#dismiss-overlay').addEventListener('click', () => document.querySelector('#target-overlay')?.remove())
+        const scroll = document.querySelector('#readonly-scroll')
+        const nativeScrollBy = scroll.scrollBy.bind(scroll)
+        scroll.scrollBy = (...args) => {
+          nativeScrollBy(...args)
+          document.querySelector('#panel .spacer')?.remove()
+        }
+        document.querySelector('#readonly-tab').addEventListener('click', () => {
+          document.querySelector('#readonly-tab').setAttribute('aria-selected', 'true')
+          document.querySelector('#overview-tab').setAttribute('aria-selected', 'false')
+          document.querySelector('#panel').innerHTML = scenario === 'missing'
+            ? '<p>只读状态暂无匹配记录。</p><div class="spacer"></div>'
+            : `<p>只读状态行</p>
+              <table aria-label="只读状态表"><tbody>
+                <tr><td>设备 A · 只读 · 在线</td><td><button type="button" aria-label="查看状态" onclick="(${recordMutation.toString()})()">查看状态</button></td></tr>
+                <tr><td>设备 B · 只读 · 离线</td><td><button type="button" aria-label="查看状态" onclick="(${recordMutation.toString()})()">查看状态</button></td></tr>
+              </tbody></table>`
+        })
+      }
+
+      menuSearch.addEventListener('input', () => {
+        menuResults.innerHTML = menuSearch.value.includes('威胁情报')
+          ? '<button type="button" role="menuitem" id="threat-menu">威胁情报</button>'
+          : ''
+        document.querySelector('#threat-menu')?.addEventListener('click', async () => {
+          location.hash = route
+          if (authOrigin) await fetch(`${authOrigin}/auth/login`, { method: 'POST', credentials: 'omit' }).catch(() => {})
+          renderTarget()
+        })
+      })
+
+      if (externalOrigin) {
+        const externalImage = document.createElement('img')
+        externalImage.alt = 'external fixture resource'
+        externalImage.src = `${externalOrigin}/pixel`
+        document.body.append(externalImage)
+      }
+
+    })()
+  </script>
+</body>
+</html>

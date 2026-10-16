@@ -1,0 +1,243 @@
+/*
+ * 优雅组件原语(UI 改造 Plan Phase 2)。
+ * 覆盖 Element Plus 组件:按钮 / 输入 / 选择 / 标签页 / 对话框 / 消息 / 空态 / 分段控件。
+ * 依赖 tokens.css(--brand-*、--radius-*、--motion-*、--shadow-*),加载顺序在其后。
+ * 选中态语族:浅青底(--brand-primary-subtle)+ 品牌描边 + 品牌焦点环,与侧边栏 / 表格选中态一致。
+ */
+
+/* ---------- 按钮 ---------- */
+.el-button {
+  border-radius: var(--radius-control);
+  font-weight: var(--font-weight-medium);
+  letter-spacing: 0.01em;
+  transition:
+    transform var(--motion-fast) var(--ease-standard),
+    box-shadow var(--motion-fast) var(--ease-standard),
+    background-color var(--motion-fast) var(--ease-standard),
+    border-color var(--motion-fast) var(--ease-standard);
+}
+/* 键盘焦点:品牌色实心环,相对白底对比度 ≥3:1 */
+.el-button:focus-visible {
+  outline: 2px solid var(--focus-ring-color);
+  outline-offset: 2px;
+}
+
+/* 主按钮:teal 实心 + 底部微阴影;hover 浮起加品牌光晕,active 回落 */
+.el-button--primary {
+  box-shadow: 0 1px 2px var(--brand-primary-shadow);
+}
+.el-button--primary:hover:not(.is-disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px var(--brand-primary-shadow);
+}
+.el-button--primary:active:not(.is-disabled) {
+  transform: translateY(0);
+  box-shadow: 0 1px 2px var(--brand-primary-shadow);
+}
+/* plain 主按钮:透明底 teal 描边,hover 浅青底,统一选中态语族 */
+.el-button--primary.is-plain {
+  --el-button-border-color: var(--brand-primary-border);
+  --el-button-hover-bg-color: var(--brand-primary-soft);
+  --el-button-hover-border-color: var(--brand-primary);
+  --el-button-hover-text-color: var(--brand-primary);
+  --el-button-active-bg-color: var(--brand-primary-subtle);
+  --el-button-active-text-color: var(--brand-primary-active);
+}
+/* 语义 plain 按钮(危险/成功/警告):同语族——透明底语义描边,hover 浅语义底 + 语义描边加深;
+ * 与主按钮 plain 一致,消灭「红按钮 hover 突兀变实心」的跳变。 */
+.el-button--danger.is-plain {
+  --el-button-border-color: var(--color-danger-border);
+  --el-button-hover-bg-color: var(--color-danger-soft);
+  --el-button-hover-border-color: var(--color-danger);
+  --el-button-hover-text-color: var(--color-danger);
+  --el-button-active-bg-color: var(--color-danger-soft);
+  --el-button-active-text-color: var(--status-danger-text);
+}
+.el-button--success.is-plain {
+  --el-button-border-color: var(--color-success-border);
+  --el-button-hover-bg-color: var(--color-success-soft);
+  --el-button-hover-border-color: var(--color-success);
+  --el-button-hover-text-color: var(--color-success);
+  --el-button-active-bg-color: var(--color-success-soft);
+  --el-button-active-text-color: var(--status-success-text);
+}
+.el-button--warning.is-plain {
+  --el-button-border-color: var(--color-warning-border);
+  --el-button-hover-bg-color: var(--color-warning-soft);
+  --el-button-hover-border-color: var(--color-warning);
+  --el-button-hover-text-color: var(--color-warning);
+  --el-button-active-bg-color: var(--color-warning-soft);
+  --el-button-active-text-color: var(--status-warning-text);
+}
+/* 默认按钮 hover:teal 弱化描边 + 文字加深 */
+.el-button:not(.el-button--primary):not(.is-link):not(.is-text):hover {
+  border-color: var(--brand-primary-border);
+  color: var(--brand-primary-active);
+}
+
+/* ---------- 输入 / 选择 / 文本域 ---------- */
+.el-input__wrapper,
+.el-select__wrapper,
+.el-textarea__inner {
+  border-radius: var(--radius-control);
+  transition: box-shadow var(--motion-fast) var(--ease-standard);
+}
+/* 聚焦:1px teal 描边 + 3px 品牌光环,替换 EP 默认灰环 */
+.el-input__wrapper.is-focus {
+  box-shadow:
+    0 0 0 1px var(--brand-primary) inset,
+    0 0 0 3px var(--brand-primary-focus);
+}
+.el-select__wrapper.is-focused {
+  box-shadow:
+    0 0 0 1px var(--brand-primary) inset,
+    0 0 0 3px var(--brand-primary-focus);
+}
+.el-textarea__inner:focus {
+  box-shadow:
+    0 0 0 1px var(--brand-primary) inset,
+    0 0 0 3px var(--brand-primary-focus);
+}
+
+/* ---------- 标签页 ---------- */
+.el-tabs__item.is-active {
+  color: var(--brand-primary);
+}
+.el-tabs__item:hover {
+  color: var(--brand-primary);
+}
+.el-tabs__active-bar {
+  background-color: var(--brand-primary);
+}
+.el-tabs__nav-wrap::after {
+  background-color: var(--border-subtle);
+  height: 1px;
+}
+
+/* ---------- 对话框 / 确认框 ---------- */
+.el-dialog,
+.el-message-box {
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+}
+.el-dialog__title {
+  color: var(--text-primary);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+}
+.el-dialog__body {
+  color: var(--text-regular);
+}
+
+/* ---------- 消息 ---------- */
+.el-message {
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+}
+
+/* ---------- 空态 ---------- */
+.el-empty__description p {
+  color: var(--text-tertiary);
+  font-size: var(--font-size-sm);
+}
+
+/* ---------- 分段控件 ---------- */
+.el-segmented__item.is-selected {
+  color: var(--brand-primary);
+  font-weight: var(--font-weight-medium);
+}
+
+/* ---------- 弹出层 ---------- */
+.el-popper {
+  border-radius: var(--radius-md);
+}
+
+/* ---------- 全局滚动条:细窄、teal 弱化、低干扰 ---------- */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background-color: var(--border-strong);
+  border: 2px solid transparent;
+  border-radius: 8px;
+  background-clip: padding-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background-color: var(--brand-primary-border);
+}
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* ---------- 抽屉:内侧圆角 + 柔和投影 + 标题加粗 ---------- */
+.el-drawer {
+  box-shadow: var(--shadow-lg);
+}
+.el-drawer.rtl {
+  border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+}
+.el-drawer.ltr {
+  border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+}
+.el-drawer__header {
+  margin-bottom: 0;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.el-drawer__title {
+  color: var(--text-primary);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+}
+.el-drawer__close-btn:hover {
+  color: var(--brand-primary);
+}
+
+/* ---------- 分页:圆角 + 激活 teal ---------- */
+.el-pagination button,
+.el-pagination .el-pager li {
+  border-radius: var(--radius-control);
+  transition:
+    color var(--motion-fast) var(--ease-standard),
+    background-color var(--motion-fast) var(--ease-standard);
+}
+.el-pagination .el-pager li.is-active {
+  color: var(--brand-primary);
+  font-weight: var(--font-weight-semibold);
+}
+.el-pagination .el-pager li:hover {
+  color: var(--brand-primary);
+}
+
+/* ---------- 下拉菜单:item hover 浅青底 ---------- */
+.el-dropdown-menu__item:not(.is-disabled):hover,
+.el-dropdown-menu__item:not(.is-disabled):focus {
+  background-color: var(--brand-primary-subtle);
+  color: var(--brand-primary);
+}
+
+/* ---------- 进度条:圆角条 + 次要文字 ---------- */
+.el-progress-bar__outer,
+.el-progress-bar__inner {
+  border-radius: 4px;
+}
+.el-progress-bar__outer {
+  background-color: var(--surface-subtle);
+}
+.el-progress__text {
+  color: var(--text-secondary);
+}
+
+/* ---------- 标签:圆角 + 中等字重 ---------- */
+.el-tag {
+  border-radius: var(--radius-control);
+  font-weight: var(--font-weight-medium);
+}

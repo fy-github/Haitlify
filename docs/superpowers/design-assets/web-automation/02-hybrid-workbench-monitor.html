@@ -1,0 +1,114 @@
+> **Archival record:** Preserved historical design/evidence from its original point in time. It does not claim Hermes integration is implemented.
+
+<style>
+  :root { --blue:#1f63c6; --blue2:#174f9f; --soft:#edf5ff; --teal:#128a77; --teal-soft:#e8f7f3; --amber:#bd7415; --ink:#283448; --muted:#738096; --line:#dbe5ef; --wash:#f5f8fc; }
+  .head { display:flex; align-items:flex-end; justify-content:space-between; gap:18px; margin-bottom:18px; }
+  .head h2 { margin:0 0 5px; color:var(--ink); }
+  .head p { margin:0; color:var(--muted); }
+  .decision { padding:7px 10px; border:1px solid #b9d7cc; border-radius:6px; background:var(--teal-soft); color:var(--teal); font-size:12px; font-weight:700; }
+  .flow { display:grid; grid-template-columns:minmax(0,1fr) 52px minmax(0,1fr); align-items:center; gap:8px; }
+  .stage { overflow:hidden; border:1px solid var(--line); border-radius:10px; background:#fff; box-shadow:0 8px 24px rgba(37,57,84,.08); }
+  .stage-title { display:flex; align-items:center; justify-content:space-between; padding:10px 12px; border-bottom:1px solid var(--line); color:var(--ink); font-size:12px; font-weight:700; }
+  .stage-title span { color:var(--muted); font-size:10px; font-weight:500; }
+  .canvas { height:360px; padding:8px; background:var(--wash); }
+  .shell { display:grid; grid-template-columns:30px minmax(0,1fr); height:100%; overflow:hidden; border:1px solid #d7e2ed; background:#fff; }
+  .rail { background:#f6faff; border-right:1px solid #dbe6f1; }
+  .rail i { display:block; width:14px; height:14px; margin:12px auto; border-radius:4px; background:#c7d7e7; }
+  .rail i.active { background:var(--blue); }
+  .app { min-width:0; display:flex; flex-direction:column; }
+  .top { height:27px; display:flex; align-items:center; justify-content:space-between; padding:0 8px; border-bottom:1px solid #e4ebf2; color:#5e6c80; font-size:7px; }
+  .top strong { color:var(--ink); }
+  .actions { display:flex; align-items:center; gap:4px; }
+  .btn { display:inline-flex; height:17px; align-items:center; padding:0 6px; border:1px solid #cbd9e7; border-radius:4px; background:#fff; color:#53637a; font-size:6px; font-weight:600; }
+  .btn.primary { border-color:var(--blue); background:var(--blue); color:#fff; }
+  .btn.stop { border-color:#e1bfc1; background:#fff7f7; color:#b4444c; }
+  .runbar { display:grid; grid-template-columns:1.3fr 1fr .7fr auto; gap:5px; padding:7px 8px; border-bottom:1px solid #e2e9f1; background:#fbfdff; }
+  .field { padding:4px 5px; border:1px solid #d7e2ed; border-radius:4px; color:#56647a; font-size:6px; background:#fff; }
+  .field b { display:block; margin-bottom:2px; color:#8994a4; font-size:5px; }
+  .workspace { min-height:0; flex:1; display:grid; grid-template-columns:66px minmax(0,1fr) 98px; }
+  .scope { padding:7px 5px; border-right:1px solid #e0e8f0; background:#f9fbfe; }
+  .scope strong,.cases strong,.monitor strong,.timeline strong { display:block; margin-bottom:6px; color:var(--ink); font-size:7px; }
+  .scope span { display:block; padding:4px; margin-bottom:3px; border-radius:4px; color:#748197; font-size:5px; }
+  .scope span.active { background:var(--soft); color:var(--blue); font-weight:700; }
+  .cases { padding:7px; min-width:0; }
+  .case-head { display:flex; justify-content:space-between; align-items:center; }
+  .search { width:54px; height:12px; border:1px solid #dbe4ed; border-radius:3px; }
+  .rows { overflow:hidden; border:1px solid #e0e8f0; border-radius:4px; }
+  .row { display:grid; grid-template-columns:15px 1fr 35px 31px; min-height:22px; align-items:center; padding:0 4px; border-bottom:1px solid #edf1f5; color:#6c798e; font-size:5px; }
+  .row.header { min-height:17px; background:#f4f7fb; color:#506075; font-weight:700; }
+  .status { width:max-content; padding:2px 3px; border-radius:3px; background:var(--teal-soft); color:var(--teal); }
+  .status.wait { background:#fff3df; color:var(--amber); }
+  .monitor { padding:7px; border-left:1px solid #dce6ef; background:#fbfdff; cursor:pointer; }
+  .monitor:hover { background:#f3f8ff; }
+  .live { display:flex; align-items:center; gap:4px; margin-bottom:6px; color:var(--teal); font-size:6px; font-weight:700; }
+  .dot { width:5px; height:5px; border-radius:50%; background:var(--teal); box-shadow:0 0 0 3px rgba(18,138,119,.12); }
+  .screen { height:55px; border:1px solid #d5e0eb; border-radius:4px; background:linear-gradient(#dfeefa 0 16px,#fff 16px); }
+  .progress { height:4px; overflow:hidden; margin:7px 0; border-radius:3px; background:#e6edf4; }
+  .progress:before { content:""; display:block; width:67%; height:100%; background:var(--blue); }
+  .step { display:flex; align-items:flex-start; gap:4px; margin:5px 0; color:#66758a; font-size:5px; }
+  .step:before { content:""; width:5px; height:5px; flex:0 0 5px; margin-top:1px; border-radius:50%; background:#b5c4d4; }
+  .step.done:before { background:var(--teal); }
+  .open { margin-top:8px; color:var(--blue); font-size:6px; font-weight:700; }
+  .arrow { text-align:center; color:var(--blue); }
+  .arrow b { display:grid; width:34px; height:34px; margin:0 auto 7px; place-items:center; border-radius:50%; background:var(--soft); font-size:18px; }
+  .arrow span { display:block; color:#64738a; font-size:10px; line-height:1.35; }
+  .monitor-view { min-height:0; flex:1; display:grid; grid-template-columns:minmax(0,1.25fr) minmax(120px,.75fr); }
+  .preview { padding:8px; background:#f6faff; border-right:1px solid #dbe5ef; }
+  .preview-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; color:#4e5d72; font-size:6px; }
+  .big-screen { height:164px; border:1px solid #cfdeeb; border-radius:5px; background:linear-gradient(#dcecf9 0 24px,#fff 24px); box-shadow:0 2px 7px rgba(33,65,97,.08); }
+  .detail { display:grid; grid-template-columns:1fr 1fr; gap:5px; margin-top:7px; }
+  .detail div { padding:5px; border:1px solid #dce5ee; border-radius:4px; background:#fff; color:#6b788d; font-size:5px; }
+  .detail b { display:block; margin-bottom:2px; color:#3d4c61; }
+  .timeline { padding:8px; min-width:0; }
+  .phase { display:flex; gap:4px; margin-bottom:7px; }
+  .phase span { padding:3px 4px; border-radius:3px; background:#f0f4f8; color:#6a788c; font-size:5px; }
+  .phase span.active { background:var(--soft); color:var(--blue); font-weight:700; }
+  .log { padding:5px 0; border-bottom:1px solid #edf1f5; color:#66758a; font-size:5px; }
+  .log b { display:block; margin-bottom:2px; color:#3d4b60; font-size:6px; }
+  .queue { display:flex; gap:5px; padding:6px 8px; border-top:1px solid #e0e8f0; background:#fff; }
+  .queue span { flex:1; padding:4px; border:1px solid #dce5ee; border-radius:4px; color:#68768a; font-size:5px; }
+  .rules { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; margin-top:16px; }
+  .rule { padding:11px 12px; border:1px solid var(--line); border-radius:7px; background:#fff; color:#66758a; font-size:11px; line-height:1.5; }
+  .rule b { display:block; margin-bottom:3px; color:var(--ink); font-size:12px; }
+  .approve { display:flex; justify-content:center; margin-top:16px; }
+  .approve button { padding:9px 18px; border:1px solid var(--blue); border-radius:7px; background:var(--blue); color:#fff; cursor:pointer; font-size:13px; font-weight:700; }
+  .approve button:hover { background:var(--blue2); }
+  @media(max-width:1000px){.flow{grid-template-columns:1fr}.arrow{transform:rotate(90deg);margin:4px}.rules{grid-template-columns:1fr 1fr}.canvas{height:390px}}
+</style>
+
+<div class="head">
+  <div><h2>A + C 混合方案</h2><p>准备和选择留在工作台；需要细看时，进入同一任务的整页实时监控。</p></div>
+  <div class="decision">执行后不强制跳转</div>
+</div>
+
+<div class="flow">
+  <section class="stage">
+    <div class="stage-title">状态一：Web 自动化工作台 <span>默认视图</span></div>
+    <div class="canvas"><div class="shell"><aside class="rail"><i></i><i class="active"></i><i></i><i></i></aside><main class="app">
+      <div class="top"><span>自动化 / <strong>Web 自动化</strong></span><div class="actions"><span class="btn">运行记录</span><span class="btn">从用例库生成</span></div></div>
+      <div class="runbar"><div class="field"><b>运行环境</b>退款测试环境</div><div class="field"><b>浏览器</b>Chromium</div><div class="field"><b>循环</b>1 次</div><span class="btn primary">执行 12 条</span></div>
+      <div class="workspace"><aside class="scope"><strong>运行范围</strong><span class="active">全部模块 12</span><span>退款申请 5</span><span>售后查询 4</span><span>权限校验 3</span></aside><section class="cases"><div class="case-head"><strong>执行用例</strong><i class="search"></i></div><div class="rows"><div class="row header"><span></span><span>用例名称</span><span>页面</span><span>状态</span></div><div class="row"><span>□</span><span>发起退款申请</span><span>详情页</span><span class="status">通过</span></div><div class="row"><span>□</span><span>退款金额边界</span><span>退款页</span><span class="status wait">执行中</span></div><div class="row"><span>□</span><span>重复提交拦截</span><span>退款页</span><span class="status">通过</span></div></div></section><aside class="monitor"><strong>运行监控</strong><div class="live"><i class="dot"></i>正在执行 8 / 12</div><div class="screen"></div><div class="progress"></div><div class="step done">登录准备完成</div><div class="step done">进入退款详情</div><div class="step">校验退款状态</div><div class="open">进入实时监控 →</div></aside></div>
+    </main></div></div>
+  </section>
+
+  <div class="arrow"><b>→</b><span>点击监控区<br>或详情按钮</span></div>
+
+  <section class="stage">
+    <div class="stage-title">状态二：整页实时监控 <span>同一运行任务</span></div>
+    <div class="canvas"><div class="shell"><aside class="rail"><i></i><i class="active"></i><i></i><i></i></aside><main class="app">
+      <div class="top"><span>← <strong>返回执行工作台</strong></span><div class="actions"><span class="btn">暂停</span><span class="btn stop">停止</span></div></div>
+      <div class="runbar"><div class="field"><b>运行批次</b>RUN-20260727-01</div><div class="field"><b>状态</b>运行中 · 08:42</div><div class="field"><b>浏览器</b>Chromium</div><span class="btn primary">8 / 12</span></div>
+      <div class="monitor-view"><section class="preview"><div class="preview-head"><span>实时页面 · 退款详情</span><span>刚刚更新</span></div><div class="big-screen"></div><div class="detail"><div><b>当前地址</b>/orders/return/1024</div><div><b>当前动作</b>assertText · 退款中</div></div></section><aside class="timeline"><strong>步骤时间线</strong><div class="phase"><span>环境准备</span><span class="active">用例执行</span><span>环境清理</span></div><div class="log"><b>✓ 登录准备</b>复用已认证浏览器会话</div><div class="log"><b>✓ 打开退款详情</b>goto /orders/return/1024</div><div class="log"><b>● 校验退款状态</b>assertText · 退款中</div><div class="log"><b>待执行 · 退出登录</b>teardown</div></aside></div>
+      <div class="queue"><span>通过 7</span><span>执行中 1</span><span>待执行 4</span><span>失败 0</span></div>
+    </main></div></div>
+  </section>
+</div>
+
+<div class="rules">
+  <div class="rule"><b>不打断准备</b>点击执行后留在工作台，右侧立即出现本批次状态。</div>
+  <div class="rule"><b>整页可恢复</b>进入监控后刷新或返回，仍绑定同一个运行批次。</div>
+  <div class="rule"><b>状态不丢失</b>返回工作台保留项目、模块、筛选、勾选和滚动位置。</div>
+  <div class="rule"><b>后台持续执行</b>离开监控不暂停任务，顶部状态可再次进入当前运行。</div>
+</div>
+
+<div class="approve"><button data-choice="approve-hybrid" onclick="toggleSelect(this)">确认这个双视图结构</button></div>

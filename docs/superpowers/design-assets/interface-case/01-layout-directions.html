@@ -1,0 +1,107 @@
+> **Archival record:** Preserved historical design/evidence from its original point in time. It does not claim Hermes integration is implemented.
+
+<style>
+  .direction-intro { max-width: 860px; margin-bottom: 22px; }
+  .direction-intro h2 { margin-bottom: 8px; }
+  .direction-grid { display: grid; gap: 18px; }
+  .direction-card { overflow: hidden; border: 1px solid #e3e7ee; border-radius: 8px; background: #fff; cursor: pointer; transition: border-color .16s ease, box-shadow .16s ease; }
+  .direction-card:hover { border-color: #b8c9e8; box-shadow: 0 8px 24px rgba(15, 23, 42, .07); }
+  .direction-card.selected { border-color: #2854a6; box-shadow: 0 0 0 2px rgba(40, 84, 166, .14); }
+  .direction-copy { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; padding: 16px 18px; border-top: 1px solid #edf0f4; }
+  .direction-copy h3 { margin: 0 0 5px; font-size: 15px; }
+  .direction-copy p { margin: 0; color: #656c78; font-size: 13px; }
+  .recommend { flex: 0 0 auto; padding: 4px 8px; border-radius: 6px; background: #e8effb; color: #2854a6; font-size: 11px; font-weight: 700; }
+  .app-frame { min-height: 284px; background: #f4f5f8; color: #252831; font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif; }
+  .app-top { height: 36px; display: flex; align-items: center; gap: 12px; padding: 0 12px; border-bottom: 1px solid #e5e7eb; background: rgba(255,255,255,.96); font-size: 10px; color: #656c78; }
+  .brand { color: #252831; font-weight: 700; }
+  .app-body { display: grid; grid-template-columns: 54px minmax(0, 1fr); min-height: 248px; }
+  .rail { padding: 9px 7px; border-right: 1px solid #e5e7eb; background: #fbfbfd; }
+  .rail-mark { width: 30px; height: 30px; margin: 0 auto 7px; display: grid; place-items: center; border-radius: 6px; color: #737a86; font-size: 12px; }
+  .rail-mark.active { color: #2854a6; background: #e8effb; }
+  .canvas { min-width: 0; padding: 10px; }
+  .task-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 9px; }
+  .task-title { font-size: 13px; font-weight: 700; }
+  .task-actions { display: flex; gap: 5px; }
+  .mini-button { padding: 4px 7px; border: 1px solid #dfe2e7; border-radius: 5px; background: #fff; color: #555c68; font-size: 8px; }
+  .mini-button.primary { border-color: #2854a6; background: #2854a6; color: #fff; }
+  .steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin-bottom: 9px; }
+  .step { padding: 6px 7px; border-bottom: 2px solid #dfe2e7; color: #737a86; font-size: 8px; }
+  .step.done { border-color: #7aa08c; color: #3e6652; }
+  .step.active { border-color: #2854a6; color: #2854a6; font-weight: 700; }
+  .hybrid-work { display: grid; grid-template-columns: 138px minmax(0, 1fr) 150px; gap: 8px; min-height: 174px; }
+  .panel { border: 1px solid #e5e7eb; border-radius: 7px; background: rgba(255,255,255,.96); overflow: hidden; }
+  .panel-head { display: flex; justify-content: space-between; padding: 7px 8px; border-bottom: 1px solid #eef0f3; font-size: 9px; font-weight: 700; }
+  .panel-body { padding: 8px; }
+  .source { padding: 6px; margin-bottom: 5px; border-radius: 5px; background: #f5f7fa; font-size: 8px; }
+  .source.active { background: #e8effb; color: #2854a6; }
+  .field { height: 19px; margin-bottom: 5px; padding: 0 6px; display: flex; align-items: center; border: 1px solid #dfe2e7; border-radius: 5px; color: #737a86; font-size: 7px; }
+  .table-tools { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+  .table-title { font-size: 9px; font-weight: 700; }
+  .table-row { display: grid; grid-template-columns: 34px 1.1fr .8fr 34px; gap: 5px; padding: 6px 5px; border-bottom: 1px solid #eef0f3; font-size: 7px; color: #555c68; }
+  .method { color: #2854a6; font-weight: 700; }
+  .finding { padding: 7px; margin-bottom: 6px; border-left: 2px solid #c77b00; border-radius: 4px; background: #fff6df; font-size: 7px; line-height: 1.5; }
+  .score { display: flex; align-items: baseline; gap: 4px; margin-bottom: 8px; color: #2854a6; }
+  .score strong { font-size: 19px; }
+  .wizard-work { min-height: 174px; padding: 18px 44px; border: 1px solid #e5e7eb; border-radius: 7px; background: #fff; }
+  .wizard-title { margin-bottom: 14px; text-align: center; font-size: 12px; font-weight: 700; }
+  .dropzone { min-height: 72px; display: grid; place-items: center; border: 1px dashed #bfd0ef; border-radius: 7px; background: #f4f7fd; color: #2854a6; font-size: 9px; }
+  .wizard-fields { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; margin-top: 10px; }
+  .stacked-work { display: grid; grid-template-rows: auto 1fr; gap: 8px; min-height: 174px; }
+  .config-bar { display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 6px; padding: 8px; border: 1px solid #e5e7eb; border-radius: 7px; background: #fff; }
+  @media (max-width: 760px) {
+    .hybrid-work { grid-template-columns: 108px minmax(0, 1fr); }
+    .hybrid-work .inspector { display: none; }
+    .direction-copy { flex-direction: column; }
+  }
+</style>
+
+<div class="direction-intro">
+  <h2>接口用例页：三种 Studio Canvas 适配方式</h2>
+  <p class="subtitle">都保留 OpenAPI 导入、筛选、模板与颗粒度、生成、AI 评审、保存、转自动化和导出。区别只在任务组织方式。</p>
+</div>
+
+<div class="direction-grid">
+  <div class="direction-card" data-choice="hybrid-staged-canvas" onclick="toggleSelect(this)">
+    <div class="app-frame">
+      <div class="app-top"><span>☰</span><span class="brand">haitlify AI 测试平台</span><span>接口用例工作台</span></div>
+      <div class="app-body">
+        <div class="rail"><div class="rail-mark">⌂</div><div class="rail-mark active">◇</div><div class="rail-mark">▤</div><div class="rail-mark">⚙</div></div>
+        <div class="canvas">
+          <div class="task-head">
+            <div><div class="task-title">订单服务 · 接口用例</div><span style="font-size:8px;color:#737a86">32 个接口 · 128 条候选用例</span></div>
+            <div class="task-actions"><span class="mini-button">保存</span><span class="mini-button">转自动化</span><span class="mini-button primary">导出</span></div>
+          </div>
+          <div class="steps"><div class="step done">1 导入接口</div><div class="step done">2 配置生成</div><div class="step active">3 AI 评审</div><div class="step">4 保存 / 交付</div></div>
+          <div class="hybrid-work">
+            <div class="panel"><div class="panel-head"><span>接口与配置</span><span style="color:#2854a6">+ 导入</span></div><div class="panel-body"><div class="source active">orders-v3.json<br><span style="color:#737a86">32 个接口</span></div><div class="field">路径 / 摘要关键词</div><div class="field">全部方法</div><div class="field">风险颗粒度</div><div class="mini-button primary" style="text-align:center">重新生成</div></div></div>
+            <div class="panel"><div class="panel-head"><span>生成用例 128</span><span style="color:#737a86">已选择 6 条</span></div><div class="panel-body"><div class="table-tools"><span class="table-title">用例结果</span><span class="mini-button">批量操作</span></div><div class="table-row"><span class="method">POST</span><span>创建订单成功</span><span>正常请求体</span><span>通过</span></div><div class="table-row"><span class="method">POST</span><span>缺少商品编码</span><span>必填校验</span><span>待改</span></div><div class="table-row"><span class="method">GET</span><span>查询不存在订单</span><span>边界场景</span><span>通过</span></div><div class="table-row"><span class="method">DELETE</span><span>无权限删除订单</span><span>权限校验</span><span>风险</span></div></div></div>
+            <div class="panel inspector"><div class="panel-head"><span>AI 质量评审</span><span style="color:#217a54">已完成</span></div><div class="panel-body"><div class="score"><strong>86</strong><span style="font-size:8px;color:#737a86">/ 100</span></div><div class="finding">缺少重复提交的幂等性场景</div><div class="finding">DELETE 接口应补充跨租户权限校验</div><div class="mini-button primary" style="text-align:center">应用建议</div></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="direction-copy"><div><h3>方案一：阶段导航 + 三栏工作画布</h3><p>C 为主，融合 A 的结果优先与 B 的配置可达性。阶段负责推进，三栏负责同屏工作，不会把接口流程硬套成 Web 页面。</p></div><span class="recommend">推荐</span></div>
+  </div>
+
+  <div class="direction-card" data-choice="pure-wizard" onclick="toggleSelect(this)">
+    <div class="app-frame">
+      <div class="app-top"><span>☰</span><span class="brand">haitlify AI 测试平台</span><span>接口用例工作台</span></div>
+      <div class="app-body">
+        <div class="rail"><div class="rail-mark">⌂</div><div class="rail-mark active">◇</div><div class="rail-mark">▤</div></div>
+        <div class="canvas"><div class="task-head"><div class="task-title">新建接口用例</div><span class="mini-button">保存草稿</span></div><div class="steps"><div class="step active">1 导入接口</div><div class="step">2 配置生成</div><div class="step">3 AI 评审</div><div class="step">4 保存 / 交付</div></div><div class="wizard-work"><div class="wizard-title">导入 OpenAPI 文档</div><div class="dropzone">选择或拖入 OpenAPI JSON 文件</div><div class="wizard-fields"><div class="field">项目名称</div><div class="field">接口分组</div><div class="field">版本</div></div></div></div>
+      </div>
+    </div>
+    <div class="direction-copy"><div><h3>方案二：纯分步向导</h3><p>引导最强，第一次使用容易理解；但阶段之间频繁切换，评审时看不到完整接口资源与生成配置，批量操作效率较低。</p></div></div>
+  </div>
+
+  <div class="direction-card" data-choice="stacked-flow" onclick="toggleSelect(this)">
+    <div class="app-frame">
+      <div class="app-top"><span>☰</span><span class="brand">haitlify AI 测试平台</span><span>接口用例工作台</span></div>
+      <div class="app-body">
+        <div class="rail"><div class="rail-mark">⌂</div><div class="rail-mark active">◇</div><div class="rail-mark">▤</div></div>
+        <div class="canvas"><div class="task-head"><div class="task-title">订单服务 · 接口用例</div><div class="task-actions"><span class="mini-button">AI 评审</span><span class="mini-button primary">生成用例</span></div></div><div class="steps"><div class="step done">1 导入接口</div><div class="step active">2 配置生成</div><div class="step">3 AI 评审</div><div class="step">4 保存 / 交付</div></div><div class="stacked-work"><div class="config-bar"><div class="field" style="margin:0">路径关键词</div><div class="field" style="margin:0">用例模板</div><div class="field" style="margin:0">风险颗粒度</div><span class="mini-button primary">生成</span></div><div class="panel"><div class="panel-head"><span>生成用例 128</span><span>筛选 · 批量操作</span></div><div class="panel-body"><div class="table-row"><span class="method">POST</span><span>创建订单成功</span><span>正常请求体</span><span>通过</span></div><div class="table-row"><span class="method">GET</span><span>查询不存在订单</span><span>边界场景</span><span>通过</span></div><div class="table-row"><span class="method">DELETE</span><span>无权限删除订单</span><span>权限校验</span><span>风险</span></div></div></div></div></div>
+      </div>
+    </div>
+    <div class="direction-copy"><div><h3>方案三：阶段导航 + 上下堆叠</h3><p>最接近现有结构，改造风险较低；但配置条与结果表争夺纵向空间，AI 评审仍容易变成页面底部的附属区域。</p></div></div>
+  </div>
+</div>

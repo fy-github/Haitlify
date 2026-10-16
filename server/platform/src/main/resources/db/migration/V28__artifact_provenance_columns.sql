@@ -1,0 +1,11 @@
+ALTER TABLE ai_draft_test_points ADD COLUMN model_profile_version VARCHAR(128) NOT NULL DEFAULT '';
+ALTER TABLE ai_draft_test_points ADD COLUMN field_origins_json TEXT;
+ALTER TABLE ai_analysis_runs ADD COLUMN model_profile_version VARCHAR(128) NOT NULL DEFAULT '';
+ALTER TABLE ai_agent_run_graphs ADD COLUMN model_profile_version VARCHAR(128) NOT NULL DEFAULT '';
+ALTER TABLE ai_agent_run_nodes ADD COLUMN model_profile_version VARCHAR(128) NOT NULL DEFAULT '';
+ALTER TABLE ai_visual_analysis_results ADD COLUMN result_origin VARCHAR(32) NOT NULL DEFAULT 'BLOCKED';
+ALTER TABLE ai_visual_analysis_results ADD COLUMN acceptance_state VARCHAR(64) NOT NULL DEFAULT 'BLOCKED';
+ALTER TABLE ai_figma_files ADD COLUMN result_origin VARCHAR(32) NOT NULL DEFAULT 'RULE_EXTRACTED';
+ALTER TABLE ai_figma_files ADD COLUMN acceptance_state VARCHAR(64) NOT NULL DEFAULT 'PENDING_HUMAN_CONFIRMATION';
+ALTER TABLE ai_figma_element_candidates ADD COLUMN result_origin VARCHAR(32) NOT NULL DEFAULT 'RULE_EXTRACTED';
+ALTER TABLE ai_figma_element_candidates ADD COLUMN acceptance_state VARCHAR(64) NOT NULL DEFAULT 'PENDING_HUMAN_CONFIRMATION';

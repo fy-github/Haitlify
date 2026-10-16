@@ -1,0 +1,46 @@
+# T15：构建上下文排除——产物、测试残留、本地数据库与任何凭证形态都不得进入镜像层。
+target/
+**/target/
+*.class
+*.jar.tmp
+
+# 本地数据库与运行残留（H2/MVStore 会包含真实业务数据）。
+*.mv.db
+*.trace.db
+*.lock.db
+*.log
+logs/
+build/
+out/
+
+# 凭证与本地环境。
+# 注意：不要用 *secret*/*token* 这类宽通配——它们会命中合法源码（例如
+# V25__mcp_secret_reference.sql），曾导致镜像缺迁移而 Flyway 校验失败。
+.env
+.env.*
+*.pem
+*.p12
+*.jks
+credentials/
+**/credentials/**
+
+# 版本控制与编辑器。
+.git
+.gitignore
+.idea/
+.vscode/
+*.iml
+.DS_Store
+
+# Node/前端产物（平台镜像不需要）。
+node_modules/
+**/node_modules/**
+dist/
+.coverage
+*.tsbuildinfo
+
+# 测试输出与临时目录。
+surefire-reports/
+failsafe-reports/
+test-output/
+tmp/

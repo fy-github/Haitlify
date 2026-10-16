@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>Web Runner Demo</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        margin: 32px;
+      }
+      .dashboard {
+        display: none;
+        margin-top: 16px;
+        padding: 12px;
+        border: 1px solid #d0d7e2;
+        border-radius: 8px;
+      }
+      .dashboard.visible {
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Login Demo</h1>
+    <label>
+      Username
+      <input id="username" />
+    </label>
+    <label>
+      Password
+      <input id="password" type="password" />
+    </label>
+    <button id="submit" type="button">Login</button>
+
+    <div class="dashboard" id="dashboard">Dashboard Ready</div>
+
+    <script>
+      const submit = document.getElementById('submit')
+      const dashboard = document.getElementById('dashboard')
+      submit.addEventListener('click', () => {
+        dashboard.classList.add('visible')
+      })
+    </script>
+  </body>
+</html>

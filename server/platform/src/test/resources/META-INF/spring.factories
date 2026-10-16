@@ -1,0 +1,6 @@
+# Auto-registered test support.
+#
+# IsolatedTestDatabaseContextCustomizerFactory gives every @ActiveProfiles("test") class its own H2
+# database, so test classes can no longer contaminate each other through the shared in-memory schema.
+org.springframework.test.context.ContextCustomizerFactory=\
+com.haitlify.aitest.platform.support.IsolatedTestDatabaseContextCustomizerFactory
