@@ -45,6 +45,8 @@ function makeRepo() {
   writeFileSync(path.join(dir, 'deploy', 'isolated', 'compose.yaml'), baselineCompose())
   const envLines = Object.entries(SECRETS).map(([key, value]) => `${key}=${value}`)
   writeFileSync(path.join(dir, 'deploy', 'isolated', '.env'), `${envLines.join('\n')}\n`)
+  // env_file 负例使用自建 dotenv，避免 /etc/hosts 内容与 Compose 版本/宿主系统耦合。
+  writeFileSync(path.join(dir, 'deploy', 'isolated', 'injected.env'), 'SYNTHETIC_ENV=value\n')
   // 被 include/extends 引用的仓库内文件（这些用例要证明的是「机制被拒绝」，不是「文件不存在」）。
   writeFileSync(path.join(dir, 'deploy', 'isolated', 'outside-compose.yaml'),
     'services:\n  base:\n    image: busybox:1.36\n')
@@ -117,9 +119,9 @@ const ANCHOR_NETWORK = 'networks:\n  default:'
 
 /** 负例：必须在 `check` 下 FAIL（退出码 1）。 */
 const NEGATIVE_CASES = [
-  ['env_file 明文', (c) => c.replace(ANCHOR_RUNNER, `${ANCHOR_RUNNER}    env_file:\n      - /etc/hosts\n`), '出现 env_file'],
-  ['env_file 双引号 \\x 转义键名', (c) => c.replace(ANCHOR_RUNNER, `${ANCHOR_RUNNER}    "\\x65nv_file":\n      - /etc/hosts\n`), 'env-file-sources'],
-  ['env_file 双引号 \\u 转义键名', (c) => c.replace(ANCHOR_RUNNER, `${ANCHOR_RUNNER}    "\\u0065nv_file":\n      - /etc/hosts\n`), 'env-file-sources'],
+  ['env_file 明文', (c) => c.replace(ANCHOR_RUNNER, `${ANCHOR_RUNNER}    env_file:\n      - ./injected.env\n`), '出现 env_file'],
+  ['env_file 双引号 \\x 转义键名', (c) => c.replace(ANCHOR_RUNNER, `${ANCHOR_RUNNER}    "\\x65nv_file":\n      - ./injected.env\n`), 'env-file-sources'],
+  ['env_file 双引号 \\u 转义键名', (c) => c.replace(ANCHOR_RUNNER, `${ANCHOR_RUNNER}    "\\u0065nv_file":\n      - ./injected.env\n`), 'env-file-sources'],
   ['include 明文', (c) => c.replace('services:', 'include:\n  - outside-compose.yaml\nservices:'), '出现 include'],
   ['include 转义键名', (c) => c.replace('services:', '"\\x69nclude":\n  - outside-compose.yaml\nservices:'), '出现 include'],
   ['extends 明文', (c) => c.replace('  web-runner:', '  web-runner:\n    extends:\n      file: outside-compose.yaml\n      service: base'), '出现 extends'],
@@ -162,17 +164,17 @@ const NEGATIVE_CASES = [
   ['datasource 覆盖键', (c) => c.replace(ANCHOR_RUNNER, `${ANCHOR_RUNNER}      SPRING_DATASOURCE_HIKARI_JDBC_URL: jdbc:mysql://127.0.0.1:3306/${LEGACY_DB}\n`), 'datasource-override-keys'],
   ['配置来源改写键', (c) => c.replace(ANCHOR_RUNNER, `${ANCHOR_RUNNER}      SPRING_CONFIG_ADDITIONAL_LOCATION: "file:/tmp/evil-dir/"\n`), 'datasource-override-keys'],
   ['JVM 参数注入', (c) => c.replace(ANCHOR_RUNNER, `${ANCHOR_RUNNER}      _JAVA_OPTIONS: "-Dprobe.marker=1"\n`), 'datasource-override-keys'],
-  ['锚点前缀键 env_file（&a env_file:）', (c) => c.replace(ANCHOR_RUNNER, `${ANCHOR_RUNNER}    &hostenv env_file:\n      - /etc/hosts\n`), '出现 env_file'],
-  ['标签键 env_file（!!str）', (c) => c.replace(ANCHOR_RUNNER, `${ANCHOR_RUNNER}    !!str env_file:\n      - /etc/hosts\n`), '出现 env_file'],
-  ['显式键 env_file（? 形式）', (c) => c.replace(ANCHOR_RUNNER, `${ANCHOR_RUNNER}    ? env_file\n    :\n      - /etc/hosts\n`), '出现 env_file'],
+  ['锚点前缀键 env_file（&a env_file:）', (c) => c.replace(ANCHOR_RUNNER, `${ANCHOR_RUNNER}    &hostenv env_file:\n      - ./injected.env\n`), '出现 env_file'],
+  ['标签键 env_file（!!str）', (c) => c.replace(ANCHOR_RUNNER, `${ANCHOR_RUNNER}    !!str env_file:\n      - ./injected.env\n`), '出现 env_file'],
+  ['显式键 env_file（? 形式）', (c) => c.replace(ANCHOR_RUNNER, `${ANCHOR_RUNNER}    ? env_file\n    :\n      - ./injected.env\n`), '出现 env_file'],
   ['flow 引号内 " # " 后接 extends', (c) => c.replace(ANCHOR_NETWORK, `  flow-svc: {image: busybox:1.36, container_name: haitlify-isolated-flow-svc, labels: {probe: "keep # going"}, extends: {file: outside-compose.yaml, service: base}}\n\n${ANCHOR_NETWORK}`), '出现 extends'],
   ['mysql 声明 build（自造同名镜像）', (c) => c.replace('  mysql:\n    image: mysql:8.4\n', '  mysql:\n    image: mysql:8.4\n    build:\n      context: ../../server/platform\n'), 'mysql 声明 build'],
   ['platform 换成外部镜像', (c) => c.replace('  platform:\n    build:\n      context: ../../server/platform\n', '  platform:\n    image: evilmirror/platform:9.9\n'), '没有 build 段'],
   ['healthcheck 指向旧栈端点', (c) => c.replace('    healthcheck:\n      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]', '    healthcheck:\n      test: ["CMD-SHELL", "curl -fsS http://host.docker.internal:19323/health || mysqladmin ping -h localhost"]'), '旧栈宿主端点'],
   ['build.args 里烘焙旧栈端点', (c) => c.replace('  platform:\n    build:\n      context: ../../server/platform\n', '  platform:\n    build:\n      context: ../../server/platform\n      args:\n        VITE_API_BASE_URL: http://host.docker.internal:19323\n'), '旧栈宿主端点'],
   ['端点宿主的百分号编码形式', (c) => c.replace('http://web-runner:9323', 'http://%31%32%37%2E%30%2E%30%2E1:19323'), '旧栈宿主端点'],
-  ['两行式显式键 ? env_file', (c) => c.replace(ANCHOR_RUNNER, `${ANCHOR_RUNNER}    ? env_file\n    :\n      - /etc/hosts\n`), '出现 env_file'],
-  ['标签在锚点前的 !!str &a env_file:', (c) => c.replace(ANCHOR_RUNNER, `${ANCHOR_RUNNER}    !!str &hostenv env_file:\n      - /etc/hosts\n`), '出现 env_file'],
+  ['两行式显式键 ? env_file', (c) => c.replace(ANCHOR_RUNNER, `${ANCHOR_RUNNER}    ? env_file\n    :\n      - ./injected.env\n`), '出现 env_file'],
+  ['标签在锚点前的 !!str &a env_file:', (c) => c.replace(ANCHOR_RUNNER, `${ANCHOR_RUNNER}    !!str &hostenv env_file:\n      - ./injected.env\n`), '出现 env_file'],
   ['两行式显式键 ? extends', (c) => c.replace('  web-runner:', '  web-runner:\n    ? extends\n    :\n      {file: outside-compose.yaml, service: base}'), '出现 extends'],
   ['registry 前缀的镜像名 + build', (c) => c.replace('  platform:\n    build:\n      context: ../../server/platform\n', '  platform:\n    build:\n      context: ../../server/platform\n    image: haitlify-isolated-mirror.example:5000/platform:1\n'), '不得声明 image'],
   ['Docker Hub 命名空间形态的镜像名', (c) => c.replace('  platform:\n    build:\n      context: ../../server/platform\n', '  platform:\n    build:\n      context: ../../server/platform\n    image: haitlify-isolated-foo/bar:1\n'), '不得声明 image'],
@@ -186,7 +188,7 @@ const NEGATIVE_CASES = [
   ['build.tags 把自造镜像改名成官方标签', (c) => c.replace('  platform:\n    build:\n      context: ../../server/platform\n', '  platform:\n    build:\n      context: ../../server/platform\n      tags:\n        - mysql:8.4\n'), 'build.tags'],
   ['build.dockerfile_inline', (c) => c.replace('  platform:\n    build:\n      context: ../../server/platform\n', '  platform:\n    build:\n      context: ../../server/platform\n      dockerfile_inline: "FROM alpine:3.20\n"\n'), 'build.dockerfile_inline'],
   ['build.ulimits 与 shm_size', (c) => c.replace('  platform:\n    build:\n      context: ../../server/platform\n', '  platform:\n    build:\n      context: ../../server/platform\n      ulimits:\n        nofile: 65536\n      shm_size: 1g\n'), 'build.ulimits'],
-  ['机制经单 ! 标签隐藏（!myenv env_file:）', (c) => c.replace(ANCHOR_RUNNER, `${ANCHOR_RUNNER}    !myenv env_file:\n      - /etc/hosts\n`), '\\[FAIL\\] env-file-sources: .*(出现 env_file|解析层)'],
+  ['机制经单 ! 标签隐藏（!myenv env_file:）', (c) => c.replace(ANCHOR_RUNNER, `${ANCHOR_RUNNER}    !myenv env_file:\n      - ./injected.env\n`), '\\[FAIL\\] env-file-sources: .*(出现 env_file|解析层)'],
   ['healthcheck 用 --host/--port 指向旧端点', (c) => c.replace('    healthcheck:\n      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]', '    healthcheck:\n      test: ["CMD-SHELL", "mysqladmin ping --host=host.docker.internal --port=19323"]'), '非冒号写法'],
   ['healthcheck 用 -P19323（无空格）指向旧端点', (c) => c.replace('    healthcheck:\n      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]', '    healthcheck:\n      test: ["CMD-SHELL", "mysqladmin ping -h host.docker.internal -P19323"]'), '非冒号写法'],
   ['环境值用非冒号写法指向旧端点', (c) => c.replace(ANCHOR_RUNNER, `${ANCHOR_RUNNER}      APP_WEB_AUTOMATION_RUNNER_HEALTHCHECK_NOTE: "nc -z host.docker.internal 19323"\n`), '非冒号写法'],
@@ -278,7 +280,7 @@ for (const [name, mutate, expectDetail] of NEGATIVE_CASES) {
 
 test('拒绝：CR-only 行尾的 compose 里 env_file', () => {
   const dir = makeRepo()
-  const text = baselineCompose().replace(ANCHOR_RUNNER, `${ANCHOR_RUNNER}    env_file:\n      - /etc/hosts\n`)
+  const text = baselineCompose().replace(ANCHOR_RUNNER, `${ANCHOR_RUNNER}    env_file:\n      - ./injected.env\n`)
   const file = writeVariant(dir, 'cronly', text, 'cr-only')
   const result = check(dir, file)
   assert.equal(result.status, 1, `期望 FAIL(1)，实际 ${result.status}\n${result.stdout}`)
@@ -288,7 +290,7 @@ test('拒绝：CR-only 行尾的 compose 里 env_file', () => {
 
 test('拒绝：整份 compose 为 UTF-16LE+BOM 且含 env_file', () => {
   const dir = makeRepo()
-  const text = baselineCompose().replace(ANCHOR_RUNNER, `${ANCHOR_RUNNER}    env_file:\n      - /etc/hosts\n`)
+  const text = baselineCompose().replace(ANCHOR_RUNNER, `${ANCHOR_RUNNER}    env_file:\n      - ./injected.env\n`)
   const file = writeVariant(dir, 'utf16le', text, 'utf16le-bom')
   const result = check(dir, file)
   assert.equal(result.status, 1, `期望 FAIL(1)，实际 ${result.status}\n${result.stdout}`)
@@ -308,7 +310,7 @@ test('拒绝：整份 compose 为 UTF-16BE+BOM 且含 include', () => {
 
 test('拒绝：U+2028（LS）行分隔的 compose 里 env_file', () => {
   const dir = makeRepo()
-  const text = baselineCompose().replace(ANCHOR_RUNNER, `${ANCHOR_RUNNER}    env_file:\n      - /etc/hosts\n`)
+  const text = baselineCompose().replace(ANCHOR_RUNNER, `${ANCHOR_RUNNER}    env_file:\n      - ./injected.env\n`)
   const file = writeVariant(dir, 'ls-sep', text, 'ls-separated')
   const result = check(dir, file)
   assert.equal(result.status, 1, `期望 FAIL(1)，实际 ${result.status}\n${result.stdout}`)
