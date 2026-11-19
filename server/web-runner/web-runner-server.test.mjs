@@ -430,3 +430,18 @@ test('session listing route returns provider data and an empty default', async (
   assert.deepEqual(fallback.body.sessions, [])
   await plain.close()
 })
+
+test('evidence URLs use the caller-visible host when PUBLIC_URL is not configured', async () => {
+  const { rewriteArtifactUrls } = await import('./web-runner-server.mjs')
+  const snapshot = {
+    runId: 'r1',
+    latestScreenshotUrl: 'http://127.0.0.1:9323/artifacts/a.png',
+    results: [{ caseId: 'c1', stepLogs: [{ stepId: 's1', screenshotUrl: 'http://127.0.0.1:9323/artifacts/b.png' }] }],
+    note: 'http://127.0.0.1:9323/runs/r1'
+  }
+  const rewritten = rewriteArtifactUrls(snapshot, 'http://127.0.0.1:19325')
+  assert.equal(rewritten.latestScreenshotUrl, 'http://127.0.0.1:19325/artifacts/a.png')
+  assert.equal(rewritten.results[0].stepLogs[0].screenshotUrl, 'http://127.0.0.1:19325/artifacts/b.png')
+  // 非 artifact 链接保持原样（run 链接由平台自己保管）
+  assert.equal(rewritten.note, 'http://127.0.0.1:9323/runs/r1')
+})

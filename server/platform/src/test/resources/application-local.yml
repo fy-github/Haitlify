@@ -5,4 +5,4 @@ app:
   web-automation:
     runner:
       enabled: true
-      base-url: http://127.0.0.1:19323
+      base-url: http://127.0.0.1:19324

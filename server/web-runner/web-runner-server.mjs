@@ -12,11 +12,16 @@ export const createWebRunnerServer = (options = {}) => {
   const loginDiscoveryManager = options.loginDiscoveryManager
   const executeLoginDiscovery = options.executeLoginDiscovery || (async () => {})
   const executePageLocatorDiscovery = options.executePageLocatorDiscovery || (async () => {})
+  // 证据链接必须在「调用方看到的地址」上可用：未配置 PUBLIC_URL 时按请求的 Host 还原，
+  // 否则容器内 9323 会被写进 URL，宿主映射到 19324 时链接全部 404/拒连。
+  const configuredPublicBaseUrl = options.publicBaseUrl ? String(options.publicBaseUrl).replace(/\/$/, '') : null
 
   if (!jobManager) throw new Error('jobManager is required')
 
   return http.createServer(async (request, response) => {
     const url = new URL(request.url || '/', `http://${request.headers.host || '127.0.0.1'}`)
+    const publicBase = configuredPublicBaseUrl || `${url.protocol}//${url.host}`
+    const rewriteEvidence = (payload) => rewriteArtifactUrls(payload, publicBase)
 
     try {
       if (request.method === 'GET' && url.pathname === '/health') {
@@ -47,7 +52,7 @@ export const createWebRunnerServer = (options = {}) => {
         schedule(() => {
           Promise.resolve(executeJob(job)).catch((error) => job.fail(error))
         })
-        sendJson(response, 202, job.snapshot())
+        sendJson(response, 202, rewriteArtifactUrls(job.snapshot(), publicBase))
         return
       }
 
@@ -65,7 +70,7 @@ export const createWebRunnerServer = (options = {}) => {
         schedule(() => {
           Promise.resolve(executeLoginDiscovery(job)).catch((error) => job.fail(error))
         })
-        sendJson(response, 202, job.snapshot())
+        sendJson(response, 202, rewriteArtifactUrls(job.snapshot(), publicBase))
         return
       }
 
@@ -87,7 +92,7 @@ export const createWebRunnerServer = (options = {}) => {
           return
         }
         try {
-          sendJson(response, 200, job.confirm(await readJsonBody(request)))
+          sendJson(response, 200, rewriteArtifactUrls(job.confirm(await readJsonBody(request)), publicBase))
         } catch (error) {
           sendJson(response, 422, { message: error instanceof Error ? error.message : String(error) })
         }
@@ -101,7 +106,7 @@ export const createWebRunnerServer = (options = {}) => {
           sendJson(response, 404, { message: 'Login discovery task not found' })
           return
         }
-        sendJson(response, 200, job.snapshot())
+        sendJson(response, 200, rewriteArtifactUrls(job.snapshot(), publicBase))
         return
       }
 
@@ -118,7 +123,7 @@ export const createWebRunnerServer = (options = {}) => {
           : action === 'resume'
             ? job.resume()
             : job.requestStop()
-        sendJson(response, 200, snapshot)
+        sendJson(response, 200, rewriteArtifactUrls(snapshot, publicBase))
         return
       }
 
@@ -129,7 +134,7 @@ export const createWebRunnerServer = (options = {}) => {
           sendJson(response, 404, { message: 'Web automation run not found' })
           return
         }
-        sendJson(response, 200, job.snapshot())
+        sendJson(response, 200, rewriteArtifactUrls(job.snapshot(), publicBase))
         return
       }
 
@@ -242,6 +247,17 @@ const readJsonBody = async (request) => {
   } catch {
     throw new Error('Invalid JSON request body')
   }
+}
+
+export const rewriteArtifactUrls = (value, base) => {
+  if (typeof value === 'string') {
+    return value.replace(/^http:\/\/127\.0\.0\.1:\d+\/artifacts\//, `${base}/artifacts/`)
+  }
+  if (Array.isArray(value)) return value.map((item) => rewriteArtifactUrls(item, base))
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, rewriteArtifactUrls(item, base)]))
+  }
+  return value
 }
 
 const sendJson = (response, status, body) => {

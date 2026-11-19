@@ -11,7 +11,7 @@
 ## Planned
 
 - Migrate the AI/testing workspace toward a Hermes-backed runtime and integration boundary.
-- Revalidate the migrated workflow, permissions, evidence, and Runner handoff before changing the deprecated Agent status.
+- Rebuild around Hermes without a Legacy fallback; remove old AI by dependency-aware batches, and validate business permissions, evidence and Runner handoff.
 - Update historical design/acceptance records only with explicit current-status addenda; archival provenance must remain visible.
 
 ## Cleanup boundary
@@ -20,17 +20,11 @@ The rebranding covers tracked application code, backend package names, Runner re
 
 Credential and environment files are outside this cleanup boundary. Synthetic examples may be used in documentation, but real credentials, tokens, cookies, personal data, and machine-specific paths must not be copied into tracked files.
 
-## Compose and storage compatibility (migration-only note)
+## Compose retirement and isolated rebuild
 
-The following literal `cloudv4-api` references are intentionally retained **only** because they are the live Compose project identity required by an explicit migration procedure. The database name `ai_test_platform`, fixed container identities, and named volumes `mysql-data`, `redis-data`, and `minio-data` are intentionally retained. A checkout directory rename does not rename or migrate live Docker resources.
+The old root Compose file has been removed from Haitlify. Previous instructions to reuse the old Compose project, containers or storage are withdrawn. The new Hermes deployment and its enforced preflight are not implemented yet; see [deployment status](../DEPLOYMENT.md).
 
-After moving the checkout, use:
-
-```bash
-COMPOSE_PROJECT_NAME=cloudv4-api docker compose -f /path/to/Haitlify/docker-compose.yml up -d
-```
-
-or pass `-p cloudv4-api` on every Compose command. Do not run `docker compose down -v` during the move. Back up first and verify the resolved project, containers, and volumes before any destructive operation. Do not copy this compatibility identity into new product names or unrelated documentation.
+Old stopped containers and data volumes remain preserved outside this source cleanup. New services must use independent databases, volumes, networks and Hermes state paths; never infer permission to reconnect to old resources from the continued presence of those resources. Historical deployment documents are not current startup instructions.
 
 ## History and repository transition
 

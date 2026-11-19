@@ -35,7 +35,7 @@ class WebAutomationLocalProfileConfigurationTest {
             .orElse(new WebAutomationProperties(null));
 
         assertTrue(properties.runner().enabled());
-        assertEquals("http://127.0.0.1:19323", properties.runner().baseUrl());
+        assertEquals("http://127.0.0.1:19324", properties.runner().baseUrl());
     }
 
     @Test
