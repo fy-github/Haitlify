@@ -509,6 +509,34 @@ const PERSONAL_HOME_PATTERNS = [
   { id: 'hermes-home-env', re: /\$\{?HOME\}?\/\.hermes(\/|\b)/ },
   { id: 'hermes-home-abs', re: /\/(?:Users|home)\/[^/\s'"`]+\/\.hermes(\/|\b)/ },
 ]
+// Only known application-owned container declarations are exempt. Other paths
+// on the same line remain checked; unknown files never inherit this exception.
+function personalHomeScanText(relPath, line) {
+  if (relPath === 'deploy/isolated/worker-pool/Dockerfile.worker') {
+    return line.trim() === 'ENV HOME=/home/worker HERMES_HOME=/home/worker/.hermes PYTHONDONTWRITEBYTECODE=1' ? '' : line
+  }
+  if (relPath === 'deploy/isolated/worker-pool/provisioner.py') {
+    return line.trim() === "environment={'HOME':'/home/worker','HERMES_HOME':'/home/worker/.hermes'," ? '' : line
+  }
+  if (relPath === 'scripts/preflight/environment-preflight.test.mjs'
+      && line.endsWith('// preflight:synthetic-personal-home')
+      && SYNTHETIC_HOME_LINE_HASHES.has(createHash('sha256').update(line.trim()).digest('hex'))) return ''
+  return line
+}
+
+// Reviewed exact synthetic test-data lines only, not a general marker bypass.
+const SYNTHETIC_HOME_LINE_HASHES = new Set([
+  '23fb841c45347c173943a208135885a123fed07f2a768ffad4ec8c62c267fce0',
+  'a7ba6f89185f63164e62cfd439ed880dacdeb2420599db4109fb74e65c86fe63',
+  'c10a9708f6d4eb577ae04e201b4a635a2089ddc90e972c8df0ba9eefb20f3aa9',
+  'e3056ea5d5ab3e6088c67ee6a27cbfb95afd939c8733f87ee9bbc4975f56bc8f',
+  'e3a9d68ec978b2aeb404075a25b31b4b8180eec7a313040a1fbd7a9982bc921f',
+  'e7335e9d9533f5185128fc653098400b2a234aae90421c75cdc5c9640a3b8ea8',
+  'df932b263605f91379d93b9a3ef12089586a0b9556399dce4928a6b80fded704',
+  'a4cb65214c2ce9b7ae71918b2d50b7025b8faec3db4c07e7974920d391592df5',
+  '6cb784d68f5b40b0e52dda10682df126b2785baf61872288b5536f528453d0ef',
+])
+
 // scan 模式的目标面：新环境配置、启动入口与 CI（历史归档 docs/**、旧运维脚本不在本检查范围，
 // 其遗留引用由 A0 拆除依赖清单登记，见 docs/superpowers/a0/）。
 const SCAN_SURFACES = [
@@ -3155,7 +3183,7 @@ function scanSurfaces(opts) {
       if (encoding !== 'utf8') skipped.push({ file: relPath, reason: `scanned as ${encoding}` })
       text.split('\n').forEach((line, index) => {
         for (const pattern of PERSONAL_HOME_PATTERNS) {
-          if (pattern.re.test(line)) record('repo', relPath, index + 1, `命中个人 Hermes home 路径（${pattern.id}）`)
+          if (pattern.re.test(personalHomeScanText(relPath, line))) record('repo', relPath, index + 1, `命中个人 Hermes home 路径（${pattern.id}）`)
         }
       })
     }

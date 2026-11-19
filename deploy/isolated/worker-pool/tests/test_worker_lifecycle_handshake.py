@@ -8,6 +8,7 @@ import signal
 import subprocess
 import sys
 import tempfile
+from worker_test_paths import scratch_root
 import time
 import unittest
 
@@ -23,7 +24,7 @@ class BootstrapTests(unittest.TestCase):
                b'x'*4096, b'[[['*500, None]
         names=['wrong-generation','wrong-kind','extra-field','duplicate-key','oversize','deep-json','missing']
         for case_id, case in zip(names, cases):
-            with self.subTest(case_id=case_id), tempfile.TemporaryDirectory() as tmp:
+            with self.subTest(case_id=case_id), tempfile.TemporaryDirectory(dir=scratch_root()) as tmp:
                 marker=Path(tmp)/'imported'
                 (Path(tmp)/'forbidden.py').write_text('from pathlib import Path\nPath('+repr(str(marker))+').touch()\n')
                 now=time.monotonic_ns()
@@ -43,7 +44,7 @@ class BootstrapTests(unittest.TestCase):
 
     def test_missing_permit_never_imports_factory(self):
         self.assertTrue((POOL / 'worker_bootstrap.py').exists(), 'BOOTSTRAP_REQUIRED')
-        with tempfile.TemporaryDirectory() as tmp:
+        with tempfile.TemporaryDirectory(dir=scratch_root()) as tmp:
             marker = Path(tmp) / 'imported'
             (Path(tmp) / 'forbidden.py').write_text('from pathlib import Path\nPath(' + repr(str(marker)) + ').touch()\n')
             now = time.monotonic_ns()
@@ -62,7 +63,7 @@ class BootstrapTests(unittest.TestCase):
 
 class ServeTests(unittest.TestCase):
     def test_real_entry_creates_only_fresh_home_and_passes_trusted_settings(self):
-        with tempfile.TemporaryDirectory() as tmp:
+        with tempfile.TemporaryDirectory(dir=scratch_root()) as tmp:
             home = Path(tmp) / 'home'
             env = {'PATH': os.environ.get('PATH', ''), 'TMPDIR': tmp,
                    'POOL_STARTUP_SECONDS': '1', 'POOL_MAX_LIFETIME_SECONDS': '4',
@@ -123,7 +124,7 @@ class ServeTests(unittest.TestCase):
         self.rpc_delayed_cancel(script, sid='wrong-session-id', expected='complete')
 
     def rpc_delayed_cancel(self, script, sid=None, expected='interrupted'):
-        env = {'PATH':os.environ.get('PATH',''), 'TMPDIR':os.environ.get('TMPDIR','/tmp'),
+        env = {'PATH':os.environ.get('PATH',''), 'TMPDIR':str(scratch_root()),
                'POOL_STARTUP_SECONDS':'1', 'POOL_MAX_LIFETIME_SECONDS':'4'}
         p = subprocess.Popen([sys.executable, '-I', '-S', '-B', '-c', script],
                              stdin=subprocess.PIPE, stdout=subprocess.PIPE,
@@ -168,7 +169,7 @@ class ServeTests(unittest.TestCase):
             for stream in (p.stdin,p.stdout,p.stderr): stream.close()
 
     def test_missing_holding_eof_has_no_terminal(self):
-        env={'POOL_STARTUP_SECONDS':'1','POOL_MAX_LIFETIME_SECONDS':'3','TMPDIR':os.environ.get('TMPDIR','/tmp')}
+        env={'POOL_STARTUP_SECONDS':'1','POOL_MAX_LIFETIME_SECONDS':'3','TMPDIR':str(scratch_root())}
         code='import sys; sys.path[:0]='+repr([str(POOL),str(POOL/'tests')])+'; from worker_lifecycle import serve; raise SystemExit(serve("worker_lifecycle_fixture:missing_holding",'+repr([str(POOL),str(POOL/'tests')])+'))'
         p=subprocess.Popen([sys.executable,'-I','-S','-B','-c',code],stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE,env=env)
         try:
@@ -188,7 +189,7 @@ class ServeTests(unittest.TestCase):
     def rpc_case(self,text,status,action=None):
         import worker_lifecycle as lc
         self.assertTrue(hasattr(lc, 'serve'), 'SERVE_REQUIRED')
-        env = {'PATH':os.environ.get('PATH',''), 'TMPDIR':os.environ.get('TMPDIR','/tmp'),
+        env = {'PATH':os.environ.get('PATH',''), 'TMPDIR':str(scratch_root()),
                'POOL_STARTUP_SECONDS':'1', 'POOL_MAX_LIFETIME_SECONDS':'4'}
         code = 'import sys; sys.path[:0]='+repr([str(POOL),str(POOL/'tests')])+'; from worker_lifecycle import serve; raise SystemExit(serve("worker_lifecycle_fixture:factory",'+repr([str(POOL),str(POOL/'tests')])+'))'
         p = subprocess.Popen([sys.executable,'-I','-S','-B','-c',code],stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE,env=env,bufsize=0)
@@ -268,12 +269,12 @@ class PublicationTests(unittest.TestCase):
     def publication_case(self, count, expected, mode='normal'):
         def pack(rid, method, params):
             return (json.dumps(dict(jsonrpc='2.0',id=rid,method=method,params=params),separators=(',',':'))+'\n').encode()
-        with tempfile.TemporaryDirectory() as tmp:
+        with tempfile.TemporaryDirectory(dir=scratch_root()) as tmp:
             d = Path(tmp)
             script = 'import sys; sys.path[:0]='+repr([str(POOL),str(POOL/'tests')])+'; from worker_lifecycle_fixture import publication_server; raise SystemExit(publication_server('+repr(tmp)+','+repr(mode)+'))'
             p = subprocess.Popen([sys.executable,'-I','-S','-B','-c',script],stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,stderr=subprocess.PIPE,bufsize=0,
-                env={'POOL_STARTUP_SECONDS':'1','POOL_MAX_LIFETIME_SECONDS':'8','TMPDIR':os.environ.get('TMPDIR','/tmp')})
+                env={'POOL_STARTUP_SECONDS':'1','POOL_MAX_LIFETIME_SECONDS':'8','TMPDIR':str(scratch_root())})
             def marker(name):
                 end=time.monotonic()+4
                 while not (d/(name+'.ready')).exists():

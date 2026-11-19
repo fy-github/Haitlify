@@ -2,8 +2,8 @@ import json
 import pathlib
 import sys
 import unittest
+from worker_test_paths import scratch_root
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
-
 class ProvisionerTests(unittest.TestCase):
     def test_plan_scoped_isolation_and_fenced_cleanup(self):
         self.assertTrue((pathlib.Path(__file__).resolve().parents[1] / 'provisioner.py').exists(), 'provisioner missing')
@@ -39,7 +39,7 @@ class ProvisionerTests(unittest.TestCase):
         root = pathlib.Path(__file__).resolve().parents[1]
         config = json.loads((root/'pool.example.json').read_text())
         labels = plan(config)['labels']
-        with tempfile.TemporaryDirectory(dir='/Users/lify/.hermes/cache/scratch') as tmp:
+        with tempfile.TemporaryDirectory(dir=scratch_root()) as tmp:
             inv = pathlib.Path(tmp)/'inventory.json'
             inv.write_text(json.dumps([{'kind':'container','id':'a'*64,'labels':labels}]))
             args = [sys.executable,str(root/'provisioner.py')]

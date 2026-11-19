@@ -185,7 +185,8 @@ stress run or a substitute for the original full-suite/Java/manifest gates. It
 copies the frozen source to scratch, runs one exact GREEN baseline per case and
 applies a single unique-anchor mutation to another scratch copy. Imported test
 modules' legacy `SCRATCH` fixture globals are rebound in memory; production and
-test source files are not rewritten. Default scratch is `~/.hermes/cache/scratch`;
+test source files are not rewritten. Default scratch is `WORKER_TEST_SCRATCH`,
+then `TMPDIR`, then the platform temporary directory; missing parents are created.
 keep a custom path short enough for Unix-domain socket names. Each selected test
 has a 60 s harness timeout, not the obsolete full-suite 30 s limit.
 
@@ -558,9 +559,11 @@ python3 -m unittest discover -s deploy/isolated/worker-pool/tests -v
 python3 scripts/preflight/worker-pool-mutations.py
 python3 deploy/isolated/worker-pool/tests/verify_rpc_mutations.py
 # Harness requires Python 3.11.8+ (tar extraction data filter):
-/Users/lify/.hermes/hermes-agent/venv/bin/python scripts/preflight/worker-pool-probe.py \
-  --source /Users/lify/.hermes/hermes-agent \
-  --python /Users/lify/.hermes/hermes-agent/venv/bin/python
+: "${HERMES_SOURCE:?set credential-free Hermes source checkout}"
+: "${HERMES_PYTHON:?set Hermes Python executable (3.11.8+)}"
+"$HERMES_PYTHON" scripts/preflight/worker-pool-probe.py \
+  --source "$HERMES_SOURCE" \
+  --python "$HERMES_PYTHON"
 python3 deploy/isolated/worker-pool/provisioner.py plan \
   --config deploy/isolated/worker-pool/pool.example.json
 python3 deploy/isolated/worker-pool/provisioner.py apply

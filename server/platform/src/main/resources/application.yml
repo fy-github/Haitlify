@@ -74,14 +74,14 @@ app:
         # mcp_servers.<name>（name 见 gateway-server-name，默认 haitlify），整条替换成 {url: ...}。
         # reload 走 reload.mcp（confirm=true，预算见 gateway-reload-timeout-seconds，默认 60s）：transport=tcp
         # 时由真实的 TcpGatewayReloader 提供；stdio 下没有 RPC 落点，设了路径会启动即失败。
-        # 默认不注册，也不会读写任何网关配置文件（尤其不会碰 ~/.hermes/config.yaml）。
+        # 默认不注册，也不会读写任何网关配置文件（尤其不会碰操作者默认配置）。
         # 开启但本轮没有 ACTIVE binding 时清除条目（fail-closed），不回退旧 URL。
         configure-gateway: ${APP_ASSISTANT_CONVERSATION_MCP_LEASE_CONFIGURE_GATEWAY:false}
       # 用户×项目隔离的执行单元：每个 (tenant, project, actor) 一个独立网关子进程 + 一份私有 profile 副本。
       # 默认关闭；关闭时装配仍是单进程形状（一个网关、一个 MCP 条目、一个许可），行为与之前一致。
       # 开启后：base-profile（必须有 config.yaml 与 .env，常规文件、不跟随符号链接）必填，root 必填，
       # transport 必须是 stdio（单元自成子进程），command 必须给出；任一不满足启动即失败，绝不回退
-      # 到 ~/.hermes 或共享单元。容量耗尽 -> 本轮 FAILED（不共享、不驱逐、不排队）。
+      # 到操作者默认配置目录或共享单元。容量耗尽 -> 本轮 FAILED（不共享、不驱逐、不排队）。
       execution-units:
         enabled: ${APP_ASSISTANT_CONVERSATION_EXECUTION_UNITS_ENABLED:false}
         base-profile: ${APP_ASSISTANT_CONVERSATION_EXECUTION_UNITS_BASE_PROFILE:}

@@ -8,7 +8,7 @@ import tempfile
 import time
 import unittest
 from test_worker_rpc import Wire, rescue_fixture
-
+from worker_test_paths import scratch_root
 
 class SignalTests(unittest.TestCase):
     def test_signal_rescue_has_no_historical_pid_group_kill(self):
@@ -21,7 +21,7 @@ class SignalTests(unittest.TestCase):
 
     def exercise(self, phase, action, mode=None):
         with tempfile.TemporaryDirectory(prefix='worker-signals-',
-                dir=pathlib.Path.home() / '.hermes/cache/scratch') as directory:
+                dir=scratch_root()) as directory:
             wire = Wire(directory, lifetime='2', mode=mode or ('block' if phase == 'init' else 'normal'))
             pids = []
             try:

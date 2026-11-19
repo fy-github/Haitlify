@@ -27,8 +27,8 @@ Hermes 在一个**进程内**只有一个 MCP 服务器条目，而且这个条�
 | 内部件 | 自己的 `HermesTuiGateway` / `TcpGatewayReloader` / `ConfigFileGatewayMcpControl` / `GatewayMcpLeaseConfigurator` / `GatewayMcpPermit` / `HermesConversationService` |
 
 **基准 profile 只由配置给出**（`base-profile`），必须同时有 `config.yaml` 与 `.env`，且都是**常规文件**
-（符号链接一律拒绝：它可以指向真实用户的 `~/.hermes/config.yaml`）。缺失或不可读时**启动即失败**；
-代码里没有任何 `~/.hermes` 默认值。
+（符号链接一律拒绝：它可以指向真实用户的默认配置文件）。缺失或不可读时**启动即失败**；
+代码里没有任何操作者配置目录默认值。
 
 ## 池
 
@@ -70,7 +70,7 @@ Hermes 在一个**进程内**只有一个 MCP 服务器条目，而且这个条�
 ## 单元目录根的位置（必须在 Hermes 根树之下）
 
 单元的 `HERMES_HOME` 就是它的目录 `<root>/unit-XXXXXXXX`。子网关只有在**默认 Hermes 根树之下**
-（例如 `~/.hermes/...`）才会**借用宿主已经装好的运行时**，1~2 秒就绪；一旦落在外面（`/tmp`、`/var/lib` 等），
+（例如 `<Hermes-root>/execution-units`）才会**借用宿主已经装好的运行时**，1~2 秒就绪；一旦落在外面（`/tmp`、`/var/lib` 等），
 它会把这个单元目录当成一个全新的数据根，打印 `preparing dependencies for this data root` 并跑一次完整的
 `uv sync`（约 1.3G、分钟级），并发建单元还会在同一把安装锁上互抢。也就是**每建一个单元重装一次运行时，
 秒级变分钟级**。
@@ -90,11 +90,11 @@ Hermes 在一个**进程内**只有一个 MCP 服务器条目，而且这个条�
 | 无法判定 | **WARN** 一次，正常启动 | 仍是 WARN + 正常启动（不把「不知道」当「根外」） |
 
 比较是**路径段**比较（两边先转绝对路径并归一化，再用 `Path.startsWith`），不是字符串前缀：
-`~/.hermesX` 与 `~/.hermes` 共享字符串前缀却是两个目录，用字符串前缀会把前者误判成「在根树里」。
+`<root>/hermes-extra` 与 `<root>/hermes` 共享字符串前缀却是两个目录，用字符串前缀会把前者误判成「在根树里」。
 归一化也吃掉了 `<root>/units/../outside` 这种写法。比较是**词法**的（不解析符号链接，启动期不碰文件系统），
 因此 `root` 不必预先存在。
 
-代码里没有任何 `~/.hermes` 默认值：这个校验只**报告**位置，从不替部署方改路径。
+代码里没有任何操作者配置目录默认值：这个校验只**报告**位置，从不替部署方改路径。
 
 ## 配置
 

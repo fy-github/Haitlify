@@ -11,7 +11,8 @@ import unittest
 from test_protocol import grant
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-SCRATCH = '/Users/lify/.hermes/cache/scratch'
+from worker_test_paths import scratch_root
+SCRATCH = scratch_root()
 
 
 def snapshot(config, **changes):

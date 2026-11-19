@@ -14,8 +14,8 @@ from test_protocol import grant
 from gate import EXACT_TOOLS
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-SCRATCH = os.environ.get('WORKER_TEST_SCRATCH', '/tmp')
-
+from worker_test_paths import scratch_root
+SCRATCH = scratch_root()
 class EdgeTests(unittest.TestCase):
     def test_chunked_mcp_request_is_forwarded_after_configuration(self):
         """The pinned MCP SDK may use chunked Streamable HTTP bodies."""

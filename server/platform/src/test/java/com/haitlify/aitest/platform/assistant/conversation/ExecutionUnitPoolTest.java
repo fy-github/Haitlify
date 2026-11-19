@@ -445,7 +445,7 @@ class ExecutionUnitPoolTest {
 
     /**
      * 基准 profile 的 {@code config.yaml} 是<b>符号链接</b>时拒绝启动：那可以把真实用户的
-     * {@code ~/.hermes/config.yaml} 复制进单元目录，正是本功能明确禁止的事。
+     * 默认 Hermes 配置文件复制进单元目录，正是本功能明确禁止的事。
      */
     @Test
     void thePoolRefusesASymlinkedBaseProfile() throws IOException {

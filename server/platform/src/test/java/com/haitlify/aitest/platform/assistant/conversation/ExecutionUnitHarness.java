@@ -17,7 +17,7 @@ import java.util.function.BooleanSupplier;
  * <p>三条纪律：
  * <ul>
  *   <li><b>只用临时目录</b>：基准 profile、单元目录根、桩脚本都在 {@code @TempDir} 派生出来的目录里，
- *       任何用例都不会读到 {@code ~/.hermes/config.yaml} 或其它真实 profile；</li>
+ *       任何用例都不会读到操作者默认配置或其它真实 profile；</li>
  *   <li><b>子进程是真的</b>：桩是 {@code python3} 脚本，按换行分隔 JSON-RPC 应答，所以「子进程真的被拉起来」
  *       「回收真的杀了它」「两个单元的 reload 真的并行」都是 observable 的事实，而不是 mock 的假设；</li>
  *   <li><b>不调模型、不连网</b>：桩只回答 {@code session.*}/{@code prompt.submit}/{@code reload.mcp}，

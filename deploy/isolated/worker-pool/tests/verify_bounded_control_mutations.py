@@ -23,6 +23,7 @@ import tempfile
 import time
 import unittest
 from typing import Any
+from worker_test_paths import scratch_root
 
 ROOT = Path(__file__).resolve().parents[1]
 EXPECTED_COUNTS = {"C": 35, "U": 20}
@@ -397,7 +398,8 @@ def run_test(pool, scratch, case, timeout, log):
         try:
             process = subprocess.Popen(command, cwd=pool, stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE, text=True, start_new_session=True,
-                env=dict(os.environ, PYTHONDONTWRITEBYTECODE='1', TMPDIR=str(scratch)))
+                env=dict(os.environ, PYTHONDONTWRITEBYTECODE='1', TMPDIR=str(scratch),
+                         WORKER_TEST_SCRATCH=str(scratch)))
             try:
                 out, err = process.communicate(timeout=timeout)
             except subprocess.TimeoutExpired:
@@ -480,7 +482,7 @@ def classify(baseline, mutant, method, assertion, expected_failure_count=1):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--scratch', type=Path,
-                        default=Path.home() / '.hermes/cache/scratch',
+                        default=scratch_root(),
                         help='short writable fixture path (Unix socket path limits apply)')
     parser.add_argument('--output', type=Path,
                         help='new evidence directory under scratch; never overwritten')

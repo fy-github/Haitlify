@@ -8,6 +8,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from worker_test_paths import scratch_root
 
 ROOT=Path(__file__).resolve().parents[1]
 CASES=[
@@ -72,10 +73,11 @@ def valid_result(exit_code, result, test, identities, assertion=None):
 def main():
     if sys.platform != 'linux':
         print('BLOCKED: mutation runtime must be Linux development target'); return 2
-    out=Path(tempfile.mkdtemp(prefix='worker-lifecycle-mutations-'))
+    out=Path(tempfile.mkdtemp(prefix='worker-lifecycle-mutations-', dir=scratch_root()))
     results=[]
     files=['worker.py','gate.py','worker_bootstrap.py','worker_lifecycle.py']
-    tests=['test_worker_cleanup_evidence.py','test_worker_lifecycle_handshake.py','worker_lifecycle_fixture.py']
+    tests=['test_worker_cleanup_evidence.py','test_worker_lifecycle_handshake.py','worker_lifecycle_fixture.py',
+           'worker_test_paths.py']
     for name,filename,old,new,test,assertion in CASES:
         row={'name':name,'test':test,'assertion':assertion}
         for phase in ('baseline','mutant'):

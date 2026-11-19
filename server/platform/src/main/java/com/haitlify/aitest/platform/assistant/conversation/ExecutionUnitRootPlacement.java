@@ -12,7 +12,7 @@ import org.slf4j.LoggerFactory;
  *
  * <p><b>为什么这值得一次启动校验</b>：单元的 {@code HERMES_HOME} 就是它的目录
  * （{@code <root>/unit-XXXXXXXX}）。只有当这个目录在<b>默认 Hermes 根树之下</b>（例如
- * {@code ~/.hermes/...}）时，子网关才会借用宿主已经装好的运行时，1~2 秒就绪；一旦落在外面
+ * {@code <Hermes-root>/execution-units}）时，子网关才会借用宿主已经装好的运行时，1~2 秒就绪；一旦落在外面
  * （{@code /tmp}、{@code /var/lib} 等），子网关会把它当成一个全新的数据根，打印
  * {@code preparing dependencies for this data root} 并跑一次完整 {@code uv sync}（约 1.3G、分钟级），
  * 并发建单元还会在同一把安装锁上互抢。也就是说：<b>每建一个单元就重装一次运行时，秒级变分钟级</b>。
@@ -23,7 +23,7 @@ import org.slf4j.LoggerFactory;
  *   <li>基准 profile 形如 {@code <root>/profiles/<name>} → 取 {@code <root>}。这是部署方已经表达过的意图，
  *       比环境变量更权威；</li>
  *   <li>否则看环境变量 {@code HERMES_HOME}（由宿主给出）；</li>
- *   <li>两者都拿不到 → <b>无法判定</b>：只 WARN 一次，绝不默认成 {@code ~/.hermes}，也绝不替部署方
+ *   <li>两者都拿不到 → <b>无法判定</b>：只 WARN 一次，绝不默认成操作者的 Hermes 目录，也绝不替部署方
  *       选一个路径。</li>
  * </ol>
  *

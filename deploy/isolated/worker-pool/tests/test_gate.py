@@ -4,7 +4,7 @@ import pathlib
 import os
 import sys
 import unittest
-
+from worker_test_paths import scratch_root
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
@@ -48,7 +48,7 @@ class GateTests(unittest.TestCase):
         import hashlib
         import gate
         self.assertTrue(hasattr(gate, 'verify_runtime'), 'runtime pin validation absent')
-        with tempfile.TemporaryDirectory(dir=os.environ.get('WORKER_TEST_SCRATCH', '/tmp')) as tmp:
+        with tempfile.TemporaryDirectory(dir=scratch_root()) as tmp:
             root = pathlib.Path(tmp)
             (root/'run_agent.py').write_text('fixture')
             manifest = {'run_agent.py':hashlib.sha256(b'fixture').hexdigest()}

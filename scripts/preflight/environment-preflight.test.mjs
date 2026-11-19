@@ -256,7 +256,7 @@ const NEGATIVE_CASES = [
   ['端口段而非单一整数（published-ports-explicit）', (c) => c.replace('      - "127.0.0.1:13306:3306"', '      - "127.0.0.1:13306-13310:3306"'), 'published-ports-explicit'],
   ['镜像未固定 tag（image-pinning）', (c) => c.replace('image: mysql:8.4', 'image: mysql'), 'image-pinning'],
   ['Hermes 发布宿主端口（hermes-topology）', (c) => c.replace('    container_name: haitlify-isolated-hermes\n', '    container_name: haitlify-isolated-hermes\n    ports:\n      - "127.0.0.1:9420:9420"\n'), 'hermes-topology'],
-  ['Hermes 宿主目录挂载（hermes-topology）', (c) => c.replace('      - type: volume\n        source: hermes-state\n        target: /state', '      - type: bind\n        source: ~/.hermes\n        target: /state'), 'hermes-topology'],
+  ['Hermes 宿主目录挂载（hermes-topology）', (c) => c.replace('      - type: volume\n        source: hermes-state\n        target: /state', '      - type: bind\n        source: ~/.hermes\n        target: /state'), 'hermes-topology'], // preflight:synthetic-personal-home
   ['platform 缺少环境标识（service-startup-guard）', (c) => c.replace('      APP_ENV_ID: haitlify-isolated\n', ''), 'service-startup-guard'],
   ['旧资源标识命中', (c) => c.replace(ANCHOR_RUNNER, `${ANCHOR_RUNNER}      LEGACY_NOTE: ${LEGACY_DB}\n`), 'environment-values'],
 ]
@@ -759,6 +759,65 @@ test('scan：仓库内出现个人 Hermes home 路径即命中（repo 检查）'
   const result = runPreflight(dir, ['scan', '--json'])
   assert.equal(result.status, 1, `期望 FAIL(1)，实际 ${result.status}\n${result.stdout}`)
   assert.match(result.stdout, /hermes-home-abs/, `实际输出：\n${result.stdout}`)
+})
+
+test('scan：仅允许已知容器专属 home，同行额外个人路径仍拒绝', () => {
+  const dir = makeRepo()
+  const worker = path.join(dir, 'deploy/isolated/worker-pool')
+  mkdirSync(worker, { recursive: true })
+  writeFileSync(path.join(worker, 'Dockerfile.worker'),
+    'ENV HOME=/home/worker HERMES_HOME=/home/worker/.hermes PYTHONDONTWRITEBYTECODE=1\n') // preflight:synthetic-personal-home
+  writeFileSync(path.join(worker, 'provisioner.py'),
+    "environment={'HOME':'/home/worker','HERMES_HOME':'/home/worker/.hermes',\n") // preflight:synthetic-personal-home
+  assert.equal(runPreflight(dir, ['scan', '--json']).status, 0)
+  writeFileSync(path.join(worker, 'Dockerfile.worker'),
+    'ENV HOME=/home/worker HERMES_HOME=/home/worker/.hermes OTHER=/home/operator/.hermes\n') // preflight:synthetic-personal-home
+  const rejected = runPreflight(dir, ['scan', '--json'])
+  assert.equal(rejected.status, 1)
+  assert.match(rejected.stdout, /hermes-home-abs/)
+})
+
+test('scan：容器 home 不可泛化为任意宿主路径白名单', () => {
+  for (const value of ['/Users/operator/.hermes', '$HOME/.hermes', '~/.hermes', '/home/worker/.hermes']) { // preflight:synthetic-personal-home
+    const dir = makeRepo()
+    writeFileSync(path.join(dir, 'apps/web/Dockerfile'), `ENV HERMES_HOME=${value}\n`)
+    const result = runPreflight(dir, ['scan', '--json'])
+    assert.equal(result.status, 1, '未知文件中的个人 home 必须继续被拒绝')
+    assert.match(result.stdout, /hermes-home-/)
+  }
+})
+
+test('scan：合成路径标记不能豁免其他文件', () => {
+  const dir = makeRepo()
+  writeFileSync(path.join(dir, 'server/platform/notes.md'),
+    '/Users/operator/.hermes // preflight:synthetic-personal-home\n') // preflight:synthetic-personal-home
+  const result = runPreflight(dir, ['scan', '--json'])
+  assert.equal(result.status, 1)
+  assert.match(result.stdout, /hermes-home-abs/)
+})
+
+test('scan：相同路径出现在非批准声明中仍拒绝', () => {
+  for (const [name, text] of [
+    ['Dockerfile.worker', 'RUN echo HERMES_HOME=/home/worker/.hermes > /host-path\n'], // preflight:synthetic-personal-home
+    ['provisioner.py', "host_bind_mount={'HERMES_HOME':'/home/worker/.hermes',}\n"], // preflight:synthetic-personal-home
+  ]) {
+    const dir = makeRepo()
+    const worker = path.join(dir, 'deploy/isolated/worker-pool')
+    mkdirSync(worker, { recursive: true })
+    writeFileSync(path.join(worker, name), text)
+    const result = runPreflight(dir, ['scan', '--json'])
+    assert.equal(result.status, 1)
+    assert.match(result.stdout, /hermes-home-abs/)
+  }
+})
+
+test('scan：已知测试文件中的任意代码不可借合成标记豁免', () => {
+  const dir = makeRepo()
+  writeFileSync(path.join(dir, 'scripts/preflight/environment-preflight.test.mjs'),
+    'const runtimeHome = "/home/operator/.hermes"; // preflight:synthetic-personal-home\n') // preflight:synthetic-personal-home
+  const result = runPreflight(dir, ['scan', '--json'])
+  assert.equal(result.status, 1)
+  assert.match(result.stdout, /hermes-home-abs/)
 })
 
 test('拒绝：入口脚本形态全表（COPY + ENTRYPOINT 直接执行按同一套规则扫描）', () => {

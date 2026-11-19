@@ -114,7 +114,7 @@ class AssistantConversationConfiguration {
      *
      * <p><b>四条启动纪律</b>（都在这里 fail-fast，而不是等到第一个用户提交）：
      * <ol>
-     *   <li>必须给出<b>基准 profile</b> 与<b>单元目录根</b>；没有默认值，绝不回退到 {@code ~/.hermes}；</li>
+     *   <li>必须给出<b>基准 profile</b> 与<b>单元目录根</b>；没有默认值，绝不回退到操作者默认配置目录；</li>
      *   <li>基准 profile 必须同时有 {@code config.yaml} 与 {@code .env}，且都是常规文件（不跟随符号链接）；</li>
      *   <li>必须给出网关子进程命令（{@code app.assistant.hermes.command}）：单元是<b>子进程</b>，
      *       没有命令就没有隔离；</li>
@@ -161,7 +161,7 @@ class AssistantConversationConfiguration {
         if (baseProfile == null || baseProfile.isBlank() || unitsRoot == null || unitsRoot.isBlank()) {
             throw new IllegalStateException(
                 "app.assistant.conversation.execution-units.enabled=true 但没有给出基准 profile 或单元目录根。"
-                    + "拒绝启动：不回退到 ~/.hermes 或任何默认 profile。");
+                    + "拒绝启动：不回退到操作者配置目录或任何默认 profile。");
         }
         // 位置校验先于建目录：根外 + require=true 时一个目录都不留（拒绝要早于副作用）。
         ExecutionUnitRootPlacement.enforce(Path.of(baseProfile), Path.of(unitsRoot), hermesHome,

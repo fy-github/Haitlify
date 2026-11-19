@@ -11,7 +11,44 @@ HERMES_CONTAINER="${HERMES_CONTAINER:-haitlify-isolated-hermes}"
 E2E_IMAGE="${E2E_IMAGE:-haitlify-isolated-hermes:latest}"
 PORT="${HAITLIFY_HERMES_E2E_PORT:-19420}"
 NAME="haitlify-hermes-e2e"
-STATE_DIR="${TMPDIR:-/tmp}/haitlify-hermes-e2e-state"
+# isolated-inputs: canonicalize and validate the scratch root before any write, copy or rm.
+canonical_path() {
+  local path="$1" parent suffix resolved
+  while [[ "$path" == */ && "$path" != / ]]; do path="${path%/}"; done
+  if [[ -e "$path" ]]; then
+    if [[ -d "$path" ]]; then
+      (cd -P "$path" && pwd -P)
+    else
+      /bin/realpath "$path"
+    fi
+    return
+  fi
+  parent="$path"
+  while [[ ! -e "$parent" && "$parent" != / ]]; do
+    parent="${parent%/*}"; [[ -z "$parent" ]] && parent=/
+  done
+  [[ -d "$parent" ]] || return 1
+  suffix="${path#"$parent"}"
+  resolved="$(cd -P "$parent" && pwd -P)" || return 1
+  printf '%s%s\n' "$resolved" "$suffix"
+}
+require_path() {
+  local name="$1" value="${!1:-}" canonical
+  if [[ -z "$value" || "$value" != /* || "$value" == .. || "$value" == ../* || "$value" == */../* || "$value" == */.. ]]; then
+    echo "required absolute isolated path: $name" >&2; exit 2
+  fi
+  canonical="$(canonical_path "$value")" || { echo "cannot canonicalize path: $name" >&2; exit 2; }
+  [[ "$canonical" != / ]] || { echo "refusing filesystem root: $name" >&2; exit 2; }
+  printf -v "$name" '%s' "$canonical"
+}
+require_path HAITLIFY_HERMES_E2E_SCRATCH
+SCRATCH="$HAITLIFY_HERMES_E2E_SCRATCH"
+[[ -d "$SCRATCH" ]] || { echo "required existing dedicated scratch directory" >&2; exit 2; }
+OWNERSHIP="$SCRATCH/.haitlify-hermes-model-e2e-owned"
+[[ -f "$OWNERSHIP" && "$(<"$OWNERSHIP")" == "haitlify-hermes-model-e2e-v1" ]] || {
+  echo "scratch directory is not an owned retry root" >&2; exit 2
+}
+STATE_DIR="$(mktemp -d "$SCRATCH/haitlify-hermes-e2e-state.XXXXXX")"
 
 cleanup() {
   docker rm -fv "$NAME" >/dev/null 2>&1 || true
@@ -24,7 +61,6 @@ if ! docker ps --format '{{.Names}}' | grep -qx "$HERMES_CONTAINER"; then
   exit 1
 fi
 
-cleanup
 mkdir -p "$STATE_DIR"
 # 只复制配置（含模型凭据），不复制会话/日志；临时目录随脚本删除。
 docker exec "$HERMES_CONTAINER" sh -c 'cat /state/config.yaml' > "$STATE_DIR/config.yaml"
@@ -50,7 +86,7 @@ if [ -z "$(docker ps -q -f name=^${NAME}$)" ]; then
 fi
 
 cd "$ROOT_DIR/server/platform"
-LOG="${TMPDIR:-/tmp}/haitlify-hermes-e2e-surefire.log"
+LOG="$SCRATCH/haitlify-hermes-e2e-surefire.log"
 HAITLIFY_HERMES_E2E=true HAITLIFY_HERMES_E2E_PORT="$PORT" \
   ./mvnw -o test -Dtest=HermesModelEndToEndTest > "$LOG" 2>&1 || { tail -40 "$LOG" >&2; exit 1; }
 

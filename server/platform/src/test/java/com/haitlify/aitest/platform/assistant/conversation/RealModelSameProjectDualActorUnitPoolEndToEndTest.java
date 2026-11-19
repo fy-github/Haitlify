@@ -127,11 +127,9 @@ class RealModelSameProjectDualActorUnitPoolEndToEndTest {
 
     @DynamicPropertySource
     static void wire(DynamicPropertyRegistry registry) {
-        evidenceDir = Path.of(envOrDefault("HAITLIFY_REAL_SAME_PROJECT_E2E_EVIDENCE_DIR",
-            "/Users/lify/.hermes/cache/scratch/dual-user-e2e/same-project"));
+        evidenceDir = Path.of(env("HAITLIFY_REAL_SAME_PROJECT_E2E_EVIDENCE_DIR"));
         baseProfile = Path.of(env("HAITLIFY_REAL_SAME_PROJECT_E2E_BASE_PROFILE"));
-        unitsRoot = Path.of(envOrDefault("HAITLIFY_REAL_SAME_PROJECT_E2E_UNITS_ROOT",
-            evidenceDir.resolve("units").toString()));
+        unitsRoot = Path.of(env("HAITLIFY_REAL_SAME_PROJECT_E2E_UNITS_ROOT"));
         workspace = evidenceDir.resolve("workspace");
         pythonHome = env("HAITLIFY_REAL_SAME_PROJECT_E2E_PYTHON");
         String agentDir = env("HAITLIFY_REAL_SAME_PROJECT_E2E_AGENT_DIR");
@@ -139,7 +137,8 @@ class RealModelSameProjectDualActorUnitPoolEndToEndTest {
 
         if (!Files.isRegularFile(baseProfile.resolve("config.yaml"))
             || !Files.isRegularFile(baseProfile.resolve(".env"))
-            || !Files.isRegularFile(Path.of(pythonHome))) {
+            || !Files.isRegularFile(Path.of(pythonHome)) || !Files.isExecutable(Path.of(pythonHome))
+            || !Files.isDirectory(Path.of(agentDir))) {
             throw new IllegalStateException("真实 E2E 前置缺失：需要基准 profile(" + baseProfile
                 + " 的 config.yaml 与 .env) 与解释器 " + pythonHome);
         }
@@ -827,21 +826,22 @@ class RealModelSameProjectDualActorUnitPoolEndToEndTest {
 
     private void collectToolCalls(ActorTurn turn) {
         List<Path> candidates = new ArrayList<>();
-        List<Boolean> ownLog = new ArrayList<>();
         if (turn.home != null) {
             Path unitLog = turn.home.resolve("logs/agent.log");
             if (Files.isRegularFile(unitLog)) {
                 candidates.add(unitLog);
-                ownLog.add(true);
             }
-        }
-        Path global = Path.of(System.getProperty("user.home"), ".hermes", "logs", "agent.log");
-        if (Files.isRegularFile(global)) {
-            candidates.add(global);
-            ownLog.add(false);
         }
         for (int index = 0; index < candidates.size(); index++) {
             Path log = candidates.get(index);
+            try {
+                if (!log.toRealPath().startsWith(unitsRoot.toRealPath())
+                    || !log.toRealPath().startsWith(turn.home.toRealPath())) {
+                    continue;
+                }
+            } catch (Exception unowned) {
+                continue;
+            }
             try (var lines = Files.lines(log, StandardCharsets.UTF_8)) {
                 List<String> all = lines.toList();
                 List<String> sessions = new ArrayList<>(turn.sessions);
@@ -857,24 +857,15 @@ class RealModelSameProjectDualActorUnitPoolEndToEndTest {
                         }
                     }
                 }
-                if (!ownLog.get(index) && sessions.isEmpty()) {
-                    continue;
-                }
                 for (String line : all) {
                     Matcher call = TOOL_CALL.matcher(line);
                     if (!call.find()) {
                         continue;
                     }
-                    boolean owned = ownLog.get(index) || sessions.stream().anyMatch(line::contains);
-                    if (!owned) {
-                        continue;
-                    }
                     turn.toolCalls.add(call.group(1) + " " + call.group(2));
                 }
                 if (!turn.toolCalls.isEmpty()) {
-                    turn.toolCallSource = log.startsWith(String.valueOf(turn.home))
-                        ? "unit-local:" + log.getFileName() : "host-global:" + log.getFileName()
-                            + "（按 prompt 标记定 session 后过滤）";
+                    turn.toolCallSource = "unit-local:" + log.getFileName();
                     for (String session : sessions) {
                         if (!turn.sessions.contains(session)) {
                             turn.sessions.add(session);
@@ -1372,6 +1363,10 @@ class RealModelSameProjectDualActorUnitPoolEndToEndTest {
         String value = System.getenv(name);
         if (value == null || value.isBlank()) {
             throw new IllegalStateException("真实 E2E 需要环境变量 " + name + "（默认套件不会跑到这里）");
+        }
+        Path path = Path.of(value);
+        if (!path.isAbsolute() || path.normalize().getParent() == null || !path.equals(path.normalize())) {
+            throw new IllegalStateException("真实 E2E 需要显式的隔离绝对路径: " + name);
         }
         return value;
     }

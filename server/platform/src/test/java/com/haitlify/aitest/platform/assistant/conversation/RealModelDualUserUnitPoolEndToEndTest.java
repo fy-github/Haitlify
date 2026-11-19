@@ -97,7 +97,7 @@ import tools.jackson.databind.ObjectMapper;
  *   <li>{@code HAITLIFY_REAL_DUAL_USER_E2E=true}；</li>
  *   <li>{@code ..._BASE_PROFILE}：基准 profile 目录（必须同时有 {@code config.yaml} 与 {@code .env}）；</li>
  *   <li>{@code ..._UNITS_ROOT}：单元目录根，<b>必须落在 Hermes 根树之下</b>（例如
- *       {@code ~/.hermes/cache/scratch/.../units}），否则每个单元会触发一次完整的 {@code uv sync}；</li>
+ *       {@code <Hermes root>/cache/scratch/.../units}），否则每个单元会触发一次完整的 {@code uv sync}；</li>
  *   <li>{@code ..._PYTHON} / {@code ..._AGENT_DIR}：stdio 网关入口（{@code python -m tui_gateway.entry}）；</li>
  *   <li>{@code ..._PORT}：固定端口（租约 URL 的 host:port 必须可预测）；</li>
  *   <li>{@code ..._EVIDENCE_DIR}：证据落点；</li>
@@ -144,11 +144,9 @@ class RealModelDualUserUnitPoolEndToEndTest {
 
     @DynamicPropertySource
     static void wire(DynamicPropertyRegistry registry) {
-        evidenceDir = Path.of(envOrDefault("HAITLIFY_REAL_DUAL_USER_E2E_EVIDENCE_DIR",
-            "/Users/lify/.hermes/cache/scratch/dual-user-e2e"));
+        evidenceDir = Path.of(env("HAITLIFY_REAL_DUAL_USER_E2E_EVIDENCE_DIR"));
         baseProfile = Path.of(env("HAITLIFY_REAL_DUAL_USER_E2E_BASE_PROFILE"));
-        unitsRoot = Path.of(envOrDefault("HAITLIFY_REAL_DUAL_USER_E2E_UNITS_ROOT",
-            evidenceDir.resolve("units").toString()));
+        unitsRoot = Path.of(env("HAITLIFY_REAL_DUAL_USER_E2E_UNITS_ROOT"));
         workspace = evidenceDir.resolve("workspace");
         pythonHome = env("HAITLIFY_REAL_DUAL_USER_E2E_PYTHON");
         String agentDir = env("HAITLIFY_REAL_DUAL_USER_E2E_AGENT_DIR");
@@ -156,7 +154,8 @@ class RealModelDualUserUnitPoolEndToEndTest {
 
         if (!Files.isRegularFile(baseProfile.resolve("config.yaml"))
             || !Files.isRegularFile(baseProfile.resolve(".env"))
-            || !Files.isRegularFile(Path.of(pythonHome))) {
+            || !Files.isRegularFile(Path.of(pythonHome)) || !Files.isExecutable(Path.of(pythonHome))
+            || !Files.isDirectory(Path.of(agentDir))) {
             throw new IllegalStateException("真实 E2E 前置缺失：需要基准 profile(" + baseProfile
                 + " 的 config.yaml 与 .env) 与解释器 " + pythonHome);
         }
@@ -195,7 +194,7 @@ class RealModelDualUserUnitPoolEndToEndTest {
 
         // 单进程（池关掉）形状下写条目需要显式的网关配置文件路径：只有这样上下文才装配得出
         // GatewayMcpControl/GatewayMcpConfigurator。阳性运行不设置它，属性集合因此与之前完全一致；
-        // 负向对照把它指向临时 HERMES_HOME 里的 config.yaml 副本（绝不指向真实的 ~/.hermes/config.yaml）。
+        // 负向对照把它指向临时 HERMES_HOME 里的 config.yaml 副本（绝不指向操作者默认 Hermes 配置目录中的 config.yaml）。
         String gatewayConfigPath = envOrDefault("HAITLIFY_REAL_DUAL_USER_E2E_GATEWAY_CONFIG_PATH", "");
         if (!gatewayConfigPath.isBlank()) {
             registry.add("app.assistant.conversation.mcp-lease.gateway-config-path", () -> gatewayConfigPath);
@@ -839,27 +838,27 @@ class RealModelDualUserUnitPoolEndToEndTest {
     /**
      * 从网关日志里取「这一轮真的调了什么工具」。
      *
-     * <p>两个来源，优先用单元自己的（{@code <unit>/logs/agent.log}，天生按单元归属）；没有则退回宿主
-     * {@code ~/.hermes/logs/agent.log}，并按 prompt 首部的标记先定位 session，再只取该 session 的行——
-     * 全局日志里同时有别的 Hermes 会话，不过滤就等于把别人的调用算进来。
+     * <p>只读取单元自己的 {@code <unit>/logs/agent.log}，不搜索操作者默认 Hermes 配置目录。
+     * 单元日志缺失时保持空证据并由原断言失败，绝不把别人的调用算进来。
      */
     private void collectToolCalls(User user) {
         List<Path> candidates = new ArrayList<>();
-        List<Boolean> ownLog = new ArrayList<>();
         if (user.home != null) {
             Path unitLog = user.home.resolve("logs/agent.log");
             if (Files.isRegularFile(unitLog)) {
                 candidates.add(unitLog);
-                ownLog.add(true);
             }
-        }
-        Path global = Path.of(System.getProperty("user.home"), ".hermes", "logs", "agent.log");
-        if (Files.isRegularFile(global)) {
-            candidates.add(global);
-            ownLog.add(false);
         }
         for (int index = 0; index < candidates.size(); index++) {
             Path log = candidates.get(index);
+            try {
+                if (!log.toRealPath().startsWith(unitsRoot.toRealPath())
+                    || !log.toRealPath().startsWith(user.home.toRealPath())) {
+                    continue;
+                }
+            } catch (Exception unowned) {
+                continue;
+            }
             try (var lines = Files.lines(log, StandardCharsets.UTF_8)) {
                 List<String> all = lines.toList();
                 List<String> sessions = new ArrayList<>(user.sessions);
@@ -875,18 +874,9 @@ class RealModelDualUserUnitPoolEndToEndTest {
                         }
                     }
                 }
-                // 单元自己的日志整份都属于它；全局日志里同时有别的 Hermes 会话，只能按 session 过滤——
-                // 定不到 session 就一行都不算（宁缺勿滥，绝不把别人的调用算进来）。
-                if (!ownLog.get(index) && sessions.isEmpty()) {
-                    continue;
-                }
                 for (String line : all) {
                     Matcher call = TOOL_CALL.matcher(line);
                     if (!call.find()) {
-                        continue;
-                    }
-                    boolean owned = ownLog.get(index) || sessions.stream().anyMatch(line::contains);
-                    if (!owned) {
                         continue;
                     }
                     user.toolCalls.add(call.group(1) + " " + call.group(2));
@@ -900,9 +890,7 @@ class RealModelDualUserUnitPoolEndToEndTest {
                     }
                 }
                 if (!user.toolCalls.isEmpty()) {
-                    user.toolCallSource = log.startsWith(String.valueOf(user.home))
-                        ? "unit-local:" + log.getFileName() : "host-global:" + log.getFileName()
-                            + "（按 prompt 标记定 session 后过滤）";
+                    user.toolCallSource = "unit-local:" + log.getFileName();
                     for (String session : sessions) {
                         if (!user.sessions.contains(session)) {
                             user.sessions.add(session);
@@ -1413,6 +1401,10 @@ class RealModelDualUserUnitPoolEndToEndTest {
         String value = System.getenv(name);
         if (value == null || value.isBlank()) {
             throw new IllegalStateException("真实 E2E 需要环境变量 " + name + "（默认套件不会跑到这里）");
+        }
+        Path path = Path.of(value);
+        if (!path.isAbsolute() || path.normalize().getParent() == null || !path.equals(path.normalize())) {
+            throw new IllegalStateException("真实 E2E 需要显式的隔离绝对路径: " + name);
         }
         return value;
     }

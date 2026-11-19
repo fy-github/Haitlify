@@ -69,7 +69,8 @@ class CleanupTests(unittest.TestCase):
         import platform
         import worker_lifecycle as lc
         import tempfile
-        with tempfile.NamedTemporaryFile() as source, \
+        from worker_test_paths import scratch_root
+        with tempfile.NamedTemporaryFile(dir=scratch_root()) as source, \
                 patch.object(lc.sys, 'version_info', (3,14,7)), \
                 patch.object(platform, 'machine', return_value='aarch64'), \
                 patch.object(platform, 'libc_ver', return_value=('glibc', '2.41')), \

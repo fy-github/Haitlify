@@ -28,14 +28,17 @@ def main():
     spec.loader.exec_module(engine)
     oracle = engine.oracle
     targets = {
+        # Python 3.9 attributes a failed context exit to the final body line;
+        # 3.10+ attributes it to the with statement. Accept one exact frame only.
         'tools-open': oracle('test_gate.GateTests.test_gate_refuses_missing_extra_duplicate_and_typo',
-                             21, r'GateRejected not raised', {'bad': None}, {'bad': None}),
+                             22 if sys.version_info < (3, 10) else 21,
+                             r'GateRejected not raised', {'bad': None}, {'bad': None}),
         'provider-gate-open': oracle('test_edge.EdgeTests.test_process_configure_deny_proxy_and_cleanup',
-                                     88, r'200 != 403', {'role': 'provider', 'bad': []}, {'role': 'provider'}),
-        # The extra-field scenario is prompt.submit timeout=9999 at L221,
-        # not session.create L211: the latter is independently fenced in serve.
+                                     131, r'200 != 403', {'role': 'provider', 'bad': []}, {'role': 'provider'}),
+        # The extra-field scenario is prompt.submit timeout=9999 at L257,
+        # not session.create L247: the latter is independently fenced in serve.
         'rpc-extra-open': oracle('test_worker_rpc.SubprocessTests.test_closed_fields_unknown_method_and_oversize_prompt',
-                                 221, r"'error' not found in .*"),
+                                 257, r"'error' not found in .*"),
         'cleanup-fence-open': oracle('test_provisioner.ProvisionerTests.test_plan_scoped_isolation_and_fenced_cleanup',
                                      31, r'Rejected not raised', {'labels': {}}),
         'lease-reuse-open': oracle('test_protocol.ProtocolTests.test_closed_config_and_fencing',

@@ -31,7 +31,7 @@ import tools.jackson.databind.ObjectMapper;
  *   <li>根内 → 一条 WARN 都没有，启动照旧；</li>
  *   <li>根外 → <b>WARN</b>（文案必须说清「每建一个单元重装一次运行时，秒级变分钟级」）且<b>启动成功</b>；</li>
  *   <li>根外 + {@code require-root-under-hermes-root=true} → <b>启动失败</b>（且在碰任何目录之前）；</li>
- *   <li>推导不出 Hermes 根 → 只 WARN 一次，不猜路径、不默认 {@code ~/.hermes}。</li>
+ *   <li>推导不出 Hermes 根 → 只 WARN 一次，不猜路径、不默认操作者配置目录。</li>
  * </ol>
  *
  * <p>路径比较必须是<b>路径段</b>比较：{@code <home>/.hermesX} 不在 {@code <home>/.hermes} 之下，

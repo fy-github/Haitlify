@@ -3,23 +3,73 @@
 #
 # 只切属性，不改用例断言：
 #   app.assistant.conversation.execution-units.enabled = false   （= 装配退回 SingleGatewayUnits）
-# 另外两个属性是「单进程形状能启动」的必要条件，仍然只指向临时目录，绝不指向真实的 ~/.hermes：
+# 另外两个属性是「单进程形状能启动」的必要条件，仍然只指向临时目录，绝不指向操作者默认 Hermes 配置目录：
 #   HERMES_HOME                                            = <证据目录>/neg-home
 #   app.assistant.conversation.mcp-lease.gateway-config-path = <证据目录>/neg-home/config.yaml（基准 profile 的副本）
 #
 # 期望结果：**必然失败**。脚本退出码 0 = 如预期失败；5 = 意外通过（说明用例没有区分能力）。
 set -uo pipefail
 
-ROOT=/Users/lify/project/Haitlify
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../../.." && pwd)"
 PLATFORM="$ROOT/server/platform"
-BASE_PROFILE="$HOME/.hermes/profiles/haitlify-e2e"
-EVID="$HOME/.hermes/cache/scratch/dual-user-e2e/negative-control"
+# isolated-inputs: canonicalize and validate every path before any write, copy or rm.
+canonical_path() {
+  local path="$1" parent leaf suffix resolved
+  while [[ "$path" == */ && "$path" != / ]]; do path="${path%/}"; done
+  if [[ -e "$path" ]]; then
+    if [[ -d "$path" ]]; then
+      (cd -P "$path" && pwd -P)
+    else
+      /bin/realpath "$path"
+    fi
+    return
+  fi
+  parent="$path"
+  while [[ ! -e "$parent" && "$parent" != / ]]; do
+    parent="${parent%/*}"; [[ -z "$parent" ]] && parent=/
+  done
+  [[ -d "$parent" ]] || return 1
+  suffix="${path#"$parent"}"
+  resolved="$(cd -P "$parent" && pwd -P)" || return 1
+  printf '%s%s\n' "$resolved" "$suffix"
+}
+require_path() {
+  local name="$1" value="${!1:-}" canonical
+  if [[ -z "$value" || "$value" != /* || "$value" == .. || "$value" == ../* || "$value" == */../* || "$value" == */.. ]]; then
+    echo "required absolute isolated path: $name" >&2; exit 2
+  fi
+  canonical="$(canonical_path "$value")" || { echo "cannot canonicalize path: $name" >&2; exit 2; }
+  [[ "$canonical" != / ]] || { echo "refusing filesystem root: $name" >&2; exit 2; }
+  printf -v "$name" '%s' "$canonical"
+}
+path_overlaps() {
+  [[ "$1" == "$2" || "$1" == "$2/"* || "$2" == "$1/"* ]]
+}
+for name in HAITLIFY_REAL_DUAL_USER_E2E_BASE_PROFILE HAITLIFY_REAL_DUAL_USER_E2E_EVIDENCE_DIR HAITLIFY_REAL_DUAL_USER_E2E_PYTHON HAITLIFY_REAL_DUAL_USER_E2E_AGENT_DIR; do
+  require_path "$name"
+done
+BASE_PROFILE="$HAITLIFY_REAL_DUAL_USER_E2E_BASE_PROFILE"
+EVID="$HAITLIFY_REAL_DUAL_USER_E2E_EVIDENCE_DIR"
+PY="$HAITLIFY_REAL_DUAL_USER_E2E_PYTHON"
+AGENT_DIR="$HAITLIFY_REAL_DUAL_USER_E2E_AGENT_DIR"
+if [[ ! -f "$BASE_PROFILE/config.yaml" || ! -f "$BASE_PROFILE/.env" || ! -x "$PY" || ! -d "$AGENT_DIR" ]]; then
+  echo "required valid profile, executable Python and agent directory" >&2; exit 2
+fi
+for source in "$BASE_PROFILE" "$AGENT_DIR" "$PY"; do
+  if path_overlaps "$source" "$EVID"; then
+    echo "evidence directory overlaps a protected input" >&2; exit 2
+  fi
+done
+OWNERSHIP="$EVID/.haitlify-run-negative-control-owned"
+if [[ -e "$EVID" ]]; then
+  [[ -d "$EVID" && -f "$OWNERSHIP" && "$(<"$OWNERSHIP")" == "haitlify-run-negative-control-v1" ]] || {
+    echo "evidence directory is not an owned retry root" >&2; exit 2;
+  }
+else
+  mkdir -p "$EVID" || exit 2
+  printf '%s\n' 'haitlify-run-negative-control-v1' > "$OWNERSHIP" || exit 2
+fi
 NEG_HOME="$EVID/neg-home"
-PY="$HOME/.hermes/hermes-agent/venv/bin/python"
-AGENT_DIR="$HOME/.hermes/hermes-agent"
-export JAVA_HOME=/opt/homebrew/Cellar/openjdk@21/21.0.11/libexec/openjdk.jdk/Contents/Home
-
-mkdir -p "$EVID"
 rm -rf "$EVID/units" "$EVID/workspace" "$NEG_HOME"
 mkdir -p "$EVID/units" "$NEG_HOME"
 
@@ -30,7 +80,7 @@ chmod 600 "$NEG_HOME/config.yaml" "$NEG_HOME/.env"
 {
   echo "negHome=$NEG_HOME"
   echo "negHomeConfigSha256Before=$(shasum -a 256 "$NEG_HOME/config.yaml" | cut -d' ' -f1)"
-  echo "negHomeUnderHermes=$([[ "$NEG_HOME" == "$HOME/.hermes/"* ]] && echo yes || echo no)"
+  echo "negHomeUnderEvidence=yes"
   echo "realUserConfigTouched=no（平台只写 negHome 里的副本）"
 } > "$EVID/neg-00-environment.txt"
 
@@ -59,7 +109,7 @@ RC=$?
 echo "mvn rc=$RC"
 
 # 失败点原文：surefire 报告里的 failure/error message + 前 80 行堆栈。
-python3 - "$EVID" <<'PY'
+/usr/bin/python3 - "$EVID" <<'PY'
 import glob, sys, xml.etree.ElementTree as ET, html, os
 evid = sys.argv[1]
 out = []
@@ -88,7 +138,7 @@ open(os.path.join(evid, "failure-point.txt"), "w").write("\n".join(out) + "\n")
 PY
 
 # 单进程形状下条目可能残留在副本里：先把 URL 脱敏再留证，然后删掉整个临时 home。
-python3 - "$NEG_HOME" "$EVID" <<'PY'
+/usr/bin/python3 - "$NEG_HOME" "$EVID" <<'PY'
 import re, sys, os, hashlib
 neg_home, evid = sys.argv[1], sys.argv[2]
 path = os.path.join(neg_home, "config.yaml")
@@ -104,7 +154,8 @@ PY
 
 rm -rf "$NEG_HOME" "$EVID/units" "$EVID/workspace"
 echo "cleanup: negHomeRemoved=$([[ -e "$NEG_HOME" ]] && echo no || echo yes) unitsLeft=$(ls -1 "$EVID/units" 2>/dev/null | wc -l | tr -d ' ')"
-echo "stray gateway subprocesses (neg-home): $(ps -Ao command | grep -F "$NEG_HOME" | grep -v grep | wc -l | tr -d ' ')"
+STRAY_NEG_HOME=$(ps -Ao command | grep -F "$NEG_HOME" | grep -v grep | wc -l | tr -d ' ')
+echo "stray gateway subprocesses (neg-home): $STRAY_NEG_HOME"
 
 if grep -q "^\[INFO\] BUILD SUCCESS" "$EVID/mvn-run.log"; then
   echo "UNEXPECTED-PASS: 池关掉后用例仍然通过 —— 该用例没有区分能力"

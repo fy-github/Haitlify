@@ -8,9 +8,9 @@ import sys
 import tempfile
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-SCRATCH = pathlib.Path.home() / '.hermes/cache/scratch'
-LOGS = SCRATCH / 'worker-control-fix2'
-LOGS.mkdir(exist_ok=True)
+from worker_test_paths import scratch_root
+SCRATCH = scratch_root()
+LOGS = pathlib.Path(tempfile.mkdtemp(prefix='worker-control-fix2-', dir=SCRATCH))
 CASES = [
     ('skip-readback', 'provisioner.py', '            verify_receipt(status, expected, args.role, revoked)', '            pass'),
     ('skip-ack', 'provisioner.py', '            verify_receipt(receipt, expected, args.role, revoked)', '            pass'),

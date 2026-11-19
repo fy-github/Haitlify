@@ -16,6 +16,7 @@ import sys
 import tempfile
 import threading
 import time
+from worker_test_paths import scratch_root
 
 TESTS = pathlib.Path(__file__).resolve().parent
 REPO = TESTS.parents[3]
@@ -139,9 +140,12 @@ def scenario(mode, root, cp):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--m2', type=pathlib.Path, default=pathlib.Path.home() / '.m2/repository')
-    parser.add_argument('--scratch', type=pathlib.Path, default=pathlib.Path.home() / '.hermes/cache/scratch')
+    parser.add_argument('--m2', type=pathlib.Path, default=pathlib.Path.home() / '.m2/repository',
+                        help='local Maven cache (operator-default home); override for CI')
+    parser.add_argument('--scratch', type=pathlib.Path, default=scratch_root())
     args = parser.parse_args()
+    args.scratch = args.scratch.expanduser().resolve()
+    args.scratch.mkdir(parents=True, exist_ok=True)
     jars = [args.m2 / name for name in JARS]
     missing = [str(p) for p in jars if not p.is_file()]
     if missing:

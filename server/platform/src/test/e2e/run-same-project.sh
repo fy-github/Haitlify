@@ -5,15 +5,66 @@
 set -uo pipefail
 
 MODE="${1:-h2}"
-ROOT=/Users/lify/project/Haitlify
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../../.." && pwd)"
 PLATFORM="$ROOT/server/platform"
-EVID="$HOME/.hermes/cache/scratch/dual-user-e2e/same-project/$MODE"
-BASE_PROFILE="$HOME/.hermes/profiles/haitlify-e2e"
-PY="$HOME/.hermes/hermes-agent/venv/bin/python"
-AGENT_DIR="$HOME/.hermes/hermes-agent"
-export JAVA_HOME=/opt/homebrew/Cellar/openjdk@21/21.0.11/libexec/openjdk.jdk/Contents/Home
-
-mkdir -p "$EVID"
+# isolated-inputs: canonicalize and validate every path before any write, copy or rm.
+canonical_path() {
+  local path="$1" parent leaf suffix resolved
+  while [[ "$path" == */ && "$path" != / ]]; do path="${path%/}"; done
+  if [[ -e "$path" ]]; then
+    if [[ -d "$path" ]]; then
+      (cd -P "$path" && pwd -P)
+    else
+      /bin/realpath "$path"
+    fi
+    return
+  fi
+  parent="$path"
+  while [[ ! -e "$parent" && "$parent" != / ]]; do
+    parent="${parent%/*}"; [[ -z "$parent" ]] && parent=/
+  done
+  [[ -d "$parent" ]] || return 1
+  suffix="${path#"$parent"}"
+  resolved="$(cd -P "$parent" && pwd -P)" || return 1
+  printf '%s%s\n' "$resolved" "$suffix"
+}
+require_path() {
+  local name="$1" value="${!1:-}" canonical
+  if [[ -z "$value" || "$value" != /* || "$value" == .. || "$value" == ../* || "$value" == */../* || "$value" == */.. ]]; then
+    echo "required absolute isolated path: $name" >&2; exit 2
+  fi
+  canonical="$(canonical_path "$value")" || { echo "cannot canonicalize path: $name" >&2; exit 2; }
+  [[ "$canonical" != / ]] || { echo "refusing filesystem root: $name" >&2; exit 2; }
+  printf -v "$name" '%s' "$canonical"
+}
+path_overlaps() {
+  [[ "$1" == "$2" || "$1" == "$2/"* || "$2" == "$1/"* ]]
+}
+case "$MODE" in h2|mysql) ;; *) echo "required mode: h2 or mysql" >&2; exit 2;; esac
+for name in HAITLIFY_REAL_SAME_PROJECT_E2E_BASE_PROFILE HAITLIFY_REAL_SAME_PROJECT_E2E_EVIDENCE_DIR HAITLIFY_REAL_SAME_PROJECT_E2E_PYTHON HAITLIFY_REAL_SAME_PROJECT_E2E_AGENT_DIR; do
+  require_path "$name"
+done
+BASE_PROFILE="$HAITLIFY_REAL_SAME_PROJECT_E2E_BASE_PROFILE"
+EVID="$HAITLIFY_REAL_SAME_PROJECT_E2E_EVIDENCE_DIR"
+PY="$HAITLIFY_REAL_SAME_PROJECT_E2E_PYTHON"
+AGENT_DIR="$HAITLIFY_REAL_SAME_PROJECT_E2E_AGENT_DIR"
+if [[ ! -f "$BASE_PROFILE/config.yaml" || ! -f "$BASE_PROFILE/.env" || ! -x "$PY" || ! -d "$AGENT_DIR" ]]; then
+  echo "required valid profile, executable Python and agent directory" >&2; exit 2
+fi
+for source in "$BASE_PROFILE" "$AGENT_DIR" "$PY"; do
+  if path_overlaps "$source" "$EVID"; then
+    echo "evidence directory overlaps a protected input" >&2; exit 2
+  fi
+done
+OWNERSHIP="$EVID/.haitlify-run-same-project-owned"
+if [[ -e "$EVID" ]]; then
+  [[ -d "$EVID" && -f "$OWNERSHIP" && "$(<"$OWNERSHIP")" == "haitlify-run-same-project-v1" ]] || {
+    echo "evidence directory is not an owned retry root" >&2; exit 2
+  }
+else
+  mkdir -p "$EVID" || exit 2
+  printf '%s\n' 'haitlify-run-same-project-v1' > "$OWNERSHIP" || exit 2
+fi
 rm -rf "$EVID/units" "$EVID/workspace"
 mkdir -p "$EVID/units"
 
@@ -52,7 +103,7 @@ rm -rf target/surefire-reports
   > "$EVID/mvn-run.log" 2>&1
 RC=$?
 echo "mvn rc=$RC"
-python3 - "$MODE" <<'PY'
+/usr/bin/python3 - "$MODE" <<'PY'
 import glob, sys, xml.etree.ElementTree as ET
 tests = failures = errors = skipped = 0
 for path in glob.glob("target/surefire-reports/TEST-*.xml"):

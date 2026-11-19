@@ -20,6 +20,9 @@ import sys
 import tempfile
 import time
 from typing import Any
+# Also loaded by file path from scripts/preflight, outside this tests directory.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from worker_test_paths import scratch_root
 
 ROOT = Path(__file__).resolve().parents[1]
 CASES = [
@@ -56,21 +59,24 @@ def oracle(test, line, message, locals_expected=None, subtest=None, function=Non
 
 RPC_ORACLES = {
     'ack': oracle('test_worker_rpc.SubprocessTests.test_java_subset_create_ack_and_terminal_event',
-                  286, r".*complete.*accepted.*"),
+                  319, r".*complete.*accepted.*"),
     'event-envelope': oracle('test_worker_rpc.SubprocessTests.test_java_subset_create_ack_and_terminal_event',
-                             287, r".*message\.complete.*event.*"),
+                             320, r".*message\.complete.*event.*"),
     'single-submit': oracle('test_worker_rpc.SubprocessTests.test_single_submission_retries_are_errors_not_cached_success',
-                           173, r"'error' not found in .*", {'rid': 'same'}),
+                           209, r"'error' not found in .*", {'rid': 'same'}),
     'create-gate': oracle('test_worker_rpc.SubprocessTests.test_initialization_gate_failure_never_admits_prompt',
-                         63, r"'error' not found in .*", {'mode': 'badtools'}, {'mode': 'badtools'}),
+                         99, r"'error' not found in .*", {'mode': 'badtools'}, {'mode': 'badtools'}),
     'strict-result': oracle('test_worker_rpc.AdmissionTests.test_malformed_result_flags_never_promote_success',
-                           304, r".*complete.*error.*", {'value': False}),
+                           337, r".*complete.*error.*", {'value': False}),
+    # Context-exit traceback attribution changed in Python 3.10; keep the
+    # expected frame exact for this interpreter rather than accepting both.
     'bounded-lifetime': oracle('test_worker_rpc.AdmissionTests.test_trusted_lifetime_is_bounded_and_finite',
-                              320, r'Denied not raised', {'value': '301'}, {'value': '301'}),
+                              353 if sys.version_info < (3, 10) else 352,
+                              r'Denied not raised', {'value': '301'}, {'value': '301'}),
     'cwd': oracle('test_worker_rpc.SubprocessTests.test_closed_fields_unknown_method_and_oversize_prompt',
-                  211, r"'error' not found in .*", {'params': {'cwd': '/state'}}),
+                  247, r"'error' not found in .*", {'params': {'cwd': '/state'}}),
     'supervisor-sigterm': oracle('test_worker_signals.SignalTests.test_sigterm_during_running_turn_reaps_ignoring_group',
-                                67, r'True is not false : owned processes remain: .*',
+                                75, r'True is not false : owned processes remain: .*',
                                 {'phase': 'run', 'action': 'sigterm'}, function='exercise'),
 }
 
@@ -203,7 +209,7 @@ def run_test(pool, target, directory, timeout):
         try:
             proc = subprocess.Popen(command, cwd=pool, stdout=out, stderr=err,
                 start_new_session=True, env=dict(os.environ, PYTHONDONTWRITEBYTECODE='1',
-                    TMPDIR=str(Path.home() / '.hermes/cache/scratch')))
+                    TMPDIR=str(scratch_root()), WORKER_TEST_SCRATCH=str(scratch_root())))
             record['pid'] = proc.pid
             while proc.poll() is None:
                 track_owned(process_table(), proc.pid, owned)
@@ -314,9 +320,9 @@ def mutate(original, case, directory):
 
 def run_gate(root, cases, inventory, group, timeout):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--output', type=Path, help='new directory below ~/.hermes/cache/scratch')
+    parser.add_argument('--output', type=Path, help='new directory below <scratch>')
     args = parser.parse_args()
-    scratch = Path.home() / '.hermes/cache/scratch'
+    scratch = scratch_root()
     scratch.mkdir(parents=True, exist_ok=True)
     if args.output:
         out = args.output.expanduser().resolve()

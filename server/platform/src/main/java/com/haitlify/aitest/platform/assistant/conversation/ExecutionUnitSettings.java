@@ -13,7 +13,7 @@ import java.util.Map;
  * <p>参数分成三类，各有各的失败纪律：
  * <ol>
  *   <li><b>基准 profile</b>（{@link #baseProfile()}）与 <b>单元目录根</b>（{@link #unitsRoot()}）：只从配置里
- *       读，<b>绝不</b>回退到 {@code ~/.hermes/config.yaml} 之类的默认位置——那既是别人的真实配置，也是
+ *       读，<b>绝不</b>回退到操作者默认 Hermes 配置文件——那既是别人的真实配置，也是
  *       「部署方以为在用隔离目录」的静默错误。缺文件在<b>构造时</b>就失败（见 {@link #requireBaseProfile()}），
  *       而不是等第一个用户提交时才失败；</li>
  *   <li><b>池参数</b>（容量、空闲 TTL、回收节拍）：只影响「能不能服务下一轮」，不允许影响正确性；
@@ -79,7 +79,7 @@ record ExecutionUnitSettings(Path baseProfile, Path unitsRoot, List<String> comm
      * <ul>
      *   <li>缺文件时「建单元」会得到一个没有配置的网关。那会退化成「没有 MCP 条目」，
      *       而平台会以为隔离已生效；</li>
-     *   <li><b>符号链接</b>可以指向任何地方（包括真实用户的 {@code ~/.hermes/config.yaml}）。复制链接
+     *   <li><b>符号链接</b>可以指向任何地方（包括真实用户的默认 Hermes 配置文件）。复制链接
      *       目标等于把别人的真实配置搬进单元目录，是本功能明确禁止的那件事；</li>
      *   <li>超大文件只可能是「指错了目录」，与其复制不如拒绝。</li>
      * </ul>

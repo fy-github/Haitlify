@@ -22,7 +22,8 @@ from protocol import Lease
 from test_protocol import grant
 from test_control_atomic import public, wire
 
-SCRATCH = '/Users/lify/.hermes/cache/scratch'
+from worker_test_paths import scratch_root
+SCRATCH = scratch_root()
 
 
 def wait_for(predicate, timeout=3):

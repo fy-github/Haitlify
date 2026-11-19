@@ -12,15 +12,79 @@
 set -uo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-PROFILE_DIR="${HAITLIFY_REAL_DRAFT_E2E_PROFILE:-$HOME/.hermes/profiles/haitlify-e2e}"
-SCRATCH="${HAITLIFY_REAL_DRAFT_E2E_SCRATCH:-$HOME/.hermes/cache/scratch/real-draft-e2e}"
+# isolated-inputs: canonicalize and validate every path before any write, copy or rm.
+canonical_path() {
+  local path="$1" parent suffix resolved
+  while [[ "$path" == */ && "$path" != / ]]; do path="${path%/}"; done
+  if [[ -e "$path" ]]; then
+    if [[ -d "$path" ]]; then
+      (cd -P "$path" && pwd -P)
+    else
+      /bin/realpath "$path"
+    fi
+    return
+  fi
+  parent="$path"
+  while [[ ! -e "$parent" && "$parent" != / ]]; do
+    parent="${parent%/*}"; [[ -z "$parent" ]] && parent=/
+  done
+  [[ -d "$parent" ]] || return 1
+  suffix="${path#"$parent"}"
+  resolved="$(cd -P "$parent" && pwd -P)" || return 1
+  printf '%s%s\n' "$resolved" "$suffix"
+}
+require_path() {
+  local name="$1" value="${!1:-}" canonical
+  if [[ -z "$value" || "$value" != /* || "$value" == .. || "$value" == ../* || "$value" == */../* || "$value" == */.. ]]; then
+    echo "required absolute isolated path: $name" >&2; exit 2
+  fi
+  canonical="$(canonical_path "$value")" || { echo "cannot canonicalize path: $name" >&2; exit 2; }
+  [[ "$canonical" != / ]] || { echo "refusing filesystem root: $name" >&2; exit 2; }
+  printf -v "$name" '%s' "$canonical"
+}
+path_overlaps() {
+  [[ "$1" == "$2" || "$1" == "$2/"* || "$2" == "$1/"* ]]
+}
+for name in HAITLIFY_REAL_DRAFT_E2E_PROFILE HAITLIFY_REAL_DRAFT_E2E_SCRATCH HAITLIFY_REAL_DRAFT_E2E_EVIDENCE_DIR HAITLIFY_REAL_DRAFT_E2E_AGENT_DIR HAITLIFY_REAL_DRAFT_E2E_PYTHON; do
+  require_path "$name"
+done
+PROFILE_DIR="$HAITLIFY_REAL_DRAFT_E2E_PROFILE"
+SCRATCH="$HAITLIFY_REAL_DRAFT_E2E_SCRATCH"
+EVIDENCE_DIR="$HAITLIFY_REAL_DRAFT_E2E_EVIDENCE_DIR"
+AGENT_DIR="$HAITLIFY_REAL_DRAFT_E2E_AGENT_DIR"
+PYTHON="$HAITLIFY_REAL_DRAFT_E2E_PYTHON"
 HOME_DIR="$SCRATCH/hermes-home"
-EVIDENCE_DIR="${HAITLIFY_REAL_DRAFT_E2E_EVIDENCE_DIR:-$SCRATCH}"
-AGENT_DIR="${HAITLIFY_REAL_DRAFT_E2E_AGENT_DIR:-$HOME/.hermes/hermes-agent}"
-PYTHON="${HAITLIFY_REAL_DRAFT_E2E_PYTHON:-$AGENT_DIR/venv/bin/python3}"
+if [[ ! -f "$PROFILE_DIR/config.yaml" || ! -x "$PYTHON" || ! -d "$AGENT_DIR" ]]; then
+  echo "required valid profile, executable Python and agent directory" >&2; exit 2
+fi
+for source in "$PROFILE_DIR" "$AGENT_DIR" "$PYTHON"; do
+  if path_overlaps "$source" "$SCRATCH" || path_overlaps "$source" "$EVIDENCE_DIR"; then
+    echo "output directory overlaps a protected input" >&2; exit 2
+  fi
+done
+if path_overlaps "$SCRATCH" "$EVIDENCE_DIR"; then
+  echo "scratch and evidence directories overlap" >&2; exit 2
+fi
+SCRATCH_OWNER="$SCRATCH/.haitlify-real-draft-e2e-owned"
+if [[ -e "$SCRATCH" ]]; then
+  [[ -d "$SCRATCH" && -f "$SCRATCH_OWNER" && "$(<"$SCRATCH_OWNER")" == "haitlify-real-draft-e2e-v1" ]] || {
+    echo "scratch directory is not an owned retry root" >&2; exit 2;
+  }
+else
+  mkdir -p "$SCRATCH" || exit 2
+  printf '%s\n' 'haitlify-real-draft-e2e-v1' > "$SCRATCH_OWNER" || exit 2
+fi
+EVIDENCE_OWNER="$EVIDENCE_DIR/.haitlify-real-draft-e2e-evidence-owned"
+if [[ -e "$EVIDENCE_DIR" ]]; then
+  [[ -d "$EVIDENCE_DIR" && -f "$EVIDENCE_OWNER" && "$(<"$EVIDENCE_OWNER")" == "haitlify-real-draft-e2e-evidence-v1" ]] || {
+    echo "evidence directory is not an owned retry root" >&2; exit 2;
+  }
+else
+  mkdir -p "$EVIDENCE_DIR" || exit 2
+  printf '%s\n' 'haitlify-real-draft-e2e-evidence-v1' > "$EVIDENCE_OWNER" || exit 2
+fi
 PORT="${HAITLIFY_REAL_DRAFT_E2E_PORT:-18080}"
 LOG="$EVIDENCE_DIR/mvn-run.log"
-mkdir -p "$EVIDENCE_DIR"
 
 MYSQL_CONTAINER="${HAITLIFY_REAL_DRAFT_E2E_MYSQL_CONTAINER:-haitlify-isolated-mysql}"
 DB_URL="${HAITLIFY_REAL_DRAFT_E2E_DB_URL:-}"
@@ -87,7 +151,7 @@ cleanup() {
   fi
   rm -f "$SCRATCH/.haitlify-mcp-"*.tmp 2>/dev/null || true
 }
-trap cleanup EXIT
+
 
 if [ ! -f "$PROFILE_DIR/config.yaml" ]; then
   echo "profile 缺失：$PROFILE_DIR/config.yaml" >&2
@@ -101,6 +165,9 @@ if lsof -nP -iTCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1; then
   echo "端口 $PORT 已被占用（E2E 需要可预测的 public-base-url）" >&2
   exit 1
 fi
+
+mkdir -p "$EVIDENCE_DIR" || exit 2
+trap cleanup EXIT
 
 # 真库模式：先解出凭据并做连接自检；失败就退出 2（不跑 Flyway，不留半启动状态）。
 if [ -n "$DB_URL" ]; then

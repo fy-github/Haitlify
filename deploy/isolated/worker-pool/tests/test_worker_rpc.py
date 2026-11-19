@@ -10,8 +10,8 @@ import os
 import select
 import subprocess
 import tempfile
+from worker_test_paths import scratch_root
 import time
-
 POOL = pathlib.Path(__file__).resolve().parents[1]
 
 
@@ -83,7 +83,7 @@ class Wire:
 class SubprocessTests(unittest.TestCase):
     def test_rescue_ignores_reaped_reused_and_unknown_pid_records(self):
         import unittest.mock
-        with tempfile.TemporaryDirectory() as directory, \
+        with tempfile.TemporaryDirectory(dir=scratch_root()) as directory, \
                 unittest.mock.patch('os.kill', side_effect=AssertionError('signal attempted')), \
                 unittest.mock.patch('os.killpg', side_effect=AssertionError('group signal attempted')):
             pathlib.Path(directory, 'pids').write_text(json.dumps([1, os.getpid(), 999999999]))
@@ -91,7 +91,7 @@ class SubprocessTests(unittest.TestCase):
 
     def test_initialization_gate_failure_never_admits_prompt(self):
         for mode in ('badtools', 'exception'):
-            with self.subTest(mode=mode), tempfile.TemporaryDirectory() as directory:
+            with self.subTest(mode=mode), tempfile.TemporaryDirectory(dir=scratch_root()) as directory:
                 wire = Wire(directory, mode=mode)
                 try:
                     wire.send('session.create', {})
@@ -107,7 +107,7 @@ class SubprocessTests(unittest.TestCase):
                     wire.close()
 
     def test_health_and_eof_remain_live_during_initialization(self):
-        with tempfile.TemporaryDirectory() as directory:
+        with tempfile.TemporaryDirectory(dir=scratch_root()) as directory:
             wire = Wire(directory, mode='block')
             try:
                 wire.send('session.create', {}, 'create')
@@ -127,7 +127,7 @@ class SubprocessTests(unittest.TestCase):
                 wire.close()
 
     def test_entry_does_not_depend_on_pythonpath_or_cwd(self):
-        with tempfile.TemporaryDirectory() as directory:
+        with tempfile.TemporaryDirectory(dir=scratch_root()) as directory:
             env = dict(os.environ, RPC_TEST_DIR=directory, POOL_MAX_LIFETIME_SECONDS='5')
             env.pop('PYTHONPATH', None)
             code = ('import sys; sys.path[:0]=' + repr([str(POOL), str(POOL / 'tests')]) +
@@ -151,7 +151,7 @@ class SubprocessTests(unittest.TestCase):
 
     def test_interrupt_eof_close_and_deadline_reap_process_group(self):
         for action in ('session.interrupt', 'session.close', 'eof', 'deadline'):
-            with self.subTest(action=action), tempfile.TemporaryDirectory() as directory:
+            with self.subTest(action=action), tempfile.TemporaryDirectory(dir=scratch_root()) as directory:
                 wire = Wire(directory, lifetime='1' if action == 'deadline' else '20')
                 try:
                     wire.send('session.create', {})
@@ -194,7 +194,7 @@ class SubprocessTests(unittest.TestCase):
                     wire.close()
 
     def test_single_submission_retries_are_errors_not_cached_success(self):
-        with tempfile.TemporaryDirectory() as directory:
+        with tempfile.TemporaryDirectory(dir=scratch_root()) as directory:
             wire = Wire(directory)
             try:
                 wire.send('session.create', {})
@@ -222,7 +222,7 @@ class SubprocessTests(unittest.TestCase):
 
     def test_result_error_interrupted_and_exception_are_sanitized(self):
         for text, status in [('error','error'), ('interrupted','interrupted'), ('exception','error')]:
-            with self.subTest(text=text), tempfile.TemporaryDirectory() as directory:
+            with self.subTest(text=text), tempfile.TemporaryDirectory(dir=scratch_root()) as directory:
                 wire = Wire(directory)
                 try:
                     wire.send('session.create', {})
@@ -239,7 +239,7 @@ class SubprocessTests(unittest.TestCase):
                     wire.close()
 
     def test_closed_fields_unknown_method_and_oversize_prompt(self):
-        with tempfile.TemporaryDirectory() as directory:
+        with tempfile.TemporaryDirectory(dir=scratch_root()) as directory:
             wire = Wire(directory)
             try:
                 for params in ({'cwd':'/state'}, {'cwd':'/workspace/'}, {'cwd':None}, {'model':'evil'}, {'expiry':9999999999}):
@@ -265,7 +265,7 @@ class SubprocessTests(unittest.TestCase):
                 wire.close()
 
     def test_oversize_unterminated_frame_kills_running_agent(self):
-        with tempfile.TemporaryDirectory() as directory:
+        with tempfile.TemporaryDirectory(dir=scratch_root()) as directory:
             wire = Wire(directory)
             try:
                 wire.send('session.create', {})
@@ -284,7 +284,7 @@ class SubprocessTests(unittest.TestCase):
 
     def test_deadline_survives_stopped_child_and_full_prompt_pipe(self):
         import signal
-        with tempfile.TemporaryDirectory() as directory:
+        with tempfile.TemporaryDirectory(dir=scratch_root()) as directory:
             wire = Wire(directory, lifetime='1')
             try:
                 wire.send('session.create', {})
@@ -305,7 +305,7 @@ class SubprocessTests(unittest.TestCase):
                 wire.close()
 
     def test_java_subset_create_ack_and_terminal_event(self):
-        with tempfile.TemporaryDirectory() as directory:
+        with tempfile.TemporaryDirectory(dir=scratch_root()) as directory:
             wire = Wire(directory)
             try:
                 wire.send('health', {})

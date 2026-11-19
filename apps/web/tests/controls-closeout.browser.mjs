@@ -4,17 +4,20 @@ import { chromium } from 'playwright'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import crypto from 'node:crypto'
+import os from 'node:os'
 import assert from 'node:assert/strict'
 import { fileURLToPath } from 'node:url'
 
 // Isolated component fixture. No App mount, env files, proxy, API or storage.
 const web = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const repo = path.resolve(web, '../..')
-const scratch = '/Users/lify/.hermes/cache/scratch/haitlify-controls-closeout'
+// Only this unique root is disposable; never recursively remove an operator path.
+let scratch
 const phase = process.argv[2] || 'measure'
-const evidence = path.join(repo, 'docs/ui-audit/evidence/ui-closeout/controls', phase)
+const evidence = process.env.CONTROLS_EVIDENCE_DIR
+ ? path.resolve(process.env.CONTROLS_EVIDENCE_DIR)
+ : await fs.mkdtemp(path.join(os.tmpdir(), 'haitlify-controls-evidence-'))
 await fs.mkdir(evidence, { recursive: true })
-await fs.mkdir(scratch, { recursive: true })
 const baselineNames = {
   settings: 'haitlify-settings-v2', jira: 'haitlify-jira-config-v1', users: 'haitlify-users-v1',
   cases: 'recovered/haitlify-cases-v3', reports: 'recovered/haitlify-reports-v1',
@@ -95,6 +98,7 @@ const states = async(page,selector,name)=>{
  return out
 }
 try {
+ scratch = await fs.mkdtemp(path.join(os.tmpdir(), 'haitlify-controls-closeout-'))
  server=await createServer({configFile:false,root:web,envDir:false,cacheDir:path.join(scratch,'vite-cache'),plugins:[{name:'exact-byte-controls-overlay',enforce:'pre',load(id){if(!id.includes('?')&&overlay.has(id))return overlay.get(id)}},vue(),{name:'isolated-controls-fixture',resolveId(id){if(id==='/__controls-fixture.js')return path.join(web,'controls-fixture-entry.js')},load(id){if(id===path.join(web,'controls-fixture-entry.js'))return fixtureEntry},configureServer(s){s.middlewares.use((req,res,next)=>{if(req.url?.startsWith('/__controls-fixture')&&!req.url?.startsWith('/__controls-fixture.js')){res.setHeader('Content-Type','text/html');res.end('<!doctype html><meta name="viewport" content="width=device-width, initial-scale=1"><div id="app"></div><script type="module" src="/__controls-fixture.js"></script>');return}next()})}}],server:{host:'127.0.0.1',port:0,proxy:{},fs:{allow:[web,repo,scratch]}},logLevel:'error'})
  await server.listen()
  const address=server.httpServer.address(), origin='http://127.0.0.1:'+address.port
@@ -206,8 +210,12 @@ try {
  }
  check('no page errors / no backend or external requests',()=>{assert.deepEqual(result.errors,[]);assert.deepEqual(result.blockedRequests,[])})
 } catch(e){result.errors.push(e.stack); process.exitCode=2} finally {
- if(browser) await browser.close()
- if(server) await server.close()
+ try {
+  if(browser) await browser.close()
+  if(server) await server.close()
+ } finally {
+  if(scratch) await fs.rm(scratch, { recursive: true, force: true })
+ }
  result.sourcehashAfter={}
  for(const [file,hash] of Object.entries(result.sourcehash)){
   const source=file.startsWith('baseline/')?path.join(repo,'docs/design-baselines/haitlify',file.slice(9),'index.html'):path.join(web,file)

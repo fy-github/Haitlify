@@ -3,6 +3,7 @@ import importlib.util
 import os
 import pathlib
 import tempfile
+from worker_test_paths import scratch_root
 import unittest
 from unittest.mock import patch
 
@@ -21,7 +22,7 @@ def load_fixture():
 class RpcFixtureCleanupTests(unittest.TestCase):
     def test_fdopen_failure_closes_raw_fd_and_removes_private_temp(self):
         fixture = load_fixture()
-        with tempfile.TemporaryDirectory() as directory:
+        with tempfile.TemporaryDirectory(dir=scratch_root()) as directory:
             target = pathlib.Path(directory) / 'pids'
             real_mkstemp = fixture.tempfile.mkstemp
             opened_fds = []
@@ -43,7 +44,7 @@ class RpcFixtureCleanupTests(unittest.TestCase):
 
     def test_fdopen_failure_preserves_existing_target(self):
         fixture = load_fixture()
-        with tempfile.TemporaryDirectory() as directory:
+        with tempfile.TemporaryDirectory(dir=scratch_root()) as directory:
             target = pathlib.Path(directory) / 'pids'
             target.write_text('[111,222]')
             with patch.object(fixture.os, 'fdopen', side_effect=OSError('fdopen failed')):
@@ -54,7 +55,7 @@ class RpcFixtureCleanupTests(unittest.TestCase):
 
     def test_cleanup_failure_is_chained_without_masking_publish_failure(self):
         fixture = load_fixture()
-        with tempfile.TemporaryDirectory() as directory:
+        with tempfile.TemporaryDirectory(dir=scratch_root()) as directory:
             target = pathlib.Path(directory) / 'pids'
             real_unlink = pathlib.Path.unlink
             temporary = []

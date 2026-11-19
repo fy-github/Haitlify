@@ -18,7 +18,8 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from test_protocol import grant
 
-SCRATCH = os.environ.get('WORKER_TEST_SCRATCH', '/tmp')
+from worker_test_paths import scratch_root
+SCRATCH = scratch_root()
 MCP_BODY = json.dumps({'jsonrpc': '2.0', 'id': 1, 'method': 'tools/list', 'params': {}}).encode()
 
 

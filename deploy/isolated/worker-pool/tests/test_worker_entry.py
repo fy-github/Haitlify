@@ -23,7 +23,8 @@ sys.path.insert(0, str(ROOT))
 import worker
 from gate import EXACT_TOOLS
 
-SCRATCH = os.environ.get('WORKER_TEST_SCRATCH', '/tmp')
+from worker_test_paths import scratch_root
+SCRATCH = scratch_root()
 DEFAULT_MCP_URL = 'http://mcp-edge:8080/mcp'
 DEFAULT_PROVIDER_URL = 'http://provider-edge:8080/v1'
 

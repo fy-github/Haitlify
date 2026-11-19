@@ -71,7 +71,7 @@ import tools.jackson.databind.ObjectMapper;
  * </ul>
  *
  * <p>证据（模型终态文本、条目 before/during/after、draft 行字段、数据库快照）写到
- * {@code /Users/lify/.hermes/cache/scratch/real-draft-e2e/}，全部脱敏：不写 lease id、token、任何凭据。
+ * 显式环境变量 {@code HAITLIFY_REAL_DRAFT_E2E_EVIDENCE_DIR} 指定的隔离目录，全部脱敏：不写 lease id、token、任何凭据。
  *
  * <p>本类<b>不修改任何被测实现</b>：模型没调工具、参数不合法、终态为空都如实失败；不做「为了让结果通过而
  * 放宽断言」的事。
@@ -110,14 +110,14 @@ class RealModelDraftLeaseEndToEndTest {
         hermesHome = Path.of(env("HAITLIFY_REAL_DRAFT_E2E_HERMES_HOME"));
         configFile = hermesHome.resolve("config.yaml");
         workspace = hermesHome.resolve("workspace");
-        evidenceDir = Path.of(envOrDefault("HAITLIFY_REAL_DRAFT_E2E_EVIDENCE_DIR",
-            "/Users/lify/.hermes/cache/scratch/real-draft-e2e"));
+        evidenceDir = Path.of(env("HAITLIFY_REAL_DRAFT_E2E_EVIDENCE_DIR"));
         String python = env("HAITLIFY_REAL_DRAFT_E2E_PYTHON");
         String agentDir = env("HAITLIFY_REAL_DRAFT_E2E_AGENT_DIR");
         int port = Integer.parseInt(envOrDefault("HAITLIFY_REAL_DRAFT_E2E_PORT", "18080"));
 
         // 前置事实先断言一次：缺文件/缺解释器时明确失败，而不是等到 submit 才看到「网关不可用」。
-        if (!Files.isRegularFile(configFile) || !Files.isRegularFile(Path.of(python))) {
+        if (!Files.isRegularFile(configFile) || !Files.isRegularFile(Path.of(python)) || !Files.isExecutable(Path.of(python))
+            || !Files.isDirectory(Path.of(agentDir))) {
             throw new IllegalStateException("真实 E2E 前置缺失：需要 " + configFile + " 与 " + python);
         }
         try {
@@ -833,6 +833,10 @@ class RealModelDraftLeaseEndToEndTest {
         String value = System.getenv(name);
         if (value == null || value.isBlank()) {
             throw new IllegalStateException("真实 E2E 需要环境变量 " + name + "（默认套件不会跑到这里）");
+        }
+        Path path = Path.of(value);
+        if (!path.isAbsolute() || path.normalize().getParent() == null || !path.equals(path.normalize())) {
+            throw new IllegalStateException("真实 E2E 需要显式的隔离绝对路径: " + name);
         }
         return value;
     }
