@@ -17,6 +17,20 @@ spring:
 
 app:
   version: test
+  auth:
+    # 测试上下文不得往用户家目录写初始管理员密码（每个 Spring 上下文都会 seed 一个 admin）。
+    # 指到临时目录：跑完可丢，且不污染 ~/.haitlify。
+    bootstrap-password-file: ${java.io.tmpdir}/haitlify-it/bootstrap-admin-password
+  assistant:
+    reconcile:
+      # 测试里不跑后台对账（各用例自己调方法验证）；否则会干扰共享 H2 的断言。
+      enabled: false
+    hermes:
+      # 测试环境显式关闭（默认 required）：需要 Hermes 的用例自己把 enabled 打开。
+      enabled: false
+    network:
+      # 夹具跑在 127.0.0.1；生产默认拒绝本机/私网目标。
+      allow-private-hosts: true
   ai:
     scheduler:
       # 第三十轮补审 2：测试上下文不得运行恢复调度器（共享内存库 + 各上下文时钟不一致 ⇒ 误重排进行中任务）。
@@ -36,5 +50,5 @@ app:
   web-automation:
     runner:
       enabled: true
-      base-url: http://127.0.0.1:19323
+      base-url: http://127.0.0.1:19324
       timeout-ms: 5000

@@ -8,9 +8,10 @@ import java.util.Set;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 /**
@@ -26,10 +27,13 @@ class UserManagementService {
 
     private final PlatformUserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final JdbcTemplate jdbcTemplate;
 
-    UserManagementService(PlatformUserRepository userRepository, PasswordEncoder passwordEncoder) {
+    UserManagementService(PlatformUserRepository userRepository, PasswordEncoder passwordEncoder,
+                          JdbcTemplate jdbcTemplate) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.jdbcTemplate = jdbcTemplate;
     }
 
     List<UserSummaryResponse> list() {
@@ -99,6 +103,11 @@ class UserManagementService {
         return toResponse(userRepository.save(user));
     }
 
+    /**
+     * 删用户前先解绑成员关系：{@code tenant_members} / {@code project_members} 都指向
+     * {@code platform_users} 且没有级联，直接删用户会以 500（约束冲突）收场。
+     * 事务由类级 {@code @Transactional} 提供。
+     */
     void delete(String username) {
         PlatformUser user = requireUser(username);
         if (user.getUsername().equals(currentUsername())) {
@@ -107,6 +116,9 @@ class UserManagementService {
         if (user.isEnabled() && user.getRole().equals("ADMIN")) {
             ensureAnotherEnabledAdmin(username);
         }
+        // 两张表都指向 platform_users 且都没有级联：漏一个就是 500。
+        jdbcTemplate.update("delete from tenant_members where username = ?", username);
+        jdbcTemplate.update("delete from project_members where username = ?", username);
         userRepository.delete(user);
     }
 

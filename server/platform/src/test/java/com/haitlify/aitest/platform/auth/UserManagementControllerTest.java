@@ -51,6 +51,11 @@ class UserManagementControllerTest {
         seed("admin", "管理员", "ADMIN", ADMIN_PASSWORD, true);
         seed("editor", "编辑者", "EDITOR", "editor-password-123", true);
         seed("viewer", "观察者", "VIEWER", "viewer-password-123", true);
+        // V71 之后「建项目」需要租户成员关系：给 editor 加到 default 租户，
+        // 否则这条角色用例测的就不是权限而是「没租户」。
+        jdbcTemplate.update("delete from tenant_members where username in ('admin', 'editor', 'viewer')");
+        jdbcTemplate.update("insert into tenant_members(tenant_id, username, created_at)"
+            + " select id, 'editor', ? from tenants where code = 'default'", now);
     }
 
     private void seed(String username, String displayName, String role, String password, boolean enabled) {
@@ -70,24 +75,53 @@ class UserManagementControllerTest {
 
     @Test
     void viewerCanReadButCannotMutate() throws Exception {
-        mockMvc.perform(get("/api/ai/config").with(user("viewer").roles("VIEWER")))
+        mockMvc.perform(get("/api/projects").with(user("viewer").roles("VIEWER")))
             .andExpect(status().isOk());
-        mockMvc.perform(put("/api/ai/config")
+        mockMvc.perform(post("/api/projects")
                 .with(user("viewer").roles("VIEWER"))
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{}"))
+                .content("{\"code\":\"ROLE_PROBE\",\"name\":\"角色探针\"}"))
             .andExpect(status().isForbidden());
     }
 
     @Test
     void editorCanMutateBusinessData() throws Exception {
-        mockMvc.perform(put("/api/ai/config")
+        mockMvc.perform(post("/api/projects")
                 .with(user("editor").roles("EDITOR"))
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{}"))
+                .content("{\"code\":\"ROLE_PROBE_EDITOR\",\"name\":\"角色探针\"}"))
+            .andExpect(status().isCreated());
+    }
+
+    @Test
+    void deletingTenantMemberIsNotBlockedByForeignKey() throws Exception {
+        // V71 之后把用户加进租户是常规操作；删用户必须先解绑成员关系，否则外键直接 500。
+        mockMvc.perform(post("/api/users")
+                .with(user("admin").roles("ADMIN"))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"username\":\"tenant-member\",\"password\":\"password-123\",\"role\":\"EDITOR\"}"))
             .andExpect(status().isOk());
+        jdbcTemplate.update("insert into tenant_members(tenant_id, username, created_at)"
+            + " select id, 'tenant-member', ? from tenants where code = 'default'", Timestamp.from(Instant.now()));
+        Timestamp memberAt = Timestamp.from(Instant.now());
+        jdbcTemplate.update("merge into projects (code, name, description, active, created_at, updated_at)"
+            + " key(code) values ('MEMBER_DELETE_PROBE', '成员解绑探针', '', true, ?, ?)", memberAt, memberAt);
+        jdbcTemplate.update("insert into project_members(project_id, username, created_at)"
+            + " select id, 'tenant-member', ? from projects where code = 'MEMBER_DELETE_PROBE'", memberAt);
+
+        mockMvc.perform(delete("/api/users/tenant-member")
+                .with(user("admin").roles("ADMIN")).with(csrf()))
+            .andExpect(status().isOk());
+
+        assertThat(jdbcTemplate.queryForObject(
+            "select count(*) from platform_users where username = 'tenant-member'", Integer.class)).isZero();
+        assertThat(jdbcTemplate.queryForObject(
+            "select count(*) from tenant_members where username = 'tenant-member'", Integer.class)).isZero();
+        assertThat(jdbcTemplate.queryForObject(
+            "select count(*) from project_members where username = 'tenant-member'", Integer.class)).isZero();
     }
 
     @Test

@@ -58,14 +58,14 @@ class AuthService {
     }
 
     private AuthUserResponse toResponse(PlatformUser user) {
-        return new AuthUserResponse(user.getUsername(), user.getDisplayName(), user.getAvatar(), user.getRole(), user.isMustChangePassword());
+        return new AuthUserResponse(user.getId(), user.getUsername(), user.getDisplayName(), user.getAvatar(), user.getRole(), user.isMustChangePassword());
     }
 }
 
 record LoginRequest(String username, String password) {
 }
 
-record AuthUserResponse(String username, String displayName, String avatar, String role, boolean mustChangePassword) {
+record AuthUserResponse(Long id, String username, String displayName, String avatar, String role, boolean mustChangePassword) {
 }
 
 record ChangePasswordRequest(String currentPassword, String newPassword) {

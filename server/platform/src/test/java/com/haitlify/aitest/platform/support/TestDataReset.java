@@ -11,6 +11,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * <ul>
  *   <li>{@code fk_project_members_user}: {@code project_members(username)} -&gt;
  *       {@code platform_users(username)} (V21_project_membership_authorization)
+ *   <li>{@code fk_tenant_members_user}: {@code tenant_members(username)} -&gt;
+ *       {@code platform_users(username)} (V71_tenant_model)
  *   <li>{@code fk_ai_coverage_summary_run}: {@code ai_coverage_summaries(run_id)} -&gt;
  *       {@code ai_analysis_runs(id)} (V4_ai_agent_tool_calling)
  * </ul>
@@ -27,6 +29,7 @@ public final class TestDataReset {
     /** Clears every platform user, removing the membership rows that reference them first. */
     public static void clearPlatformUsers(JdbcTemplate jdbcTemplate) {
         jdbcTemplate.update("delete from project_members");
+        jdbcTemplate.update("delete from tenant_members");
         jdbcTemplate.update("delete from platform_users");
     }
 

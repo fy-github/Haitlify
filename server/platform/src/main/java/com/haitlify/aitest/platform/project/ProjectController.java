@@ -35,12 +35,20 @@ class ProjectController {
     ProjectResponse create(@Valid @RequestBody CreateProjectRequest request) {
         return projectService.create(request);
     }
+
+    @org.springframework.web.bind.annotation.ExceptionHandler(IllegalArgumentException.class)
+    @org.springframework.web.bind.annotation.ResponseStatus(org.springframework.http.HttpStatus.BAD_REQUEST)
+    java.util.Map<String, String> badRequest(IllegalArgumentException ex) {
+        return java.util.Map.of("error", "invalid_request", "message", ex.getMessage());
+    }
 }
 
+/** tenantId 为空时挂到当前部署的 default 租户；多租户部署应显式传。 */
 record CreateProjectRequest(
     @NotBlank @Size(max = 64) String code,
     @NotBlank @Size(max = 128) String name,
-    @Size(max = 1024) String description
+    @Size(max = 1024) String description,
+    Long tenantId
 ) {
 }
 
@@ -49,7 +57,8 @@ record ProjectResponse(
     String code,
     String name,
     String description,
-    boolean active
+    boolean active,
+    Long tenantId
 ) {
     static ProjectResponse from(Project project) {
         return new ProjectResponse(
@@ -57,7 +66,8 @@ record ProjectResponse(
             project.getCode(),
             project.getName(),
             project.getDescription(),
-            project.isActive()
+            project.isActive(),
+            project.getTenantId()
         );
     }
 }

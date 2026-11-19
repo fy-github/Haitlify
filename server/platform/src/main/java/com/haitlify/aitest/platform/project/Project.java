@@ -20,6 +20,8 @@ class Project {
     private String description;
     @Column("active")
     private boolean active;
+    @Column("tenant_id")
+    private Long tenantId;
     @Column("created_at")
     private Instant createdAt;
     @Column("updated_at")
@@ -28,12 +30,14 @@ class Project {
     Project() {
     }
 
-    Project(Long id, String code, String name, String description, boolean active, Instant createdAt, Instant updatedAt) {
+    Project(Long id, String code, String name, String description, boolean active, Long tenantId,
+            Instant createdAt, Instant updatedAt) {
         this.id = id;
         this.code = code;
         this.name = name;
         this.description = description;
         this.active = active;
+        this.tenantId = tenantId;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
@@ -56,6 +60,10 @@ class Project {
 
     boolean isActive() {
         return active;
+    }
+
+    Long getTenantId() {
+        return tenantId;
     }
 
     Instant getCreatedAt() {
