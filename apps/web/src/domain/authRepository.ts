@@ -1,7 +1,9 @@
 import { joinBackendPath } from './backendBaseUrl'
-import { authedFetch, type FetchLike } from './http'
+import { advanceAuthSessionEpoch, authedFetch, type FetchLike } from './http'
 
 export interface AuthUser {
+  /** Optional until the authentication API exposes platform_users.id; never infer it. */
+  id?: number | null
   username: string
   displayName: string
   avatar?: string
@@ -22,14 +24,18 @@ export const login = async (
   username: string,
   password: string,
   options: AuthRepositoryOptions = {}
-): Promise<AuthUser> =>
-  requestJson<AuthUser>(options, '/api/auth/login', {
+): Promise<AuthUser> => {
+  // Start the new epoch before dispatch: this login's own 401 must remain actionable.
+  advanceAuthSessionEpoch()
+  return requestJson<AuthUser>(options, '/api/auth/login', {
     method: 'POST',
     headers: jsonHeaders(),
     body: JSON.stringify({ username, password })
   })
+}
 
 export const logout = async (options: AuthRepositoryOptions = {}): Promise<void> => {
+  advanceAuthSessionEpoch()
   await requestJson<{ message?: string }>(options, '/api/auth/logout', { method: 'POST' })
 }
 

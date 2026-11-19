@@ -1,0 +1,170 @@
+/* Monitor-only controls, measured in API-v3 / Web-v1 archives.
+ * Header secondary != log detail != drawer small-btn(.primary).
+ * Added rerun/log actions derive their own region's secondary token.
+ * Do not style Web runtime-configuration drawers or shared .web-ed-btn.
+ */
+.api-run-monitor button,
+.api-monitor-drawer button,
+.web-ed-monitor button,
+.web-ed-detail-drawer button {
+  box-shadow: none;
+  outline: none;
+  background-image: none;
+}
+
+.api-run-monitor button:hover:not(:disabled),
+.api-run-monitor button:focus-visible,
+.api-monitor-drawer button:hover:not(:disabled),
+.api-monitor-drawer button:focus-visible,
+.web-ed-monitor button:hover:not(:disabled),
+.web-ed-monitor button:focus-visible,
+.web-ed-detail-drawer button:hover:not(:disabled),
+.web-ed-detail-drawer button:focus-visible {
+  filter: brightness(0.96);
+  box-shadow: none;
+  outline: none;
+}
+
+/* Preserve archive fills on focus; brightness identifies the keyboard target. */
+.api-run-monitor .api-monitor-actions button:focus-visible {
+  background: #f4f7f5;
+}
+.api-run-monitor .api-monitor-log-details:focus-visible {
+  background: #edf6ef;
+}
+.api-run-monitor .api-monitor-queue-item:focus-visible {
+  background: transparent;
+}
+.api-run-monitor .api-monitor-queue-item.active,
+.api-run-monitor .api-monitor-queue-item.active:hover,
+.api-run-monitor .api-monitor-queue-item.active:focus-visible {
+  background: #edf6f0;
+}
+.api-run-monitor .api-monitor-mobile-nav button:focus-visible {
+  background: transparent;
+}
+.api-run-monitor .api-monitor-mobile-nav button[aria-pressed="true"]:focus-visible {
+  background: #fff;
+}
+
+.web-ed-monitor .web-ed-monitor__actions button {
+  background: #f4f7f5;
+  color: #5b7764;
+  border: 1px solid #e1ebe4;
+  border-radius: 19px;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+.web-ed-monitor .web-ed-monitor__details {
+  background: #edf6ef;
+  color: #477151;
+  border: 0;
+  border-radius: 17px;
+  padding: 6px 11px;
+  min-height: 30px;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.web-ed-monitor .web-ed-monitor__queue-item.is-active {
+  background: #edf6f0;
+}
+.web-ed-monitor .web-ed-queue-item__select {
+  background: transparent;
+}
+.web-ed-monitor .web-ed-queue-item__actions button,
+.web-ed-monitor .web-ed-queue-item__actions button:hover {
+  background: transparent;
+  color: #6e8b77;
+}
+
+/* These tabs are the archive's compact switcher, not primary actions. */
+.web-ed-monitor .web-ed-monitor__pane-nav button {
+  color: #78917c;
+  background: transparent;
+  line-height: 1.5;
+  font-weight: 400;
+}
+.web-ed-monitor .web-ed-monitor__pane-nav button[aria-pressed="true"] {
+  background: #fff;
+  color: #376147;
+  box-shadow: none;
+}
+
+.api-monitor-drawer .api-monitor-drawer-actions button,
+.web-ed-detail-drawer .web-ed-detail__foot .web-ed-btn {
+  min-height: 34px;
+  padding: 8px 12px;
+  border: 1px solid #e6ece8;
+  border-radius: 18px;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+.web-ed-detail-drawer .web-ed-detail__foot .web-ed-btn,
+.web-ed-detail-drawer .web-ed-detail__foot .web-ed-btn:is(:hover, :focus-visible) {
+  background: #f5f7f6;
+  color: #56655d;
+  border-color: #e6ece8;
+}
+.api-monitor-drawer .api-monitor-drawer-actions button,
+.web-ed-detail-drawer .web-ed-detail__foot .web-ed-btn--primary {
+  background: #54d9b5;
+  color: #184333;
+  border-color: #48cbaa;
+}
+.api-monitor-drawer .api-monitor-drawer-actions button:is(:hover, :focus-visible),
+.web-ed-detail-drawer .web-ed-detail__foot .web-ed-btn--primary:is(:hover, :focus-visible) {
+  background: #54d9b5;
+  color: #184333;
+  border-color: #48cbaa;
+}
+
+.api-monitor-drawer .api-monitor-drawer-header button:focus-visible {
+  background: #f3f6f4;
+}
+.web-ed-detail-drawer .web-ed-drawer__close {
+  width: 32px;
+  height: 32px;
+  padding: 1px 6px;
+  background: #f3f6f4;
+  color: #65756d;
+  border: 0;
+  border-radius: 50%;
+  font-size: 20px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+@media (max-width: 640px) {
+  .web-ed-monitor .web-ed-monitor__actions {
+    gap: 6px;
+  }
+  .web-ed-monitor .web-ed-monitor__actions button {
+    font-size: 10px;
+    min-height: 40px;
+    padding: 6px 10px;
+  }
+  .web-ed-monitor .web-ed-monitor__details {
+    min-height: 36px;
+  }
+  /* Element's inline 520px otherwise pushes the left footer off screen. */
+  .web-ed-detail-drawer.el-drawer {
+    width: 100% !important;
+    max-width: 100vw;
+  }
+  .api-monitor-drawer .api-monitor-drawer-actions button,
+  .web-ed-detail-drawer .web-ed-detail__foot .web-ed-btn {
+    min-height: 44px;
+    font-size: 11px;
+    padding: 8px 12px;
+  }
+  .web-ed-detail-drawer .web-ed-drawer__close {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}

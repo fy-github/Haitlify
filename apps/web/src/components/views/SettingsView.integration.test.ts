@@ -21,8 +21,9 @@ describe('SettingsView integration', () => {
     localStorage.clear()
     saveTemplateConfig(localStorage, defaultTemplateConfig())
     const wrapper = mountView(await loadView())
-    expect(wrapper.find('h1').text()).toContain('模板配置')
-    expect(wrapper.text()).toContain('新增模块')
-    expect(wrapper.text()).toContain('接口用例字段设置')
+    expect(wrapper.find('h1').text()).toContain('模板字段')
+    // 设计稿把模板目录放左侧,标题为「{模板} · 字段设置」
+    expect(wrapper.text()).toContain('复制为自定义模板')
+    expect(wrapper.text()).toContain('接口用例 · 字段设置')
   })
 })

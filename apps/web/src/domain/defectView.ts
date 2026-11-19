@@ -191,6 +191,7 @@ export const filterDefectDrafts = (drafts: DefectDraft[], filters: DefectFilters
     if (!keyword) return true
 
     return [
+      draft.defectId,
       draft.summary,
       draft.description,
       draft.sourceCaseId,

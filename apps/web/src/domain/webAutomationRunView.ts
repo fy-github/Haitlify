@@ -3,6 +3,39 @@ import type {
   WebAutomationRunControls,
   WebAutomationRunSnapshot
 } from './webAutomationRunRepository'
+import type { WebAutomationRunResult, WebAutomationRunStatus } from './webAutomation'
+
+export const resolveWebRunCaseId = (caseId: string, savedIds: ReadonlySet<string>): string | undefined => {
+  if (savedIds.has(caseId)) return caseId
+  const originalId = caseId.replace(/#[1-9]\d*$/, '')
+  return originalId !== caseId && savedIds.has(originalId) ? originalId : undefined
+}
+
+export const buildWebRunCaseResultMap = (
+  cases: ReadonlyArray<{ id: string }>,
+  results: ReadonlyArray<WebAutomationRunResult>
+): Map<string, WebAutomationRunResult> => {
+  const savedIds = new Set(cases.map((item) => item.id))
+  const byId = new Map<string, WebAutomationRunResult>()
+  const priority = { passed: 1, failed: 2, error: 3 }
+  for (const result of results) {
+    const originalId = resolveWebRunCaseId(result.caseId, savedIds)
+    if (!originalId) continue
+    const previous = byId.get(originalId)
+    if (!previous || priority[result.status] >= priority[previous.status]) {
+      byId.set(originalId, result)
+    }
+  }
+  return byId
+}
+
+export const buildWebRunCaseStatusById = (
+  cases: ReadonlyArray<{ id: string }>,
+  results: ReadonlyArray<WebAutomationRunResult>
+): Record<string, WebAutomationRunStatus | 'pending'> => {
+  const byId = buildWebRunCaseResultMap(cases, results)
+  return Object.fromEntries(cases.map((item) => [item.id, byId.get(item.id)?.status || 'pending']))
+}
 
 export interface WebRunTimelineItem {
   id: string

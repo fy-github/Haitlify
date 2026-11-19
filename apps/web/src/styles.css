@@ -2532,6 +2532,29 @@ button {
   margin: 0;
 }
 
+@media (max-width: 640px) {
+  .web-logout-step-row {
+    grid-template-columns: 28px minmax(0, 1fr);
+    grid-template-areas:
+      "index name"
+      "action controls"
+      "target target";
+  }
+
+  .web-logout-step-row > * {
+    min-width: 0;
+  }
+
+  .web-logout-step-target {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .web-logout-step-actions {
+    justify-content: start;
+  }
+}
+
 .environment-verification {
   display: grid;
   gap: 4px;
@@ -2750,149 +2773,7 @@ button {
   color: var(--text-regular);
 }
 
-.reports-workspace {
-  grid-row: 2 / -1;
-  min-height: 0;
-  padding: 16px 18px 18px;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 14px;
-  background: var(--surface-canvas);
-}
-
-.reports-workspace.project-selected {
-  grid-template-columns: 320px minmax(0, 1fr);
-}
-
-.report-list-panel,
-.report-detail-panel {
-  min-height: 0;
-  border: 1px solid var(--border-regular);
-  border-radius: var(--radius-lg);
-  background: var(--surface-raised);
-  box-shadow: var(--shadow-soft);
-  overflow: hidden;
-}
-
-.report-list {
-  height: calc(100% - 58px);
-  overflow: auto;
-}
-
-.report-list-panel .report-list {
-  height: calc(100% - 112px);
-}
-
-.report-project-placeholder {
-  min-height: 160px;
-}
-
-.report-filter-panel {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.report-list-item {
-  width: 100%;
-  border: 0;
-  border-bottom: 1px solid var(--border-soft);
-  background: transparent;
-  padding: 10px 14px;
-  display: grid;
-  align-content: center;
-  gap: 4px;
-  text-align: left;
-  cursor: pointer;
-  height: 64px;
-  min-height: 64px;
-  overflow: hidden;
-}
-
-.report-list-item.active {
-  background: linear-gradient(90deg, rgba(15, 118, 110, 0.08), rgba(255, 255, 255, 0.92));
-  box-shadow: 0 10px 24px rgba(15, 118, 110, 0.06);
-}
-
-.report-list-item strong {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 13px;
-  line-height: 1.3;
-}
-
-.report-list-item span,
-.report-list-item time {
-  color: var(--text-muted);
-  font-size: 12px;
-}
-
-.report-list-item > div:first-child {
-  min-width: 0;
-}
-
-.report-list-item > div:first-child > span {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.report-list-actions {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.report-detail-panel {
-  display: grid;
-  grid-template-rows: auto auto auto minmax(0, 1fr);
-}
-
-.report-detail-empty {
-  grid-template-rows: minmax(0, 1fr);
-}
-
-.report-filter-bar {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--border-soft);
-}
-
-.report-filter-bar span {
-  color: var(--text-muted);
-  font-size: 12px;
-  white-space: nowrap;
-}
-
-.report-status-filter {
-  width: 120px;
-}
-
-.report-filter-panel--surface {
-  margin: 0 18px 14px;
-  padding: 12px 14px;
-  border: 1px solid var(--border-soft);
-  border-radius: 16px;
-  background: var(--surface-raised);
-  box-shadow: var(--shadow-soft);
-  width: auto;
-}
-
-.report-filter-panel--surface .el-select {
-  width: 180px;
-}
-
-.report-filter-panel--surface .el-input {
-  flex: 1 1 260px;
-  min-width: 220px;
-}
+/* 报告页已迁移到 styles/settings-quality.css(新版结构),旧的列表/详情栅格规则移除,避免覆盖新布局 */
 
 .user-management-table .el-table__cell {
   vertical-align: middle;
@@ -3040,12 +2921,8 @@ button {
   background: var(--surface-raised);
 }
 
-.report-meta-grid {
-  padding: 0 14px 14px;
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 12px;
-}
+/* 报告指标格已改为 styles/settings-quality.css 的 flex 胶囊 */
+
 
 .report-format-select {
   width: 132px;
@@ -3122,6 +2999,38 @@ button {
 .log-card > a {
   color: var(--brand-primary);
   word-break: break-all;
+}
+
+@media (max-width: 768px) {
+  .automation-workspace {
+    min-width: 0;
+    overflow: auto;
+    grid-template-rows: auto minmax(220px, auto);
+  }
+
+  .automation-workspace .automation-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .automation-workspace .automation-panel {
+    width: 100%;
+    min-width: 0;
+    min-height: 520px;
+  }
+
+  .automation-workspace .automation-panel .automation-panel-head {
+    min-width: 0;
+  }
+
+  .automation-workspace .automation-panel .filter-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .automation-workspace .automation-panel .case-table {
+    width: 100%;
+    height: 360px !important;
+    min-height: 360px;
+  }
 }
 
 @media (max-width: 900px) {

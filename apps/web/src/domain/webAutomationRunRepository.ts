@@ -191,11 +191,12 @@ export const stopWebAutomationRun = (
 
 /** 阶段 7 增量 3：runner 会话状态面板（经平台代理 /api/web-automation/sessions）。 */
 export const listWebAutomationSessions = async (
-  repositoryOptions: WebAutomationRunRepositoryOptions = {}
+  repositoryOptions: WebAutomationRunRepositoryOptions & { signal?: AbortSignal } = {}
 ): Promise<WebAutomationSessionView[]> => {
   const response = await requestJson<{ sessions?: WebAutomationSessionView[] }>(
     '/api/web-automation/sessions',
-    repositoryOptions
+    repositoryOptions,
+    { signal: repositoryOptions.signal }
   )
   return response?.sessions || []
 }

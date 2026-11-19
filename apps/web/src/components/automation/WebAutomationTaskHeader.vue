@@ -1,95 +1,66 @@
 <script setup lang="ts">
-import { Download, RotateCcwClock, WandSparkles } from '@lucide/vue'
+import { Download, RotateCcwClock, Settings } from '@lucide/vue'
 
-defineProps<{
+const props = withDefaults(defineProps<{
   executableCount: number
   moduleCount: number
   latestRunLabel: string
-}>()
+  executeLabel: string
+  canExecute: boolean
+}>(), {
+  executeLabel: '执行',
+  canExecute: false
+})
 
+// generateCases 是保留的历史事件契约：定稿把「从用例库生成」移出执行页顶部入口，
+// 但父级监听与用例表空态链路仍在使用，因此继续声明、不再渲染快捷按钮。
 const emit = defineEmits<{
   openHistory: []
   generateCases: []
   exportCases: []
+  editEnvironment: []
+  openRuntimeConfig: []
+  execute: []
 }>()
 
+const execute = () => {
+  if (props.canExecute) emit('execute')
+}
 </script>
 
 <template>
-  <header class="web-task-header">
-    <div class="web-task-header__identity">
-      <h1>Web 自动化</h1>
-      <div class="web-task-header__metadata" aria-label="Web 自动化任务摘要">
-        <span>{{ latestRunLabel }}</span>
-      </div>
+  <header class="web-task-header web-ed-head">
+    <div class="web-ed-head__identity">
+      <h1 class="web-ed-head__title">Web 自动化</h1>
+      <p class="web-ed-head__sub">选择执行范围，确认运行配置，再进入任务监控。</p>
+      <p class="web-ed-head__meta"><span>{{ latestRunLabel }}</span></p>
     </div>
 
-    <div class="web-task-header__actions">
-      <el-button data-testid="open-web-history" @click="emit('openHistory')">
-        <RotateCcwClock :size="15" aria-hidden="true" />
+    <div class="web-task-header__actions web-ed-actions">
+      <button type="button" class="web-ed-btn" data-testid="open-web-history" @click="emit('openHistory')">
+        <RotateCcwClock :size="14" aria-hidden="true" />
         执行历史
-      </el-button>
-      <el-button data-testid="generate-web-cases" @click="emit('generateCases')">
-        <WandSparkles :size="15" aria-hidden="true" />
-        从用例库生成
-      </el-button>
-      <el-button data-testid="export-web-cases" @click="emit('exportCases')">
-        <Download :size="15" aria-hidden="true" />
-        导出用例
-      </el-button>
+      </button>
+      <button type="button" class="web-ed-btn" data-testid="open-web-environment" @click="emit('editEnvironment')">
+        环境配置
+      </button>
+      <button type="button" class="web-ed-btn" data-testid="open-web-runtime-config" @click="emit('openRuntimeConfig')">
+        <Settings :size="14" aria-hidden="true" />
+        运行配置
+      </button>
+      <button type="button" class="web-ed-btn" data-testid="export-web-cases" @click="emit('exportCases')">
+        <Download :size="14" aria-hidden="true" />
+        导出
+      </button>
+      <button
+        type="button"
+        class="web-ed-btn web-ed-btn--primary"
+        data-testid="execute-web-automation"
+        :disabled="!canExecute"
+        @click="execute"
+      >
+        {{ executeLabel }}
+      </button>
     </div>
   </header>
 </template>
-
-<style scoped>
-.web-task-header {
-  display: flex;
-  min-height: 56px;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  padding: 10px 14px;
-  color: var(--text-regular);
-  background: var(--surface-raised);
-  border: 1px solid var(--border-regular);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-soft);
-}
-.web-task-header__identity { display: flex; min-width: 0; align-items: center; gap: 14px; }
-.web-task-header h1 { flex: none; margin: 0; color: var(--text-primary); font-size: 16px; font-weight: var(--font-weight-semibold); letter-spacing: -0.01em; line-height: 22px; }
-.web-task-header__metadata { display: flex; min-width: 0; flex-wrap: wrap; gap: 6px 8px; color: var(--text-secondary); font-size: 12px; line-height: 18px; }
-.web-task-header__metadata span { white-space: nowrap; }
-.web-task-header__actions {
-  display: flex;
-  flex: none;
-  align-items: center;
-  gap: 6px;
-  padding: 3px;
-  background: rgba(255, 255, 255, 0.58);
-  border: 1px solid rgba(206, 225, 219, 0.82);
-  border-radius: 14px;
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.78) inset;
-}
-.web-task-header__actions .el-button {
-  min-height: 30px;
-  margin: 0;
-  padding: 0 10px;
-  color: var(--text-regular);
-  background: rgba(255, 255, 255, 0.84);
-  border: 1px solid rgba(183, 210, 202, 0.82);
-  border-radius: 11px;
-  box-shadow: none;
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 1.2;
-}
-.web-task-header__actions .el-button :deep(span) { gap: 6px; }
-.web-task-header__actions .el-button:hover,
-.web-task-header__actions .el-button:focus {
-  color: var(--brand-primary);
-  background: var(--surface-raised);
-  border-color: rgba(124, 190, 178, 0.78);
-  box-shadow: 0 8px 20px rgba(15, 118, 110, 0.07);
-}
-@media (max-width: 760px) { .web-task-header { align-items: flex-start; flex-direction: column; gap: 8px; } .web-task-header__identity { align-items: flex-start; flex-direction: column; gap: 5px; } .web-task-header__actions { width: 100%; flex-wrap: wrap; } }
-</style>

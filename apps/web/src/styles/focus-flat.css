@@ -1,0 +1,136 @@
+/*
+ * 全局选中态收敛:可点击元素在聚焦/选中时不再增加描边或光环,
+ * 只用底色与文字色表达状态(设计要求:去掉选中态边框,简化选中态)。
+ * 必须最后引入,覆盖 Element Plus 默认聚焦环与各页面自定义 :focus 描边。
+ */
+
+/* ---------- 1. 键盘焦点:不描边 ---------- */
+:where(button, [role='button'], a, input, textarea, select, summary, [tabindex]):focus,
+:where(button, [role='button'], a, input, textarea, select, summary, [tabindex]):focus-visible,
+.el-button:focus,
+.el-button:focus-visible,
+.el-button.is-text:focus-visible,
+.el-button.is-link:focus-visible,
+.el-checkbox__input.is-focus .el-checkbox__inner,
+.el-radio__input.is-focus .el-radio__inner {
+  outline: none;
+  outline-offset: 0;
+}
+
+/* 键盘仍可辨认焦点,但遵守「不增加边框/光晕」:普通控制用底色、链接用下划线。
+ * 聚焦与选中是两种状态；没有选中态的链接和滚动区也必须可定位。 */
+:where(button, [role='button'], summary):focus-visible,
+.el-button:focus-visible {
+  filter: brightness(0.9);
+}
+
+:where(a):focus-visible {
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+
+:where(input, textarea, select):focus-visible,
+.s-directory input:focus-visible,
+.s-table input[type='text']:focus-visible,
+.j-fields input:focus-visible,
+.j-table input:focus-visible,
+.j-table textarea:focus-visible {
+  background-color: #edf5f1;
+}
+
+:where([tabindex]):focus-visible {
+  background-color: #edf5f1;
+}
+
+/* ---------- 2. Element Plus 输入类:聚焦前后同一个 1px 边,不加光环 ---------- */
+.el-input__wrapper.is-focus,
+.el-input__wrapper:focus-within,
+.el-select__wrapper.is-focused,
+.el-select__wrapper:focus-within,
+.el-textarea__inner:focus {
+  box-shadow: 0 0 0 1px var(--el-input-border-color, #dcdfe6) inset;
+}
+
+.el-input__wrapper.is-focus:hover,
+.el-select__wrapper.is-focused:hover {
+  box-shadow: 0 0 0 1px var(--el-input-border-color, #dcdfe6) inset;
+}
+
+/* 悬停也不改变边色/加光晕:边保持常态那一根 */
+.el-input__wrapper:hover,
+.el-select__wrapper:hover,
+.el-textarea__inner:hover {
+  box-shadow: 0 0 0 1px var(--el-input-border-color, #dcdfe6) inset;
+}
+
+/* ---------- 3. 页面自定义输入框:聚焦不换边色、不改底色 ---------- */
+.s-directory input:focus,
+.s-table input[type='text']:focus,
+.j-fields input:focus,
+.j-table input:focus,
+.j-table textarea:focus,
+.report-search .el-input__wrapper.is-focus,
+.defect-meta-input .el-input__wrapper.is-focus,
+.defect-table .el-input__wrapper.is-focus,
+.defect-filter-panel .el-input__wrapper.is-focus,
+.defect-filter-panel .el-select__wrapper.is-focused {
+  background: #fff;
+}
+
+.s-directory input:focus {
+  border-color: #e2eae4;
+}
+
+.s-table input[type='text']:focus {
+  border-color: #e0e9e3;
+}
+
+.j-fields input:focus {
+  border-color: #e1ebe4;
+}
+
+.j-table input:focus,
+.j-table textarea:focus {
+  border-color: #e0eae3;
+}
+
+/* ---------- 4. 可滚动区域:去掉焦点矩形 ---------- */
+.s-scroll:focus-visible,
+.j-scroll:focus-visible,
+.user-table-scroll:focus-visible,
+.report-table-wrap:focus-visible,
+.defect-table-wrap:focus-visible {
+  outline: none;
+}
+
+/* ---------- 5. 选中/激活态只保留底色与文字色 ---------- */
+.defect-view-tabs button.active {
+  box-shadow: none;
+}
+
+.user-link:focus-visible,
+.user-role:focus-visible {
+  outline: none;
+  text-decoration: underline;
+}
+
+.studio-app-shell .studio-primary-capsule button:focus-visible,
+.studio-app-shell .studio-assistant-entry:focus-visible,
+.studio-app-shell .studio-sidebar__item:focus-visible {
+  outline: none;
+}
+
+/* 页内输入框的鼠标焦点保持白底；键盘焦点用底色区分且不加边。 */
+.s-directory input:focus-visible,
+.s-table input[type='text']:focus-visible,
+.j-fields input:focus-visible,
+.j-table input:focus-visible,
+.j-table textarea:focus-visible {
+  background-color: #edf5f1;
+}
+
+/* 侧栏与顶栏的选中/悬停提示保持纯底色 */
+.studio-app-shell .studio-primary-capsule button:focus-visible:not(.is-active) {
+  background: #f0f2f4;
+}

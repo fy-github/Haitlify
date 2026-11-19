@@ -4,9 +4,10 @@ import casesViewSource from './components/views/CasesView.vue?raw'
 
 describe('Web case library actions', () => {
   it('enables edit and row-level automation conversion with a wide action column', () => {
-    expect(casesViewSource).toContain('<el-table-column label="操作" width="280" fixed="right">')
-    expect(casesViewSource).toContain('@click.stop="openWebEdit(row)"')
-    expect(casesViewSource).toContain('@click.stop="convertWebLibraryCaseToAutomation(row)"')
+    // 设计稿改为原生表格 + sticky 操作列,宽度由 .cv-actions-col 承载(210px)
+    expect(casesViewSource).toContain('class="cv-actions-col" style="width: 210px"')
+    expect(casesViewSource).toContain('@click="openWebEdit(row)"')
+    expect(casesViewSource).toContain('@click="convertWebLibraryCaseToAutomation(row)"')
     expect(casesViewSource).not.toContain('<el-button link disabled>编辑</el-button>')
   })
 

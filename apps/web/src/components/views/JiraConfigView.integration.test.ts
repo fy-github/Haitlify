@@ -18,6 +18,7 @@ interface Props {
   addJqlRow: () => void
   removeJqlRow: (index: number) => void
   syncJqlForm: () => void
+  testResult?: { state: 'idle' | 'success' | 'failed' | 'stale'; message: string; target: string }
 }
 
 const baseForm = (): JiraConfig => ({
@@ -58,7 +59,9 @@ describe('JiraConfigView integration', () => {
     const wrapper = mountWithProps({
       projectJqlRows: [{ key: 'HAITLIFY_API', value: 'project = HAITLIFY order by created DESC' }]
     })
-    expect(wrapper.findAll('.jira-config-jql__row').length).toBe(1)
+    // 设计稿把映射改成独立表格行
+    expect(wrapper.findAll('.j-table tbody tr').length).toBe(1)
+    expect(wrapper.findAll('.j-table tbody tr')[0].find('input').element.value).toBe('HAITLIFY_API')
   })
 
   it('invokes the toolbar action props on button clicks', async () => {
@@ -77,5 +80,35 @@ describe('JiraConfigView integration', () => {
     expect(save).toHaveBeenCalledTimes(1)
     await buttonByText('新增映射')!.trigger('click')
     expect(addJqlRow).toHaveBeenCalledTimes(1)
+  })
+
+  it.each([
+    ['idle', 'neutral', '连接尚未验证'],
+    ['success', 'success', '连接测试通过'],
+    ['failed', 'error', '连接测试未通过'],
+    ['stale', 'warning', '连接参数已改变，原测试状态已失效']
+  ] as const)('marks Jira test state %s with an explicit message level', (state, level, title) => {
+    const wrapper = mountWithProps({
+      testResult: { state, message: `${state} message`, target: 'https://jira.example.test' }
+    })
+    const status = wrapper.get('.j-test-state')
+
+    expect(status.attributes('data-state')).toBe(state)
+    expect(status.attributes('data-message-level')).toBe(level)
+    expect(status.attributes('role')).toBe('status')
+    expect(status.attributes('aria-live')).toBe('polite')
+    expect(status.find('strong').text()).toBe(title)
+  })
+
+  it('uses a neutral message level while a new connection test is running', () => {
+    const wrapper = mountWithProps({
+      testing: true,
+      testResult: { state: 'success', message: '旧的成功结果', target: 'https://jira.example.test' }
+    })
+
+    const status = wrapper.get('.j-test-state')
+    expect(status.attributes('data-state')).toBe('idle')
+    expect(status.attributes('data-message-level')).toBe('neutral')
+    expect(status.find('strong').text()).toBe('正在测试连接…')
   })
 })

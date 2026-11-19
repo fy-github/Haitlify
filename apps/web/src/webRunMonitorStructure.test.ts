@@ -7,7 +7,11 @@ describe('Web run monitor structure', () => {
     expect(appSource).toContain(':mode="webAutomationWorkspaceMode"')
     expect(appSource).toContain('@enter-monitor="enterWebRunMonitor"')
     expect(appSource).toContain('@return-workbench="returnWebRunWorkbench"')
-    expect(appSource).toContain('@execute="startVisualWebAutomationRun"')
+    // 确认 → 冻结快照 → 执行:工作区把确认框里的范围/环境/浏览器/循环作为快照交给 App,
+    // App 只发快照(见 App.webRunStartSnapshot.test.ts 的确认冻结与取消零请求用例)。
+    expect(appSource).toContain('@execute="(request) => startVisualWebAutomationRun(undefined, request)"')
+    expect(appSource).not.toContain('@execute="startVisualWebAutomationRun"')
+    expect(appSource).toContain('@rerun="() => startVisualWebAutomationRun()"')
     expect(appSource).toContain('@export-cases="exportAutomationJson"')
     expect(appSource).toContain("if (automationKind.value === 'web') {")
     expect(appSource).toContain('exportWebAutomationJson()')
@@ -25,10 +29,10 @@ describe('Web run monitor structure', () => {
     expect(appSource).toContain("url.searchParams.delete('runId')")
   })
 
-  it('uses token based polling for Web case Agent runs so a stale poll cannot freeze preflight', () => {
-    expect(appSource).toContain('const webCaseAgentPollCoordinator = createWebRunPollCoordinator()')
-    expect(appSource).toContain('const poll = webCaseAgentPollCoordinator.start(runId)')
-    expect(appSource).toContain('webCaseAgentPollCoordinator.isCurrent(runId, poll.token)')
+  it('retires Agent polling while retaining token based normal Runner polling', () => {
+    expect(appSource).not.toContain('webCaseAgentPollCoordinator')
+    expect(appSource).toContain('const poll = webRunPollCoordinator.start(runId)')
+    expect(appSource).toContain('webRunPollCoordinator.isCurrent(runId, poll.token)')
     expect(appSource).not.toContain('let webCaseAgentPolling = false')
   })
 
@@ -36,7 +40,8 @@ describe('Web run monitor structure', () => {
     const hydrationStart = appSource.indexOf('const hydrateActiveWebRunCasesFromSnapshot =')
     const hydrationEnd = appSource.indexOf('const applyWebRunSnapshot =', hydrationStart)
     const hydrationBlock = appSource.slice(hydrationStart, hydrationEnd)
-    const resolverStart = appSource.indexOf('const activeWebRunCaseById =')
+    const resolverStart = appSource.indexOf('const activeWebRunResultById =')
+    expect(resolverStart).toBeGreaterThanOrEqual(0)
     const resolverEnd = appSource.indexOf('const openWebAutomationRunLog =', resolverStart)
     const resolverBlock = appSource.slice(resolverStart, resolverEnd)
     const snapshotStart = appSource.indexOf('const applyWebRunSnapshot =')
@@ -50,6 +55,9 @@ describe('Web run monitor structure', () => {
     expect(snapshotBlock).toContain('hydrateActiveWebRunCasesFromSnapshot(snapshot)')
     expect(resolverBlock).toContain('activeWebRunCases.value.find')
     expect(resolverBlock).not.toContain('webAutomationCases.value.find')
+    expect(resolverBlock).toContain('resolveWebRunCaseId(caseId, new Set(activeWebRunCases.value.map')
+    expect(resolverBlock).toContain('results.find((row) => row.caseId === caseId)')
+    expect(resolverBlock).toContain('return testCase && result ? { testCase, result } : undefined')
     expect(appSource).toContain('const clearWebAutomationSelection = () => {')
     expect(appSource).toContain('webAutomationSelectedIds.value = []')
     expect(appSource).toContain('clearWebRunLocalMessages()')

@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import type { SavedAutomationReport } from './automationReportRepository'
+import type { AutomationRunResult } from './apiAutomation'
 import {
   buildReportDetailSummary,
   buildReportProjectOptions,
   collectReportEnvironmentOptions,
+  countReportResults,
   filterReportsForProject,
+  filterReportResults,
   reportResultKind,
   selectActiveReportId
 } from './reportView'
@@ -31,6 +34,26 @@ const makeReport = (
     error: 0
   },
   results: []
+})
+
+const apiResult = (caseId: string, status: 'passed' | 'failed' | 'error'): AutomationRunResult => ({
+  caseId,
+  sourceCaseId: caseId,
+  name: `${caseId} 用例`,
+  module: '项目成员',
+  method: 'POST',
+  path: '/api/users',
+  status,
+  request: {
+    method: 'POST',
+    url: 'https://api.example.com/api/users',
+    headers: {},
+    expectedStatus: 200,
+    assertions: []
+  },
+  expectedStatus: 200,
+  actualStatus: status === 'error' ? undefined : 200,
+  durationMs: 120
 })
 
 describe('reportView', () => {
@@ -163,5 +186,46 @@ describe('reportView', () => {
       keyword: ''
     }), 'missing')).toBe('report-1')
     expect(selectActiveReportId([], 'missing')).toBeUndefined()
+  })
+
+  it('finds the report identifier promised by the history search, inside the selected project', () => {
+    const target = { ...makeReport('REPORT-LOOKUP-42', 'Haitlify', '测试', '日常回归'), moduleScope: ['订单'] }
+    const other = { ...target, project: 'Other project' }
+    expect(filterReportsForProject([target, other], {
+      project: 'Haitlify', environment: 'ALL', keyword: 'report-lookup-42'
+    }).map((item) => item.reportId)).toEqual(['REPORT-LOOKUP-42'])
+    expect(filterReportsForProject([target, other], {
+      project: 'Haitlify', environment: '预发', keyword: 'report-lookup-42'
+    })).toEqual([])
+  })
+
+  it('counts whole-report results exactly regardless of the active result filter', () => {
+    const report = makeReport('report-1', 'Haitlify', '测试')
+    report.results = [
+      { ...apiResult('AUTO-1', 'passed') },
+      { ...apiResult('AUTO-2', 'failed') },
+      { ...apiResult('AUTO-3', 'error') },
+      { ...apiResult('AUTO-4', 'error') }
+    ]
+
+    expect(countReportResults(report)).toEqual({ total: 4, passed: 1, failed: 1, error: 2 })
+    expect(countReportResults({ ...report, results: [] })).toEqual({ total: 0, passed: 0, failed: 0, error: 0 })
+  })
+
+  it('filters report results by status, keeping the abnormal shortcut distinct from all', () => {
+    const report = makeReport('report-1', 'Haitlify', '测试')
+    report.results = [
+      apiResult('AUTO-1', 'passed'),
+      apiResult('AUTO-2', 'failed'),
+      apiResult('AUTO-3', 'error')
+    ]
+
+    expect(filterReportResults(report, 'ALL').map((result) => result.caseId)).toEqual(['AUTO-1', 'AUTO-2', 'AUTO-3'])
+    expect(filterReportResults(report, 'ABNORMAL').map((result) => result.caseId)).toEqual(['AUTO-2', 'AUTO-3'])
+    expect(filterReportResults(report, 'failed').map((result) => result.caseId)).toEqual(['AUTO-2'])
+    expect(filterReportResults(report, 'error').map((result) => result.caseId)).toEqual(['AUTO-3'])
+    expect(filterReportResults(report, 'passed').map((result) => result.caseId)).toEqual(['AUTO-1'])
+    // 计数不受筛选影响
+    expect(countReportResults(report).total).toBe(3)
   })
 })

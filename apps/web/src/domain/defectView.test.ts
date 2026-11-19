@@ -64,6 +64,12 @@ describe('defectView', () => {
     expect(filtered.map((draft) => draft.defectId)).toEqual(['2'])
   })
 
+  it('uses defect id in the same keyword predicate as the visible list', () => {
+    expect(filterDefectDrafts([makeDraft('ID-ONLY')], {
+      project: 'ALL', status: 'ALL', issueType: 'ALL', priority: 'ALL', assignee: 'ALL', keyword: 'ID-ONLY'
+    }).map(draft => draft.defectId)).toEqual(['ID-ONLY'])
+  })
+
   it('builds metrics and filter options from the current drafts', () => {
     const drafts = [
       makeDraft('1'),

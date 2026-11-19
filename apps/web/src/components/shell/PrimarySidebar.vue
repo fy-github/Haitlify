@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ChevronDown } from '@lucide/vue'
-import { ref, watch } from 'vue'
+import { BookOpen, ChevronDown, SlidersHorizontal } from '@lucide/vue'
+import { computed, ref, watch } from 'vue'
 import type {
   SidebarAccent,
   SidebarBadges,
@@ -14,17 +14,40 @@ const props = withDefaults(defineProps<{
   activeItemId?: SidebarItemId
   collapsed: boolean
   badges?: SidebarBadges
+  /** 设置中心内不重复显示底部「设置中心」贴底入口 */
+  settingsEntry?: boolean
 }>(), {
-  badges: () => ({})
+  badges: () => ({}),
+  settingsEntry: true
 })
 
 const emit = defineEmits<{
   select: [item: SidebarItem]
   requestExpand: []
+  help: []
 }>()
 
 const badgeFor = (itemId: SidebarItemId) => props.badges[itemId]
 const expandedItemIds = ref<Set<SidebarItemId>>(new Set())
+
+/** 设计稿的左侧工具栏只承载当前工作区的子功能;切换工作区由顶栏主导航负责。 */
+const activeGroup = computed<SidebarGroup>(
+  () => props.groups.find((group) => group.items.some((item) => item.id === props.activeItemId)) ?? props.groups[0]
+)
+
+/** 底部独立胶囊:全局设置入口(设计稿的下方工具组),在设置中心内即为当前页。 */
+const settingsTool = computed<SidebarItem>(() => ({
+  id: 'templates',
+  label: '设置中心',
+  navKey: 'settings',
+  icon: SlidersHorizontal
+}))
+
+const helpTool = computed<SidebarItem>(() => ({
+  id: 'help',
+  label: '帮助文档',
+  icon: BookOpen
+}))
 
 const iconAccentClass = (accent?: SidebarAccent): string => (accent ? `studio-sidebar__icon--${accent}` : '')
 const subitemIconAccentClass = (accent?: SidebarAccent): string => (accent ? `studio-sidebar__subitem-icon--${accent}` : '')
@@ -75,10 +98,10 @@ const toggleItem = (item: SidebarItem) => {
     </div>
 
     <nav class="studio-sidebar__groups" aria-label="工作区导航">
-      <section v-for="group in groups" :key="group.id" class="studio-sidebar__group">
-        <h2 v-if="!collapsed" class="studio-sidebar__group-label">{{ group.label }}</h2>
+      <section :key="activeGroup.id" class="studio-sidebar__group">
+        <h2 class="studio-sidebar__group-label">{{ activeGroup.label }}</h2>
         <div class="studio-sidebar__items">
-          <div v-for="item in group.items" :key="item.id" class="studio-sidebar__entry">
+          <div v-for="item in activeGroup.items" :key="item.id" class="studio-sidebar__entry">
             <button
               type="button"
               class="studio-sidebar__item"
@@ -92,9 +115,10 @@ const toggleItem = (item: SidebarItem) => {
               :aria-controls="item.children ? `studio-sidebar-children-${item.id}` : undefined"
               :aria-label="item.label"
               :title="item.label"
+              :data-tip="item.label"
               @click="item.children ? toggleItem(item) : emit('select', item)"
             >
-              <component :is="item.icon" class="studio-sidebar__icon" :class="iconAccentClass(item.accent ?? group.accent)" :size="18" aria-hidden="true" />
+              <component :is="item.icon" class="studio-sidebar__icon" :class="iconAccentClass(item.accent ?? activeGroup.accent)" :size="18" aria-hidden="true" />
               <span v-if="!collapsed" class="studio-sidebar__label">{{ item.label }}</span>
               <ChevronDown
                 v-if="!collapsed && item.children"
@@ -133,6 +157,33 @@ const toggleItem = (item: SidebarItem) => {
         </div>
       </section>
     </nav>
+
+    <div class="studio-sidebar__tools">
+      <button
+        v-if="settingsEntry"
+        type="button"
+        class="studio-sidebar__item"
+        :aria-label="settingsTool.label"
+        :title="settingsTool.label"
+        :data-tip="settingsTool.label"
+        @click="emit('select', settingsTool)"
+      >
+        <component :is="settingsTool.icon" class="studio-sidebar__icon" :size="18" aria-hidden="true" />
+        <span class="studio-sidebar__label">{{ settingsTool.label }}</span>
+      </button>
+      <button
+        type="button"
+        class="studio-sidebar__item"
+        :aria-label="helpTool.label"
+        :title="helpTool.label"
+        :data-tip="helpTool.label"
+        aria-haspopup="dialog"
+        @click="emit('help')"
+      >
+        <component :is="helpTool.icon" class="studio-sidebar__icon" :size="18" aria-hidden="true" />
+        <span class="studio-sidebar__label">{{ helpTool.label }}</span>
+      </button>
+    </div>
   </aside>
 </template>
 

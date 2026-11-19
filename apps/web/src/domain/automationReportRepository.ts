@@ -1,5 +1,6 @@
 import type { AutomationRunReport, AutomationRunResult } from './apiAutomation'
 import type { WebAutomationRunReport } from './webAutomation'
+import { copyDefectEvidence } from './defectEvidence'
 
 export const AUTOMATION_REPORT_STORAGE_KEY = 'ai-test-platform.automation-reports.v1'
 
@@ -58,6 +59,7 @@ const toAutomationRunResult = (result: WebAutomationRunReport['results'][number]
   sourceCaseId: result.sourceCaseId,
   name: result.name,
   module: result.module,
+  ...copyDefectEvidence(result, 'report-bridge'),
   method: 'WEB',
   path: result.startUrl,
   status: result.status,
@@ -69,15 +71,7 @@ const toAutomationRunResult = (result: WebAutomationRunReport['results'][number]
     assertions: []
   },
   expectedStatus: 0,
-  durationMs: result.durationMs,
-  ...(result.failedStepId ? { failedStepId: result.failedStepId } : {}),
-  ...(result.pageHtmlSnippet ? { pageHtmlSnippet: result.pageHtmlSnippet } : {}),
-  ...(result.screenshotPath ? { screenshotPath: result.screenshotPath } : {}),
-  ...(result.stepLogs ? {
-    stepLogs: result.stepLogs
-  } : {}),
-  ...(result.stepEvidence ? { stepEvidence: result.stepEvidence } : {}),
-  ...(result.errorMessage ? { errorMessage: result.errorMessage } : {})
+
 })
 
 export const deleteAutomationReport = (storage: Storage, reportId: string): boolean => {

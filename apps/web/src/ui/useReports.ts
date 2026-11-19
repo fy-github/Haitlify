@@ -5,11 +5,15 @@ import {
   buildReportDetailSummary,
   buildReportProjectOptions,
   collectReportEnvironmentOptions,
+  countReportResults,
+  filterReportResults,
   filterReportsForProject,
   reportResultKind,
+  type ReportResultFilter,
   selectActiveReportId
 } from '../domain/reportView'
 import {
+  buildAutomationReportListJsonArtifact,
   buildAutomationReportExportArtifact,
   type AutomationReportExportFormat
 } from '../domain/automationReportExport'
@@ -18,7 +22,8 @@ import {
   listAutomationReports,
   type SavedAutomationReport
 } from '../domain/automationReportRepository'
-import type { AutomationRunResult, AutomationRunStatus } from '../domain/apiAutomation'
+import type { AutomationRunResult } from '../domain/apiAutomation'
+import { copyDefectEvidence } from '../domain/defectEvidence'
 import {
   automationStatusLabel,
   automationStatusTagType,
@@ -30,6 +35,7 @@ import {
 import { useDefects } from './useDefects'
 
 export interface ReportsDeps {
+  storage?: Storage
   // Cross-cutting confirm dialog (same shape as App.vue confirmDangerAction).
   confirmDanger?: (title: string, message: string, confirmLabel?: string) => Promise<boolean>
   // Navigation to the reports view.
@@ -45,6 +51,7 @@ export interface ReportsDeps {
 let singleton: ReturnType<typeof createReportsState> | null = null
 
 function createReportsState(deps: ReportsDeps) {
+  const localStorage = deps.storage ?? window.localStorage
   const confirmDanger = deps.confirmDanger ?? (async () => missingDep('useReports', 'confirmDanger'))
   const navigateToReports = deps.navigateToReports ?? (() => missingDep('useReports', 'navigateToReports'))
   const downloadTextFile = deps.downloadTextFile ?? (() => missingDep('useReports', 'downloadTextFile'))
@@ -54,13 +61,15 @@ function createReportsState(deps: ReportsDeps) {
   const selectedReportProject = ref('')
   const selectedReportId = ref<string>()
   const reportExportFormat = ref<AutomationReportExportFormat>('json')
-  const reportStatusFilter = ref<'ALL' | AutomationRunStatus>('ALL')
+  const reportStatusFilter = ref<ReportResultFilter>('ALL')
   const reportEnvironmentFilter = ref('ALL')
   const reportKeyword = ref('')
   const reportWebStepFilter = ref<'ALL' | 'FAILED'>('ALL')
   const reportScreenshotPreviewVisible = ref(false)
   const reportScreenshotPreviewUrl = ref('')
   const expandedReportHtmlCaseIds = ref<string[]>([])
+  // App 的「查看报告」入口在导航前发起一次性打开请求,视图挂载/响应后消费一次。
+  const reportOpenRequest = ref(0)
 
   const reportProjects = computed(() => buildReportProjectOptions(automationReports.value))
   const selectedProjectReportTotal = computed(() =>
@@ -87,9 +96,10 @@ function createReportsState(deps: ReportsDeps) {
   )
   const filteredReportResults = computed(() => {
     if (!selectedAutomationReport.value) return []
-    if (reportStatusFilter.value === 'ALL') return selectedAutomationReport.value.results
-    return selectedAutomationReport.value.results.filter((result) => result.status === reportStatusFilter.value)
+    return filterReportResults(selectedAutomationReport.value, reportStatusFilter.value)
   })
+
+  const reportTotals = countReportResults
 
   const switchReportProject = (project: string) => {
     selectedReportProject.value = project
@@ -112,7 +122,16 @@ function createReportsState(deps: ReportsDeps) {
 
   const openActiveWebRunReport = () => {
     refreshAutomationReports()
-    if (selectedReportId.value) navigateToReports()
+    if (selectedReportId.value) {
+      reportOpenRequest.value += 1
+      navigateToReports()
+    }
+  }
+
+  const consumeReportOpenRequest = (): boolean => {
+    if (!reportOpenRequest.value) return false
+    reportOpenRequest.value = 0
+    return true
   }
 
   const exportAutomationReport = (
@@ -125,15 +144,27 @@ function createReportsState(deps: ReportsDeps) {
       return
     }
 
-    const printWindow = window.open('', '_blank', 'noopener,noreferrer,width=960,height=720')
-    if (!printWindow) {
-      ElMessage.warning('浏览器拦截了打印窗口，请允许弹窗后重试')
-      return
+    // noopener/noreferrer make window.open return null even after a successful
+    // open. Keep the same-origin blank handle, then sever its opener before
+    // writing any report content. No remote navigation is involved.
+    let printWindow: Window | null = null
+    try {
+      printWindow = window.open('', '_blank', 'width=960,height=720')
+      if (!printWindow) {
+        ElMessage.warning('浏览器拦截了打印窗口，请允许弹窗后重试')
+        return
+      }
+      printWindow.opener = null
+      if (printWindow.opener !== null) throw new Error('打印窗口隔离失败')
+      printWindow.document.write(artifact.content)
+      printWindow.document.close()
+      printWindow.focus()
+      // Native print waits for document loading; no stale callback or timer.
+      printWindow.print()
+    } catch {
+      try { printWindow?.close() } catch { /* Closing is best effort after a print failure. */ }
+      ElMessage.warning('报告打印失败，请重试或改用 HTML 导出')
     }
-    printWindow.document.write(artifact.content)
-    printWindow.document.close()
-    printWindow.focus()
-    setTimeout(() => printWindow.print(), 150)
   }
 
   const exportAutomationRunReport = () => {
@@ -142,6 +173,19 @@ function createReportsState(deps: ReportsDeps) {
       return
     }
     exportAutomationReport(selectedAutomationReport.value, reportExportFormat.value)
+  }
+
+  const exportFilteredAutomationReportsJson = () => {
+    if (!filteredAutomationReports.value.length) {
+      ElMessage.warning('当前没有可导出的报告')
+      return
+    }
+    const artifact = buildAutomationReportListJsonArtifact(filteredAutomationReports.value, {
+      project: selectedReportProject.value,
+      environment: reportEnvironmentFilter.value,
+      keyword: reportKeyword.value
+    })
+    downloadTextFile(artifact.filename, artifact.content, artifact.mimeType)
   }
 
   const removeAutomationReport = async (reportId: string) => {
@@ -156,6 +200,16 @@ function createReportsState(deps: ReportsDeps) {
   const transferReportResultToDefect = (result: AutomationRunResult) => {
     if (result.status !== 'failed' && result.status !== 'error') {
       ElMessage.info('只有失败或错误的执行结果可以转缺陷')
+      return
+    }
+    if (result.method === 'WEB') {
+      defects.createDefectsFromWebResults([Object.defineProperties({
+        caseId: result.caseId,
+        sourceCaseId: result.sourceCaseId,
+        name: result.name,
+        module: result.module,
+        status: result.status
+      }, Object.getOwnPropertyDescriptors(copyDefectEvidence(result, 'report-to-defect', false)))], selectedAutomationReport.value?.project || defects.jiraProjectName.value)
       return
     }
     defects.createDefectsFromResults([result], selectedAutomationReport.value?.project || defects.jiraProjectName.value)
@@ -223,6 +277,7 @@ function createReportsState(deps: ReportsDeps) {
     reportScreenshotPreviewVisible,
     reportScreenshotPreviewUrl,
     expandedReportHtmlCaseIds,
+    reportOpenRequest,
     reportProjects,
     selectedProjectReportTotal,
     filteredAutomationReports,
@@ -231,12 +286,15 @@ function createReportsState(deps: ReportsDeps) {
     selectedReportKind,
     selectedReportSummaryItems,
     filteredReportResults,
+    reportTotals,
     switchReportProject,
     refreshAutomationReports,
     openReportsModule,
     openActiveWebRunReport,
+    consumeReportOpenRequest,
     exportAutomationReport,
     exportAutomationRunReport,
+    exportFilteredAutomationReportsJson,
     removeAutomationReport,
     transferReportResultToDefect,
     toggleReportHtmlSnippet,
@@ -255,6 +313,6 @@ function createReportsState(deps: ReportsDeps) {
 }
 
 export const useReports = (deps: ReportsDeps = {}): ReturnType<typeof createReportsState> => {
-  if (!singleton) singleton = createReportsState(deps)
+  if (!singleton || deps.storage) singleton = createReportsState(deps)
   return singleton
 }

@@ -1,0 +1,187 @@
+/* 用例库 cases-v3 的分页参数独立于 reports/defects/users。
+ * 选中仅改变底色与文字色;键盘焦点用底色而非加边/outline。 */
+.dp {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  min-height: 58px;
+  padding: 14px 20px;
+  border-top: 1px solid #edf0f2;
+  line-height: 1.5;
+}
+
+.dp-count {
+  margin: 0;
+  color: #78828d;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.dp-actions,
+.dp-pages {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.dp-btn {
+  min-height: 29px;
+  padding: 5px 9px;
+  color: #64717a;
+  background: #fff;
+  border: 1px solid #e6eaed;
+  border-radius: 9px;
+  font: inherit;
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+/* 归档 hover / pointer-active 不改变分页底色或描边。 */
+.dp-btn:hover:not(:disabled):not(.is-current):not(:focus-visible) {
+  background: #fff;
+}
+
+.dp-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.dp-btn.is-current {
+  color: #417358;
+  background: #eef6f1;
+}
+
+.dp-btn:focus-visible:not(:disabled),
+.dp-size select:focus-visible {
+  background-color: #dcebe2;
+  outline: none;
+  filter: none;
+  box-shadow: none;
+}
+
+.dp-ellipsis {
+  padding: 0 2px;
+  color: #a0aab3;
+  font-size: 11px;
+}
+
+.dp-size select {
+  height: 29px;
+  padding: 0 6px;
+  color: #64717a;
+  background: #fff;
+  border: 1px solid #e6eaed;
+  border-radius: 9px;
+  font: inherit;
+  font-size: 11px;
+  line-height: 1.5;
+  cursor: pointer;
+}
+
+/* 选择器原稿只有只读每页提示;保留产品已有真实选择器并用相邻分页 tokens。 */
+.dp-size select:focus-visible {
+  background-color: #dcebe2;
+}
+
+.dp-hint {
+  margin-left: 5px;
+  color: #87919a;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+@media (max-width: 1200px) and (min-width: 641px) {
+  .dp { padding: 13px 15px; }
+}
+
+/* 原稿最终窄屏覆盖:7×10 / min46,按钮36/10px;不沿用中间的44px覆盖。 */
+@media (max-width: 640px) {
+  .dp {
+    min-height: 46px;
+    padding: 7px 10px;
+    gap: 5px;
+  }
+
+  .dp-count { font-size: 10px; }
+
+  .dp-actions,
+  .dp-pages { gap: 4px; }
+
+  .dp-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: auto auto minmax(0, 1fr) auto;
+  }
+
+  .dp-pages { justify-content: center; }
+
+  .dp-btn,
+  .dp-size select {
+    min-height: 36px;
+    padding: 5px 7px;
+    font-size: 10px;
+  }
+
+  .dp-size select { height: 36px; }
+  .dp-hint { display: none; }
+}
+
+/* reports-v1 / defects-v1 / users-v1 的 .r-pagination 实测参数。
+ * 仅作用于分页,不借统一 .dp 值覆盖不同原稿。 */
+.report-page .r-pagination,
+.defect-page .r-pagination,
+.user-panel__footer {
+  line-height: 1.5;
+}
+
+.report-page .r-pagination button,
+.defect-page .r-pagination button,
+.user-pager button {
+  flex: none;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.report-page .r-pagination button:focus-visible,
+.defect-page .r-pagination button:focus-visible,
+.user-pager button:focus-visible {
+  background: #dcebe2;
+  outline: none;
+  filter: none;
+}
+
+@media (max-width: 640px) {
+  .report-page .r-pagination,
+  .defect-page .r-pagination,
+  .user-panel__footer {
+    min-height: 58px;
+    padding: 9px 10px;
+    gap: 5px;
+    font-size: 9px;
+    flex-wrap: wrap;
+  }
+
+  .report-page .r-pagination > div,
+  .defect-page .r-pagination > div,
+  .user-pager {
+    gap: 7px;
+    flex: none;
+  }
+
+  .report-page .r-pagination button,
+  .defect-page .r-pagination button,
+  .user-pager button {
+    min-height: 38px;
+    padding: 5px 8px;
+    font-size: 10px;
+  }
+
+  .user-pager__index { font-size: 9px; }
+}

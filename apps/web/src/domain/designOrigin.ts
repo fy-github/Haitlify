@@ -1,5 +1,6 @@
 import type { SavedWebAutomationRunCase } from './webAutomationRepository'
 import type { WebAutomationRunReport } from './webAutomation'
+import { resolveWebRunCaseId } from './webAutomationRunView'
 
 export const isDesignOriginWebCase = (caseType: string, tags: string, remark = ''): boolean =>
   caseType === '设计自动化' || tags.includes('设计自动化') || remark.includes('来源于设计稿')
@@ -18,7 +19,7 @@ export const collectFailedDesignOriginResults = (
       .map((testCase) => testCase.id)
   )
   return report.results.filter((result) =>
-    designCaseIds.has(result.caseId) && (result.status === 'failed' || result.status === 'error')
+    resolveWebRunCaseId(result.caseId, designCaseIds) !== undefined && (result.status === 'failed' || result.status === 'error')
   )
 }
 

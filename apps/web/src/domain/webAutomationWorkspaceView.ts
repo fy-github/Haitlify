@@ -156,7 +156,7 @@ const buildBrowserItem = (
       detail: '等待选择可执行用例'
     }
   }
-  const required = requiredIds.map((id) => capabilities.browsers.find((browser) => browser.id === id))
+  const required = requiredIds.map((id) => capabilities.browsers?.find((browser) => browser.id === id))
   const unavailableIndex = required.findIndex((browser) => !browser?.available)
 
   if (unavailableIndex >= 0) {

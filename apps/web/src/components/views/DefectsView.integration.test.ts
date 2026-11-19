@@ -46,6 +46,10 @@ describe('DefectsView integration', () => {
     localStorage.clear()
     saveDefectDrafts(localStorage, [makeDraft('def-1')])
     const wrapper = mountView(await loadView())
-    expect(wrapper.text()).toContain('Jira 导出草稿')
+    // 设计稿改为「缺陷列表 + 来源视图切换」，草稿数量体现在「缺陷草稿 N」页签上
+    expect(wrapper.text()).toContain('缺陷草稿 1')
+    expect(wrapper.find('[data-action="export-json-scope"]').exists()).toBe(true)
+    expect(wrapper.get('[data-action="export-json-scope"]').text()).toContain('JSON筛选 1 条')
+    expect(wrapper.find('[data-action="import-defect-json"]').exists()).toBe(true)
   })
 })

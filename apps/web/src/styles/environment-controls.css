@@ -1,0 +1,368 @@
+/* Region-specific archive variants: environment-v1 actions are not API page-head pills. */
+.environment-page .environment-page__directory-actions > .el-button {
+  --environment-directory-bg: #f4f7f6;
+  --environment-directory-ink: #3f5a50;
+  --environment-directory-border: #e5ece8;
+  height: auto;
+  min-height: 34.5px;
+  margin: 0;
+  padding: 8px 14px;
+  border: 1px solid var(--environment-directory-border);
+  border-radius: 20px;
+  background: var(--environment-directory-bg);
+  color: var(--environment-directory-ink);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.5;
+  box-shadow: none;
+  transform: none;
+}
+
+.environment-page .environment-page__directory-actions > .el-button--primary {
+  --environment-directory-bg: #66d8b5;
+  --environment-directory-ink: #345a44;
+  --environment-directory-border: #59c7a3;
+}
+
+.environment-page .environment-page__directory-actions > .el-button:is(:hover, :focus-visible) {
+  background: var(--environment-directory-bg);
+  color: var(--environment-directory-ink);
+  border-color: var(--environment-directory-border);
+  box-shadow: none;
+  outline: none;
+  filter: brightness(0.96);
+}
+
+.environment-page .environment-page__directory-actions > .el-button.is-disabled {
+  opacity: 0.45;
+  filter: none;
+}
+
+.environment-page .environment-page__directory .environment-page__directory-item.active {
+  background: #eaf5ee;
+  color: #3a7451;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.environment-control-surface:is(.el-drawer, .environment-inline-surface) .environment-drawer-actions .el-button:not(.is-link):not(.is-text) {
+  --environment-control-bg: #fff;
+  --environment-control-ink: #535a64;
+  --environment-control-border: #e8ebee;
+  --environment-control-border-width: 1px;
+  --environment-control-border-style: solid;
+  height: auto;
+  min-height: 34.5px;
+  min-width: 0;
+  margin: 0;
+  padding: 8px 13px;
+  border: var(--environment-control-border-width) var(--environment-control-border-style) var(--environment-control-border);
+  border-radius: 20px;
+  background: var(--environment-control-bg);
+  color: var(--environment-control-ink);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.5;
+  letter-spacing: normal;
+  box-shadow: none;
+  transform: none;
+  transition: filter 140ms ease;
+}
+
+.environment-control-surface:is(.el-drawer, .environment-inline-surface) .environment-drawer-actions .el-button--primary:not(.is-link):not(.is-text) {
+  --environment-control-bg: #66d8b5;
+  --environment-control-ink: #345a44;
+  --environment-control-border: #59c7a3;
+  --environment-control-border-width: 0px;
+  --environment-control-border-style: none;
+}
+
+.environment-control-surface:is(.el-drawer, .environment-inline-surface) .environment-drawer-actions .el-button--danger:not(.is-link):not(.is-text) {
+  --environment-control-bg: transparent;
+  --environment-control-ink: #b69a8b;
+  --environment-control-border: #b69a8b;
+  --environment-control-border-width: 0px;
+  --environment-control-border-style: none;
+  min-height: 34px;
+  padding: 1px 6px;
+  border-radius: 0;
+  background: transparent;
+  font-weight: 400;
+}
+
+.environment-control-surface:is(.el-drawer, .environment-inline-surface) .environment-drawer-actions {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.environment-control-surface:is(.el-drawer, .environment-inline-surface) .environment-drawer-actions .el-button--danger {
+  margin-right: auto;
+}
+
+.environment-control-surface:is(.el-drawer, .environment-inline-surface) .environment-drawer-actions .el-button:not(.is-link):not(.is-text):is(:hover, :focus-visible) {
+  background: var(--environment-control-bg);
+  color: var(--environment-control-ink);
+  border-color: var(--environment-control-border);
+  box-shadow: none;
+  outline: none;
+  transform: none;
+  filter: brightness(0.96);
+}
+
+.environment-control-surface:is(.el-drawer, .environment-inline-surface) .environment-drawer-actions .el-button:not(.is-link):not(.is-text).is-disabled,
+.environment-control-surface:is(.el-drawer, .environment-inline-surface) .environment-drawer-actions .el-button:not(.is-link):not(.is-text).is-loading {
+  background: var(--environment-control-bg);
+  color: var(--environment-control-ink);
+  border-color: var(--environment-control-border);
+  box-shadow: none;
+  filter: none;
+  opacity: 0.45;
+}
+
+/* Inline repairs / parameter actions use the smaller env-small variant. */
+.environment-control-surface:is(.el-drawer, .environment-inline-surface) .environment-editor :is(.environment-inline-actions, .environment-entries-head, .curl-import-box) .el-button:not(.is-link):not(.is-text) {
+  height: auto;
+  min-height: 32px;
+  padding: 6px 10px;
+  border: 1px solid #dfe9e2;
+  border-radius: 9px;
+  background: #fff;
+  color: #7d9887;
+  font-size: 10px;
+  font-weight: 400;
+  line-height: 1.5;
+  box-shadow: none;
+  transform: none;
+}
+
+.environment-control-surface:is(.el-drawer, .environment-inline-surface) .environment-editor :is(.environment-inline-actions, .environment-entries-head, .curl-import-box) .el-button:not(.is-link):not(.is-text):is(:hover, :focus-visible) {
+  background: #fff;
+  color: #7d9887;
+  border-color: #dfe9e2;
+  box-shadow: none;
+  outline: none;
+  filter: brightness(0.96);
+}
+
+.environment-control-surface:is(.el-drawer, .environment-inline-surface) .environment-editor :is(.environment-inline-actions, .environment-entries-head, .curl-import-box) .el-button:not(.is-link):not(.is-text):is(.is-disabled, .is-loading) {
+  opacity: 0.45;
+  filter: none;
+}
+
+/* API-v3 count controls retain the archived stepped-control variant, not pill buttons. */
+.automation-config-drawer .api-run-count-stepper .api-run-count-stepper__button {
+  height: 34px;
+  padding: 0;
+  background: #f7faf8;
+  color: #667b6c;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.automation-config-drawer .api-run-count-stepper .api-run-count-stepper__button:disabled {
+  background: #fafcfb;
+  color: #bec8c1;
+}
+
+.automation-config-drawer .api-run-count-stepper .api-run-count-stepper__button:not(:disabled):is(:hover, :focus-visible) {
+  background: #f7faf8;
+  color: #667b6c;
+  outline: none;
+  filter: brightness(0.96);
+}
+
+.automation-config-drawer .execution-control-row > .el-button {
+  height: auto;
+  min-height: 34.5px;
+  padding: 8px 12px;
+  border: 1px solid #e6ece8;
+  border-radius: 18px;
+  background: #f5f7f6;
+  color: #56655d;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.5;
+  box-shadow: none;
+  transform: none;
+}
+
+.automation-config-drawer .execution-control-row > .el-button:is(:hover, :focus-visible) {
+  border-color: #e6ece8;
+  background: #f5f7f6;
+  color: #56655d;
+  outline: none;
+  box-shadow: none;
+  filter: brightness(0.96);
+}
+
+/* Web-v1 runtime footer is small-btn.primary, not the page-level btn.primary. */
+.web-ed-drawer .web-ed-drawer__foot .web-ed-btn {
+  height: auto;
+  min-height: 34.5px;
+  padding: 8px 12px;
+  border: 1px solid #e6ece8;
+  border-radius: 18px;
+  background: #f5f7f6;
+  color: #56655d;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.5;
+  box-shadow: none;
+  transform: none;
+}
+
+.web-ed-drawer .web-ed-drawer__foot .web-ed-btn.web-ed-btn--primary,
+.web-ed-drawer .web-ed-drawer__foot .web-ed-btn.web-ed-btn--primary:is(:hover, :focus-visible) {
+  background: #54d9b5;
+  color: #184333;
+  border-color: #48cbaa;
+  box-shadow: none;
+  outline: none;
+}
+
+.web-ed-drawer .web-ed-drawer__foot .web-ed-btn:is(:hover, :focus-visible) {
+  filter: brightness(0.96);
+}
+
+/* Explicit dialog classes keep destructive/discard confirmations distinct from a run admission. */
+:is(.environment-danger-confirm, .environment-discard-confirm, .api-execution-confirm) .el-message-box__btns .el-button {
+  height: auto;
+  min-height: 34.5px;
+  padding: 8px 12px;
+  border: 1px solid #e6ece8;
+  border-radius: 18px;
+  background: #f5f7f6;
+  color: #56655d;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.5;
+  box-shadow: none;
+  transform: none;
+}
+
+.api-execution-confirm .el-message-box__btns .el-button--primary,
+.api-execution-confirm .el-message-box__btns .el-button--primary:is(:hover, :focus-visible) {
+  background: #54d9b5;
+  color: #184333;
+  border-color: #48cbaa;
+}
+
+:is(.environment-danger-confirm, .environment-discard-confirm) .el-message-box__btns .el-button--primary,
+:is(.environment-danger-confirm, .environment-discard-confirm) .el-message-box__btns .el-button--primary:is(:hover, :focus-visible) {
+  background: #f5f7f6;
+  color: #b69a8b;
+  border-color: #e6ece8;
+}
+
+:is(.environment-danger-confirm, .environment-discard-confirm, .api-execution-confirm) .el-message-box__btns .el-button:is(:hover, :focus-visible) {
+  box-shadow: none;
+  outline: none;
+  transform: none;
+  filter: brightness(0.96);
+}
+
+/* Element's default hover ink is more specific than the base rule above. */
+:is(.environment-danger-confirm, .environment-discard-confirm, .api-execution-confirm) .el-message-box__btns .el-button:not(.el-button--primary):is(:hover, :focus, :focus-visible, :active) {
+  background: #f5f7f6;
+  color: #56655d;
+  border-color: #e6ece8;
+  box-shadow: none;
+  outline: none;
+}
+
+.web-login-discovery-dialog .drawer-actions .el-button.is-disabled,
+.web-login-discovery-dialog .drawer-actions .el-button.is-loading {
+  opacity: 0.45;
+  box-shadow: none;
+  filter: none;
+}
+
+.web-login-verification-dialog .drawer-actions .el-button--danger,
+.web-login-verification-dialog .drawer-actions .el-button--danger:is(:hover, :focus-visible) {
+  --drawer-button-ink: #b69a8b;
+  color: #b69a8b;
+  background: #f5f7f6;
+  border-color: #e6ece8;
+}
+
+@media (max-width: 640px) {
+  .environment-page .environment-page__directory-actions > .el-button {
+    min-height: 40px;
+    padding: 7px 11px;
+    font-size: 10px;
+  }
+
+  .automation-config-drawer .api-run-count-stepper .api-run-count-stepper__button {
+    height: 38px;
+  }
+
+  .automation-config-drawer .api-run-count-stepper,
+  .automation-config-drawer .api-run-count-stepper__input {
+    height: 40px;
+  }
+
+  .automation-config-drawer .execution-control-row > .el-button {
+    min-height: 44px;
+  }
+
+  .web-ed-drawer .web-ed-drawer__head .web-ed-drawer__close {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  /* Keep the footer usable: the desktop directory must not leave a 108px editor beside it. */
+  .el-drawer.environment-control-surface.web-automation-drawer .environment-drawer {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  .el-drawer.environment-control-surface.web-automation-drawer .environment-list {
+    flex: none;
+    max-height: 120px;
+    overflow: auto;
+  }
+
+  .el-drawer.environment-control-surface.web-automation-drawer .environment-editor {
+    flex: 1;
+    min-height: 0;
+    min-width: 0;
+    padding: 12px;
+  }
+
+  .el-drawer.environment-control-surface.web-automation-drawer .environment-form-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .el-drawer.environment-control-surface.web-automation-drawer .environment-drawer-actions {
+    min-width: 0;
+    padding-block: 10px;
+  }
+
+  .environment-control-surface:is(.el-drawer, .environment-inline-surface) .environment-drawer-actions .el-button:not(.is-link):not(.is-text) {
+    min-height: 44px;
+    padding: 7px 9px;
+    font-size: 10px;
+  }
+
+  .environment-control-surface:is(.el-drawer, .environment-inline-surface) .environment-drawer-actions .el-button--danger:not(.is-link):not(.is-text) {
+    padding: 1px 6px;
+    font-size: 9px;
+  }
+
+  .environment-control-surface:is(.el-drawer, .environment-inline-surface) .environment-editor :is(.environment-inline-actions, .environment-entries-head, .curl-import-box) .el-button:not(.is-link):not(.is-text) {
+    min-height: 40px;
+    padding: 5px 8px;
+    font-size: 9px;
+  }
+
+  .web-ed-drawer .web-ed-drawer__foot .web-ed-btn,
+  :is(.environment-danger-confirm, .environment-discard-confirm, .api-execution-confirm) .el-message-box__btns .el-button {
+    min-height: 44px;
+  }
+}

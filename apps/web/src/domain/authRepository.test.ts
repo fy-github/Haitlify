@@ -1,4 +1,5 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { authedFetch, setUnauthorizedHandler } from './http'
 import {
   changePassword,
   createUser,
@@ -25,6 +26,26 @@ const adminUser = {
 }
 
 describe('authRepository', () => {
+  afterEach(() => { setUnauthorizedHandler(null); vi.unstubAllGlobals() })
+
+  it('invalidates old 401 callbacks before login without replacing the registered handler', async () => {
+    let resolveOld!: (response: Response) => void
+    const old = new Promise<Response>(yes => { resolveOld = yes })
+    const fetchMock = vi.fn().mockImplementationOnce(() => old)
+      .mockImplementation(async () => new Response(JSON.stringify({ message: '用户名或密码错误' }), { status: 401 }))
+    vi.stubGlobal('fetch', fetchMock)
+    const handler = vi.fn()
+    setUnauthorizedHandler(handler)
+    const oldRequest = authedFetch('/api/previous-account')
+    await expect(login('new-account', 'wrong')).rejects.toThrow('用户名或密码错误')
+    expect(handler).toHaveBeenCalledTimes(1)
+    resolveOld(new Response('{}', { status: 401 }))
+    expect((await oldRequest).status).toBe(401)
+    expect(handler).toHaveBeenCalledTimes(1)
+    await authedFetch('/api/current-account')
+    expect(handler).toHaveBeenCalledTimes(2)
+  })
+
   it('logs in with POST and returns the user', async () => {
     const fetchImpl = vi.fn((input: string, init?: RequestInit) => {
       expect(init?.method).toBe('POST')
@@ -59,6 +80,26 @@ describe('authRepository', () => {
     )))
 
     await expect(fetchCurrentUser({ fetchImpl })).rejects.toThrow('Auth request failed: 500 服务器错误')
+  })
+
+  it('invalidates pending callbacks as soon as logout starts, including a failed logout', async () => {
+    let resolveOld!: (response: Response) => void
+    let resolveLogout!: (response: Response) => void
+    const old = new Promise<Response>(yes => { resolveOld = yes })
+    const leaving = new Promise<Response>(yes => { resolveLogout = yes })
+    vi.stubGlobal('fetch', vi.fn().mockImplementationOnce(() => old).mockImplementationOnce(() => leaving)
+      .mockImplementation(async () => new Response('{}', { status: 401 })))
+    const handler = vi.fn()
+    setUnauthorizedHandler(handler)
+    const oldRequest = authedFetch('/api/old')
+    const logoutRequest = logout()
+    resolveOld(new Response('{}', { status: 401 }))
+    await oldRequest
+    expect(handler).not.toHaveBeenCalled()
+    resolveLogout(new Response('{}', { status: 503 }))
+    await expect(logoutRequest).rejects.toThrow('503')
+    await authedFetch('/api/current')
+    expect(handler).toHaveBeenCalledTimes(1)
   })
 
   it('logs out with POST', async () => {

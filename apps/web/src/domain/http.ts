@@ -5,6 +5,12 @@
 export type FetchLike = (input: string, init?: RequestInit) => Promise<Response>
 
 let onUnauthorized: (() => void) | null = null
+let authSessionEpoch = 0
+
+// Advance at authentication boundaries, not when a callback happens to change identity.
+// Capture the epoch before sending a request so a previous session cannot expire its successor.
+export const advanceAuthSessionEpoch = (): void => { authSessionEpoch += 1 }
+export const getAuthSessionEpoch = (): number => authSessionEpoch
 
 // Registers the callback fired whenever a backend call returns 401 (missing/expired session).
 // App.vue registers a handler that flips the app back to the login screen.
@@ -32,6 +38,7 @@ const readCsrfToken = (): string | undefined => {
 }
 
 export const authedFetch: FetchLike = async (input, init) => {
+  const requestEpoch = authSessionEpoch
   const method = (init?.method ?? 'GET').toUpperCase()
   const headers = new Headers(init?.headers)
 
@@ -48,7 +55,7 @@ export const authedFetch: FetchLike = async (input, init) => {
     credentials: 'same-origin'
   })
 
-  if (response.status === 401 && onUnauthorized) {
+  if (response.status === 401 && !init?.signal?.aborted && requestEpoch === authSessionEpoch && onUnauthorized) {
     onUnauthorized()
   }
 

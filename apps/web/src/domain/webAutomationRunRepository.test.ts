@@ -115,6 +115,15 @@ describe('webAutomationRunRepository', () => {
     expect(new URL(String(url), 'http://test').pathname).toBe('/api/web-automation/sessions')
   })
 
+  it('passes the Session request signal to the actual fetch boundary', async () => {
+    const controller = new AbortController()
+    const fetchImpl = vi.fn<(input: string, init?: RequestInit) => Promise<Response>>(
+      () => jsonResponse({ sessions: [] })
+    )
+    await listWebAutomationSessions({ fetchImpl, signal: controller.signal })
+    expect(fetchImpl.mock.calls[0][1]?.signal).toBe(controller.signal)
+  })
+
   it('omits browser override when following case settings', async () => {
     const fetchImpl = vi.fn<(input: string, init?: RequestInit) => Promise<Response>>(
       () => jsonResponse(snapshot('queued'), { status: 202 })

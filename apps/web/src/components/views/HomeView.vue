@@ -1,546 +1,165 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import {
-  ClipboardCheck,
-  Play,
-  Send,
-  Sparkles,
-  User
-} from '@lucide/vue'
-import type { NavKey } from '../../domain/appNavigation'
-import AiAssistantReviewPanel from '../platformAi/AiAssistantReviewPanel.vue'
-import { useAssistantRunLauncher } from '../../ui/useAssistantRunLauncher'
-import { canLaunch, inputLabel, listValueOf, pickerKindFor, setListValue } from '../../domain/aiAssistantRouting'
-import type { AiAssistantRepositoryOptions, AiAssistantRun } from '../../domain/aiAssistantRepository'
-import * as defaultRepository from '../../domain/aiAssistantRepository'
+import { computed, onBeforeUnmount, onMounted, ref, watch, type ComponentPublicInstance } from 'vue'
+import { ArrowRight, ChartNoAxesCombined, Play } from '@lucide/vue'
+import { buildHomeWorkbench, type HomeProject, type HomeRun, type HomeWorkItem, type HomeWorkFilter, type HomeSection } from '../../domain/homeWorkbench'
+import type { HomeNavigateTarget } from '../../domain/homeWorkbench'
+export type { HomeNavigateTarget } from '../../domain/homeWorkbench'
 
-/** 首页保留统一导航事件契约，后续自然语言入口可继续复用。 */
-export interface HomeNavigateTarget {
-  navKey: NavKey
-  automationKind?: 'api' | 'web'
-  caseDesignKind?: 'interface' | 'web_automation'
-}
+export type HomeViewStatus = 'ready' | 'loading' | 'empty' | 'unavailable' | 'forbidden' | 'error'
 
 const props = withDefaults(defineProps<{
-  /** 测试注入点：默认走真实仓库与默认项目解析。 */
-  assistantDeps?: {
-    options?: AiAssistantRepositoryOptions
-    repository?: typeof defaultRepository
-    resolveProject?: (projectName: string) => Promise<{ id: number }>
-  }
-}>(), { assistantDeps: undefined })
-
-interface ChatMessage {
-  role: 'user' | 'assistant'
-  text: string
+  runs?: readonly HomeRun[]
+  items?: readonly HomeWorkItem[]
+  projects?: readonly HomeProject[]
+  status?: HomeViewStatus
+  errorMessage?: string
+}>(), { runs: () => [], items: () => [], projects: () => [], status: 'ready', errorMessage: '' })
+const emit = defineEmits<{ navigate: [target: HomeNavigateTarget]; retry: [] }>()
+const project = ref('')
+const workFilter = ref<HomeWorkFilter>('all')
+const model = computed(() => buildHomeWorkbench({ runs: props.runs, items: props.items, project: project.value, filter: workFilter.value }))
+const activeRuns = computed(() => model.value.runs)
+const recent = computed(() => model.value.recent)
+const pending = computed(() => model.value.pending)
+const workKinds = { case: '用例', report: '报告', defect: '缺陷', project: '项目', task: '任务' }
+const filters: { value: HomeWorkFilter; label: string }[] = [{ value: 'all', label: '全部' }, ...Object.entries(workKinds).map(([value, label]) => ({ value: value as HomeWorkFilter, label }))]
+const displayTime = (timestamp?: string) => timestamp ? timestamp.replace('T', ' ').slice(0, 16) : '时间未提供'
+const projectLabel = (value: string) => props.projects.find((item) => item.value === value)?.label || value || '未关联项目'
+const projectPicker = ref<HTMLElement>()
+const projectTrigger = ref<HTMLButtonElement>()
+const projectOpen = ref(false)
+const projectIndex = ref(0)
+const projectOptions = computed(() => [{ value: '', label: '全部项目' }, ...props.projects])
+const closeProjects = () => { projectOpen.value = false }
+const openProjects = (index = Math.max(0, projectOptions.value.findIndex((item) => item.value === project.value))) => {
+  projectIndex.value = index
+  projectOpen.value = true
 }
-
-/** 运行卡：任务显式选择 + 必填输入；提交前不产生任何写操作。 */
-interface DraftMessage {
-  role: 'assistant'
-  kind: 'draft'
-  draftId: number
-  taskType: string
-  values: Record<string, string>
-  prechecking?: boolean
-  precheck?: { taskType: string; missingInputs: string[]; complete: boolean; alternatives: string[] }
+const selectProject = (value: string) => {
+  project.value = value
+  closeProjects()
+  projectTrigger.value?.focus({ preventScroll: true })
 }
-
-/** 运行结果卡：状态/违规/接收状态一律来自后端裁决。 */
-interface RunMessage {
-  role: 'assistant'
-  kind: 'run'
-  run: AiAssistantRun
+const projectKeydown = (event: KeyboardEvent) => {
+  if (event.key === 'Tab') { closeProjects(); return }
+  if (event.key === 'Escape') { event.preventDefault(); closeProjects(); return }
+  if (!['ArrowDown', 'ArrowUp', 'Home', 'End', 'Enter', ' '].includes(event.key)) return
+  event.preventDefault()
+  if (event.key === 'Home' || event.key === 'End') openProjects(event.key === 'Home' ? 0 : projectOptions.value.length - 1)
+  else if (event.key === 'Enter' || event.key === ' ') {
+    if (projectOpen.value) selectProject(projectOptions.value[projectIndex.value]!.value)
+    else openProjects()
+  } else if (!projectOpen.value) openProjects()
+  else projectIndex.value = (projectIndex.value + (event.key === 'ArrowDown' ? 1 : -1) + projectOptions.value.length) % projectOptions.value.length
 }
-
-type HomeMessage = ChatMessage | DraftMessage | RunMessage
-
-const emit = defineEmits<{
-  navigate: [target: HomeNavigateTarget]
-}>()
-
-const launcher = useAssistantRunLauncher(props.assistantDeps ?? {})
-
-const input = ref('')
-const panelRefreshToken = ref(0)
-let nextDraftId = 1
-
-const messages = ref<HomeMessage[]>([
-  {
-    role: 'assistant',
-    text: '你好，我是你的 AI 测试助手。描述你的目标（缺陷现象、日志片段、回归范围、需求分析…），我会按关键词给出候选任务；确认任务、补全必填输入后点击运行，产物会进入下方评审面板等待人工确认。'
-  }
-])
-
-const canSend = computed(() => input.value.trim().length > 0)
-
-const sendMessage = () => {
-  const text = input.value.trim()
-  if (!text) return
-  messages.value.push({ role: 'user', text })
-  const suggestion = launcher.suggest(text)[0]
-  messages.value.push({
-    role: 'assistant',
-    kind: 'draft',
-    draftId: nextDraftId++,
-    taskType: suggestion?.taskType ?? '',
-    values: {}
-  })
-  input.value = ''
+const outsideProject = (event: PointerEvent) => {
+  if (!projectPicker.value?.contains(event.target as Node)) closeProjects()
 }
-
-const draftTask = (message: DraftMessage) =>
-  launcher.catalog.value.find((task) => task.taskType === message.taskType)
-
-const runPrecheck = async (message: DraftMessage) => {
-  const task = draftTask(message)
-  if (!task) return
-  message.prechecking = true
-  const result = await launcher.precheck(task, message.values)
-  message.prechecking = false
-  message.precheck = result ?? undefined
-}
-
-const runDraft = async (message: DraftMessage) => {
-  const task = draftTask(message)
-  if (!task || !canLaunch(message.taskType)) return
-  const run = await launcher.launch(task, message.values)
-  if (run) {
-    messages.value.push({ role: 'assistant', kind: 'run', run })
-    panelRefreshToken.value += 1
-  } else {
-    messages.value.push({ role: 'assistant', text: `运行未提交：${launcher.error.value || '未知错误'}` })
-  }
-}
-
-const runStatusText = (run: AiAssistantRun): string => {
-  if (run.status === 'blocked') return `运行被阻断：${run.blockReason || '未提供原因'}`
-  if (run.status === 'accepted') return `运行完成，产物已被人工确认（${run.acceptanceState}）`
-  if (run.status === 'rejected') return `运行产物已被人工驳回（${run.acceptanceState}）`
-  return `运行完成，等待人工确认（${run.acceptanceState}）`
-}
-
-onMounted(() => {
-  void launcher.loadCatalog()
-  void launcher.loadDocuments()
-  void launcher.loadRecentRuns()
-  void launcher.loadDraftPoints()
+onMounted(() => document.addEventListener('pointerdown', outsideProject))
+onBeforeUnmount(() => document.removeEventListener('pointerdown', outsideProject))
+watch(() => props.projects, () => {
+  if (project.value && !props.projects.some((item) => item.value === project.value)) project.value = ''
+  closeProjects()
 })
+const sectionElements: Partial<Record<HomeSection, HTMLElement>> = {}
+const setSection = (section: HomeSection, element: Element | ComponentPublicInstance | null) => {
+  if (element instanceof HTMLElement) sectionElements[section] = element
+}
+const focusSection = (section: HomeSection) => {
+  const element = sectionElements[section]
+  element?.focus({ preventScroll: true })
+  // Scroll the owning workspace rather than searching/mutating the global document.
+  if (element) {
+    const container = element.closest('.workspace') as HTMLElement | null
+    const box = element.getBoundingClientRect()
+    const bounds = container?.getBoundingClientRect()
+    if (container && bounds && (box.top < bounds.top || box.bottom > bounds.bottom)) container.scrollTop += box.top - bounds.top - 24
+  }
+}
+defineExpose({ focusSection })
+const primary = computed(() => activeRuns.value[0])
+const secondary = computed(() => activeRuns.value.slice(1))
+const percent = computed(() => {
+  const run = primary.value
+  if (!run || ['waiting_user', 'preparing', 'queued'].includes(run.state)
+    || !Number.isSafeInteger(run.total) || !Number.isSafeInteger(run.completed)
+    || run.total! <= 0 || run.completed! < 0 || run.completed! > run.total!) return undefined
+  return Math.round(run.completed! / run.total! * 100)
+})
+const labels = { preparing: '准备中', queued: '排队中', running: '正在执行', pause_requested: '暂停中', paused: '已暂停', stop_requested: '停止中', waiting_user: '等待人工', completed: '已完成', failed: '执行失败', stopped: '已停止' }
 </script>
 
 <template>
-  <section class="home-view">
-    <div class="home-view__panel">
-      <header class="home-view__header">
-        <span class="home-view__logo" aria-hidden="true">
-          <Sparkles :size="20" />
-        </span>
-        <div class="home-view__heading">
-          <h1>AI 测试助手</h1>
-          <p>自然语言驱动测试构思、生成、执行与复盘</p>
-        </div>
-      </header>
-
-      <div class="home-view__thread">
-        <div
-          v-for="(msg, index) in messages"
-          :key="index"
-          class="home-view__msg"
-          :class="`home-view__msg--${msg.role}`"
-        >
-          <span class="home-view__msg-mark" :class="{ 'is-user': msg.role === 'user' }" aria-hidden="true">
-            <Sparkles v-if="msg.role === 'assistant'" :size="14" />
-            <User v-else :size="14" />
-          </span>
-
-          <div
-            v-if="msg.role === 'assistant' && 'kind' in msg && msg.kind === 'draft'"
-            class="home-view__draft"
-            data-testid="home-draft"
-          >
-            <p class="home-view__draft-tip">按你的描述推荐的任务（可改选）；补全必填输入后点击运行。</p>
-            <el-select v-model="msg.taskType" size="small" data-testid="home-draft-task" placeholder="选择任务">
-              <el-option
-                v-for="task in launcher.catalog.value"
-                :key="task.taskType"
-                :label="`${task.displayName}（${task.taskType}）`"
-                :value="task.taskType"
-              />
-            </el-select>
-            <template v-if="draftTask(msg as never)">
-              <div
-                v-for="field in (draftTask(msg as never)?.requiredInputs ?? [])"
-                :key="field"
-                class="home-view__draft-field"
-              >
-                <span class="home-view__draft-label">{{ inputLabel(field) }}</span>
-                <el-select
-                  v-if="pickerKindFor(field) === 'documents'"
-                  multiple
-                  collapse-tags
-                  size="small"
-                  placeholder="从项目文档目录中选择"
-                  :model-value="listValueOf(msg.values, field)"
-                  data-testid="home-draft-picker-documents"
-                  @update:model-value="(value: string[]) => setListValue(msg.values, field, value)"
-                >
-                  <el-option
-                    v-for="doc in launcher.documents.value"
-                    :key="doc.documentId"
-                    :label="`${doc.fileName}（${doc.documentId.slice(0, 16)}…）`"
-                    :value="doc.documentId"
-                  />
-                </el-select>
-                <el-select
-                  v-else-if="pickerKindFor(field) === 'draft-points'"
-                  multiple
-                  collapse-tags
-                  size="small"
-                  placeholder="从已确认的草稿测试点中选择"
-                  :model-value="listValueOf(msg.values, field)"
-                  data-testid="home-draft-picker-draft-points"
-                  @update:model-value="(value: string[]) => setListValue(msg.values, field, value)"
-                >
-                  <el-option
-                    v-for="point in launcher.draftPoints.value"
-                    :key="point.pointId"
-                    :label="`${point.title}（${point.moduleName || point.caseKind || '未分类'}）`"
-                    :value="point.pointId"
-                  />
-                </el-select>
-                <el-select
-                  v-else-if="pickerKindFor(field) === 'recent-runs'"
-                  multiple
-                  collapse-tags
-                  size="small"
-                  placeholder="从最近产物中选择（取 runId）"
-                  :model-value="listValueOf(msg.values, field)"
-                  data-testid="home-draft-picker-runs"
-                  @update:model-value="(value: string[]) => setListValue(msg.values, field, value)"
-                >
-                  <el-option
-                    v-for="item in launcher.recentRuns.value"
-                    :key="item.runId"
-                    :label="`${item.taskType} · ${item.runId.slice(0, 18)}…`"
-                    :value="item.runId"
-                  />
-                </el-select>
-                <el-input
-                  v-else
-                  v-model="msg.values[field]"
-                  size="small"
-                  :placeholder="field"
-                  :data-testid="`home-draft-input-${field}`"
-                />
-              </div>
-            </template>
-            <div class="home-view__draft-actions">
-              <el-button
-                size="small"
-                :loading="msg.prechecking"
-                :disabled="!canLaunch(msg.taskType)"
-                data-testid="home-draft-precheck"
-                @click="runPrecheck(msg as never)"
-              >
-                <ClipboardCheck :size="13" aria-hidden="true" />预检
-              </el-button>
-              <el-button
-                type="primary"
-                size="small"
-                :loading="launcher.launching.value"
-                :disabled="!canLaunch(msg.taskType)"
-                data-testid="home-draft-run"
-                @click="runDraft(msg as never)"
-              >
-                <Play :size="13" aria-hidden="true" />运行
-              </el-button>
-            </div>
-            <div v-if="msg.precheck" class="home-view__precheck" data-testid="home-draft-precheck-result">
-              <p v-if="msg.precheck.complete" class="home-view__precheck-ok">预检通过：必填输入齐全，可以运行。</p>
-              <p v-else class="home-view__precheck-missing">
-                预检：仍缺 {{ msg.precheck.missingInputs.map((field: string) => inputLabel(field)).join('、') }}。
-              </p>
-              <p v-if="msg.precheck.alternatives.length > 0" class="home-view__precheck-alt">
-                按当前输入也可运行：{{ msg.precheck.alternatives.join('、') }}。
-              </p>
-            </div>
-          </div>
-
-          <div
-            v-else-if="msg.role === 'assistant' && 'kind' in msg && msg.kind === 'run'"
-            class="home-view__run"
-            data-testid="home-run-result"
-          >
-            <p class="home-view__run-status">{{ runStatusText(msg.run) }}</p>
-            <p v-if="(msg.run.violations ?? []).length > 0" class="home-view__run-violations" data-testid="home-run-violations">
-              校验提示：{{ msg.run.violations.join('；') }}
-            </p>
-            <p v-if="msg.run.artifactId" class="home-view__run-artifact" data-testid="home-run-artifact">
-              产物 {{ msg.run.artifactId }}（v{{ msg.run.revision }}）已同步到下方评审面板。
-            </p>
-          </div>
-
-          <p v-else>{{ 'text' in msg ? msg.text : '' }}</p>
-        </div>
+  <section class="home-workbench" aria-labelledby="home-heading">
+    <header class="home-page-head">
+      <div><h1 id="home-heading">我的工作台</h1><p>先看运行进度，再接着完成手上的工作。</p></div>
+      <div class="home-head-actions">
+        <div ref="projectPicker" class="home-project-picker"><button ref="projectTrigger" type="button" class="home-project-trigger" data-testid="home-project-trigger" role="combobox" aria-label="按项目筛选" aria-haspopup="listbox" :aria-expanded="projectOpen" aria-controls="home-project-options" :aria-activedescendant="projectOpen ? `home-project-option-${projectIndex}` : undefined" @click="projectOpen ? closeProjects() : openProjects()" @keydown="projectKeydown" @blur="closeProjects"><span>{{ projectLabel(project) === '未关联项目' ? '全部项目' : projectLabel(project) }}</span><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m7 10 5 5 5-5" /></svg></button><div v-if="projectOpen" id="home-project-options" class="home-project-options" role="listbox" aria-label="项目范围"><button v-for="(option, index) in projectOptions" :id="`home-project-option-${index}`" :key="option.value" type="button" class="home-project-option" :class="{ 'is-active': projectIndex === index }" role="option" :aria-selected="project === option.value" tabindex="-1" @pointerdown.prevent @click="selectProject(option.value)"><span>{{ option.label }}</span><span aria-hidden="true" class="home-project-check">✓</span></button></div></div>
+        <button class="home-btn" @click="emit('navigate', { navKey: 'overview' })">项目概览 <ArrowRight aria-hidden="true" /></button>
       </div>
-
-      <footer class="home-view__composer">
-        <el-input
-          v-model="input"
-          :placeholder="'描述你想做的事,例如:把用例库中的接口用例批量执行一遍…'"
-          clearable
-          data-testid="home-assistant-input"
-          @keyup.enter="sendMessage"
-        />
-        <el-button type="primary" :disabled="!canSend" data-testid="home-assistant-send" @click="sendMessage">
-          <Send :size="15" />
-          发送
-        </el-button>
-      </footer>
+    </header>
+    <div v-if="props.status === 'loading'" class="home-state-panel" data-home-state="loading" role="status" aria-live="polite" aria-busy="true">
+      <strong>正在加载工作台数据</strong>
+      <span>正在读取当前工作空间的运行与保存记录。</span>
     </div>
-
-    <div class="home-view__review">
-      <AiAssistantReviewPanel
-        :refresh-token="panelRefreshToken"
-        :repository="assistantDeps?.repository"
-        :resolve-project="assistantDeps?.resolveProject"
-        :options="assistantDeps?.options"
-      />
+    <div v-else-if="props.status === 'unavailable'" class="home-state-panel" data-home-state="unavailable" role="status" aria-live="polite">
+      <strong>工作台数据暂不可用</strong>
+      <span>{{ props.errorMessage || '当前未接入可验证的工作台数据源，不显示推测的任务或统计。' }}</span>
+      <button type="button" class="home-btn" data-testid="home-retry" @click="emit('retry')">重试加载</button>
     </div>
+    <div v-else-if="props.status === 'forbidden'" class="home-state-panel" data-home-state="forbidden" role="status" aria-live="polite">
+      <strong>没有权限查看工作台数据</strong>
+      <span>请切换到有权访问当前项目的账号或联系管理员。</span>
+    </div>
+    <div v-else-if="props.status === 'error'" class="home-state-panel is-error" data-home-state="error" role="alert" aria-live="assertive">
+      <strong>工作台加载失败</strong>
+      <span>{{ props.errorMessage || '未能读取当前工作空间数据。' }}</span>
+      <button type="button" class="home-btn" data-testid="home-retry" @click="emit('retry')">重试加载</button>
+    </div>
+    <div v-else-if="props.status === 'empty'" class="home-state-panel" data-home-state="empty" role="status" aria-live="polite">
+      <strong>当前工作台暂无数据</strong>
+      <span>完成一次执行或保存一条工作记录后，这里会显示可继续处理的内容。</span>
+    </div>
+    <div v-else class="home-layout" :class="{ 'is-empty': !primary }">
+      <template v-for="section in primary ? ['runs', 'recent', 'pending'] : ['recent', 'runs', 'pending']" :key="section">
+        <section v-if="section === 'runs'" id="home-runs-panel" :ref="(el) => setSection('runs', el)" class="home-runs" data-section="runs" tabindex="-1" aria-labelledby="home-runs-heading">
+          <div class="home-section-head"><div class="home-section-title"><h2 id="home-runs-heading">进行中的任务</h2><span class="home-count home-run-count">{{ activeRuns.length }}</span></div><span class="home-caption">当前执行状态</span></div>
+          <div v-if="primary" class="home-run-composition">
+            <article class="home-run-feature">
+              <div class="home-feature-top"><span class="home-state-label"><i />{{ labels[primary.state] }} · {{ primary.kind === 'web' ? 'Web' : 'API' }} 自动化</span></div>
+              <h3>{{ primary.name }}</h3>
+              <p class="home-feature-sub">{{ projectLabel(primary.project) }}<template v-if="primary.environmentName"> / {{ primary.environmentName }}</template></p>
+              <p v-if="primary.state === 'waiting_user'" class="home-waiting-context">{{ primary.stage || '需要人工处理，尚未完成测试。' }}</p>
+              <div class="home-progress-summary"><span><span>{{ primary.stage || (primary.state === 'running' ? '执行测试用例' : labels[primary.state]) }}</span><span v-if="percent !== undefined" class="home-progress-fraction">已完成 {{ primary.completed }} / {{ primary.total }} 项</span></span><strong v-if="percent !== undefined" class="home-progress-percentage">{{ percent }}<span>%</span></strong></div>
+              <div v-if="percent !== undefined" class="home-progress" role="progressbar" aria-label="已完成用例数" :aria-valuenow="primary.completed" aria-valuemin="0" :aria-valuemax="primary.total"><span :style="{ width: `${percent}%` }" /></div>
+              <div class="home-feature-footer"><p>任务尚未结束，当前结果不代表最终结论。</p><button class="home-btn" data-testid="home-open-primary-run" @click="emit('navigate', primary.target)">查看执行详情 <ArrowRight aria-hidden="true" /></button></div>
+            </article>
+            <div class="home-run-side">
+              <article class="home-small-card">
+                <template v-if="secondary.length"><div class="home-small-head"><span>{{ secondary[0]!.kind === 'web' ? 'Web' : 'API' }} 自动化</span><Play aria-hidden="true" /></div><h3>{{ secondary[0]!.name }}</h3><p>{{ projectLabel(secondary[0]!.project) }}<br>{{ secondary[0]!.stage || labels[secondary[0]!.state] }}</p><div class="home-small-bottom"><span class="home-badge">{{ labels[secondary[0]!.state] }}</span><button class="home-text-btn" @click="emit('navigate', secondary[0]!.target)">详情 <ArrowRight aria-hidden="true" /></button></div></template>
+                <template v-else><div class="home-small-head">其他进行中的任务</div><h3>暂无其他任务</h3><p>只显示当前工作空间的真实执行状态。</p></template>
+              </article>
+              <article class="home-small-card home-result-summary"><div class="home-small-head"><span>主任务当前结果</span><ChartNoAxesCombined aria-hidden="true" /></div><div class="home-result-grid" :class="{ 'has-three': primary.passed !== undefined && primary.failed !== undefined && primary.error !== undefined }"><div v-if="primary.passed !== undefined" data-result><strong>{{ primary.passed }}</strong><span>已通过</span></div><div v-if="primary.failed !== undefined" data-result><strong class="is-bad">{{ primary.failed }}</strong><span>断言失败</span></div><div v-if="primary.error !== undefined" data-result><strong class="is-bad">{{ primary.error }}</strong><span>执行错误</span></div></div><p v-if="primary.passed === undefined && primary.failed === undefined && primary.error === undefined">当前执行源未提供结果计数。</p><p class="home-result-note">非最终结论</p></article>
+            </div>
+          </div>
+          <div v-else class="home-empty"><h3>当前没有进行中的任务</h3><p>有执行任务时，这里显示真实运行进度。</p></div>
+          <div v-if="secondary.length > 1" class="home-additional-runs" aria-label="更多进行中的任务"><button v-for="run in secondary.slice(1)" :key="run.id" type="button" class="home-text-btn" :data-additional-run="run.id" @click="emit('navigate', run.target)">{{ run.name }} · {{ labels[run.state] }} <ArrowRight aria-hidden="true" /></button></div>
+        </section>
+        <section v-else-if="section === 'recent'" id="home-recent-panel" :ref="(el) => setSection('recent', el)" class="home-recent" data-section="recent" tabindex="-1" aria-labelledby="home-recent-heading">
+          <div class="home-section-head"><div class="home-section-title"><h2 id="home-recent-heading">继续上次工作</h2><span class="home-count home-recent-count">{{ recent.length }}</span></div><div class="home-recent-filters" role="group" aria-label="最近保存类型"><button v-for="filter in filters" :key="filter.value" type="button" :data-work-filter="filter.value" :aria-pressed="workFilter === filter.value" @click="workFilter = filter.value">{{ filter.label }}</button></div></div>
+          <p class="home-caption">最近保存 · 尚无最近访问记录，以下按保存时间排列。</p>
+          <table v-if="recent.length" aria-label="最近保存的工作"><thead><tr><th>名称 / 保存位置</th><th>类型</th><th>状态</th><th>保存时间</th></tr></thead><tbody><tr v-for="item in recent" :key="item.id" :data-work-id="item.id"><td><button type="button" class="home-item-name" @click="emit('navigate', item.target)">{{ item.name }}</button><span class="home-item-sub">{{ projectLabel(item.project) }}<template v-if="item.context"> · {{ item.context }}</template></span></td><td><span class="home-type">{{ workKinds[item.kind] }}</span></td><td><span v-if="item.statusLabel" class="home-badge" :class="`is-${item.tone || 'neutral'}`">{{ item.statusLabel }}</span><span v-else class="home-muted">—</span></td><td class="home-muted"><time :datetime="item.savedAt">{{ displayTime(item.savedAt) }}</time></td></tr></tbody></table>
+          <template v-else><p class="home-empty-message">{{ workFilter === 'all' ? '暂无已保存的工作。保存用例或生成报告后，可从这里继续。' : '当前项目下暂无该类型的已保存记录，可切换“全部”。' }}</p><button class="home-text-btn" data-testid="home-open-cases" @click="emit('navigate', { navKey: 'cases' })">前往用例库 <ArrowRight aria-hidden="true" /></button></template>
+        </section>
+        <section v-else id="home-pending-panel" :ref="(el) => setSection('pending', el)" class="home-pending" data-section="pending" tabindex="-1" aria-labelledby="home-pending-heading">
+          <div class="home-section-head"><div class="home-section-title"><h2 id="home-pending-heading">需要处理</h2><span class="home-count home-pending-count">{{ pending.length }}</span></div></div>
+          <div v-if="pending.length" class="home-pending-body"><p class="home-pending-intro">当前工作空间 · 默认显示三条</p><div class="home-pending-list" role="region" aria-label="待处理事项，可滚动查看全部" tabindex="0"><article v-for="item in pending" :key="item.id" class="home-todo" :data-pending-id="item.id"><div class="home-todo-meta"><span class="home-badge" :class="`is-${item.tone || 'neutral'}`">{{ item.pending!.label }}</span><small>{{ projectLabel(item.project) }}</small></div><h3>{{ item.name }}</h3><div class="home-todo-footer"><span class="home-todo-time">{{ displayTime(item.savedAt) }}</span><button class="home-text-btn" type="button" @click="emit('navigate', item.target)">{{ item.pending!.actionLabel }} <ArrowRight aria-hidden="true" /></button></div></article></div><p class="home-pending-more">共 {{ pending.length }} 条 · {{ pending.length > 3 ? `向下滚动查看其余 ${pending.length - 3} 条` : '已显示全部' }}</p></div>
+          <div v-else class="home-empty"><h3>当前没有待处理事项</h3><p>仅显示当前工作空间内有明确待处理状态的记录。</p></div>
+        </section>
+      </template>
+    </div>
+    <footer class="home-foot"><span>当前工作空间 · 不代表个人分配或最近访问记录。</span><button class="home-text-btn" data-testid="home-open-chain" @click="emit('navigate', { navKey: 'assistant' })">AI 助手 <ArrowRight aria-hidden="true" /></button></footer>
   </section>
 </template>
 
-<style scoped>
-.home-view {
-  height: 100%;
-  min-height: 0;
-  display: grid;
-  justify-items: center;
-  align-content: start;
-  gap: 28px;
-  padding: 32px 28px 40px;
-  overflow: auto;
-}
-
-.home-view__review {
-  width: min(864px, 100%);
-}
-
-.home-view__draft {
-  display: grid;
-  gap: 12px;
-  margin-top: 4px;
-  padding: 14px 16px;
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
-  background: var(--surface-raised);
-  width: min(560px, 100%);
-}
-
-.home-view__draft-tip {
-  margin: 0;
-  font-size: 12px;
-  line-height: 18px;
-  color: var(--text-secondary);
-}
-
-.home-view__draft-field {
-  display: grid;
-  gap: 5px;
-}
-
-.home-view__draft-label {
-  font-size: 12px;
-  line-height: 18px;
-  color: var(--text-secondary);
-}
-
-.home-view__draft-actions {
-  display: flex;
-  gap: 10px;
-}
-
-.home-view__precheck {
-  display: grid;
-  gap: 6px;
-  padding: 10px 12px;
-  border-radius: var(--radius-md);
-  background: var(--surface-panel);
-  border: 1px solid var(--border-subtle);
-}
-
-.home-view__precheck-ok {
-  margin: 0;
-  font-size: 12px;
-  line-height: 18px;
-  color: var(--text-primary);
-}
-
-.home-view__precheck-missing {
-  margin: 0;
-  font-size: 12px;
-  line-height: 18px;
-  color: #b45309;
-}
-
-.home-view__precheck-alt {
-  margin: 0;
-  font-size: 12px;
-  line-height: 18px;
-  color: var(--text-secondary);
-}
-
-.home-view__run {
-  display: grid;
-  gap: 8px;
-  margin-top: 4px;
-  padding: 14px 16px;
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
-  background: var(--surface-subtle);
-  width: min(560px, 100%);
-}
-
-.home-view__run-status {
-  margin: 0;
-  font-size: 13px;
-  line-height: 20px;
-  color: var(--text-primary);
-}
-
-.home-view__run-violations {
-  margin: 0;
-  font-size: 12px;
-  line-height: 18px;
-  color: #b45309;
-}
-
-.home-view__run-artifact {
-  margin: 0;
-  font-size: 12px;
-  line-height: 18px;
-  color: var(--text-secondary);
-}
-
-.home-view__panel {
-  width: min(864px, 100%);
-  height: min(620px, calc(100vh - 420px));
-  min-height: 420px;
-  display: flex;
-  flex-direction: column;
-  background: var(--surface-glass);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-md);
-  backdrop-filter: blur(16px);
-  overflow: hidden;
-}
-
-.home-view__header {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 18px 24px;
-  border-bottom: 1px solid var(--border-subtle);
-}
-
-.home-view__logo {
-  display: grid;
-  width: 40px;
-  height: 40px;
-  flex: 0 0 40px;
-  place-items: center;
-  border-radius: var(--radius-lg);
-  color: var(--text-inverse);
-  background: var(--gradient-primary);
-  box-shadow: 0 4px 12px var(--brand-primary-shadow);
-}
-
-.home-view__heading h1 {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 600;
-  line-height: 1.25;
-  color: var(--text-primary);
-}
-
-.home-view__heading p {
-  margin: 3px 0 0;
-  font-size: 12px;
-  line-height: 1.4;
-  color: var(--text-secondary);
-}
-
-.home-view__thread {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 20px 24px;
-  overflow-y: auto;
-}
-
-.home-view__msg {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  max-width: 80%;
-}
-
-.home-view__msg--user {
-  align-self: flex-end;
-  flex-direction: row-reverse;
-}
-
-.home-view__msg-mark {
-  display: grid;
-  width: 24px;
-  height: 24px;
-  flex: 0 0 24px;
-  place-items: center;
-  border-radius: 8px;
-  color: var(--text-inverse);
-  background: var(--gradient-primary);
-}
-
-.home-view__msg-mark.is-user {
-  background: var(--text-tertiary);
-}
-
-.home-view__msg p {
-  margin: 0;
-  padding: 9px 12px;
-  border-radius: 12px;
-  border: 1px solid var(--border-subtle);
-  background: var(--surface-raised);
-  color: var(--text-primary);
-  font-size: 13px;
-  line-height: 1.55;
-}
-
-.home-view__msg--user p {
-  background: var(--brand-primary-soft);
-  border-color: var(--brand-primary-border);
-}
-
-.home-view__composer {
-  display: flex;
-  gap: 10px;
-  padding: 12px 24px 18px;
-  border-top: 1px solid var(--border-subtle);
-  background: var(--surface-page);
-}
-</style>
-
-<style>
-/* 首页占满整个 canvas:workspace 网格改为块级 + 页面级青绿氛围。 */
-.workspace.is-home {
-  display: block;
-  overflow: auto;
-  background:
-    radial-gradient(900px 480px at 8% -12%, rgba(15, 118, 110, 0.08), transparent 60%),
-    radial-gradient(760px 420px at 96% 108%, rgba(14, 116, 144, 0.08), transparent 55%),
-    var(--surface-page);
-}
-</style>
+<style src="../../styles/home-workbench.css"></style>

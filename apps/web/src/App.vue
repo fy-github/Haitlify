@@ -4,29 +4,19 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   Archive,
   Bug,
-  CircleCheck,
   FileText,
-  ChevronRight,
   Copy,
   Download,
   LoaderCircle,
-  Pause,
   Play,
   Plus,
-  Save,
   Search,
   Settings,
-  SlidersHorizontal,
-  Sparkles,
-  Square,
-  Terminal,
   Trash2,
   Upload,
   X,
   ArrowUp,
   ArrowDown,
-  ArrowLeftRight,
-  RotateCcw
 } from '@lucide/vue'
 import {
   browserSafeHeaders,
@@ -49,14 +39,11 @@ import {
   newSavedWebExecutionEnvironment,
   normalizeWebExecutionRuntimeConfig,
   parseCurlEnvironmentImport,
-  parseCurlIntoEnvironmentEntries,
   saveExecutionEnvironmentLibrary,
   validateExecutionEnvironment,
   validateWebExecutionEnvironment,
   type BuiltWebExecutionRuntime,
-  type EnvironmentAuthType,
   type EnvironmentEntryType,
-  type ExecutionEnvironmentEntry,
   type ExecutionEnvironmentLibrary,
   type SavedExecutionEnvironment,
   type WebRuntimeBrowser
@@ -72,7 +59,6 @@ import {
   deleteWebAutomationRunCase,
   deleteWebAutomationRunCases,
   listSavedWebAutomationRunCases,
-  saveWebAutomationRunCases,
   type SavedWebAutomationRunCase
 } from './domain/webAutomationRepository'
 import {
@@ -85,14 +71,26 @@ import {
   type AutomationRunResult,
   type AutomationRunMode,
   type AutomationRunReport,
-  type AutomationRunStatus,
   type ApiAutomationCaseDraft
 } from './domain/apiAutomation'
 import {
-  generateWebAutomationCasesFromGeneratedCases,
+  buildApiRunSnapshot,
+  parseApiLoopCount,
+  resolveApiExecutionScopeLabel,
+  type ApiRunSnapshot
+} from './domain/apiExecutionPreparation'
+import {
+  createApiRunMonitor,
+  recordApiCaseStart,
+  recordApiCaseResult,
+  completeApiRunMonitor,
+  apiMonitorCounts,
+  type ApiRunMonitor
+} from './domain/apiRunMonitor'
+import ApiRunMonitorView from './components/automation/ApiRunMonitorView.vue'
+import {
   exportWebAutomationRunCases,
   removeResultsFromWebAutomationRunReport,
-  validateWebAutomationConversionCases,
   type WebAutomationRunCase,
   type WebAutomationRunMode,
   type WebAutomationRunReport,
@@ -107,7 +105,6 @@ import {
   isTerminalWebAutomationRun,
   pauseWebAutomationRun,
   resumeWebAutomationRun,
-  runWebAutomationCasesViaBackend,
   snapshotToReport,
   stopWebAutomationRun,
   waitForWebAutomationRun,
@@ -131,7 +128,10 @@ import {
 } from './domain/webLoginDiscoveryRepository'
 import {
   buildBrowserOptions,
-  buildWebRunView
+  buildWebRunView,
+  buildWebRunCaseStatusById,
+  buildWebRunCaseResultMap,
+  resolveWebRunCaseId
 } from './domain/webAutomationRunView'
 import {
   WEB_AUTOMATION_ACTIVE_RUN_SESSION_KEY,
@@ -144,6 +144,11 @@ import {
   collectWebAutomationModuleCounts
 } from './domain/webAutomationWorkspaceView'
 import {
+  freezeWebRunStart,
+  isWebRunStartRequest,
+  type WebRunStartRequest
+} from './domain/webExecutionPreparation'
+import {
   appendAutomationReport,
   buildSavedAutomationReportRecord,
   type SavedAutomationReport
@@ -155,21 +160,28 @@ import {
   testJiraConfigConnection,
   type JiraConfig
 } from './domain/jiraConfigRepository'
-import { reviewGeneratedCases, type CaseReviewFinding } from './domain/caseReview'
-import { supplementMissingCaseTypes } from './domain/caseSupplement'
 import {
-  defaultCaseTypes,
-  type CaseTemplateDefinition
-} from './domain/caseTemplates'
-import { applyInterfaceFieldTemplate, applyInterfaceFieldTemplateToCases } from './domain/caseTemplateApplication'
+  jiraConnectionSnapshot,
+  jiraDraftSnapshot as jiraDraftSnapshotOf,
+  jiraProjectJqlFromRows,
+  jiraRowsFromProjectJql,
+  validateJiraDraft,
+  jiraTestTargetError,
+  type JiraProjectJqlRow
+} from './domain/jiraConfigDraft'
+
+type JiraConfigTestResult = {
+  state: 'idle' | 'success' | 'failed' | 'stale'
+  message: string
+  target: string
+}
+import { applyInterfaceFieldTemplate } from './domain/caseTemplateApplication'
 import { syncMetadataFromRow } from './domain/caseBulkEdit'
 import {
-  generateInterfaceCases,
   type GeneratedInterfaceCase,
   type GenerationGranularity,
   type InterfaceCaseRow
 } from './domain/caseGenerator'
-import { markCasesAsAiReviewed } from './domain/caseEnrichment'
 import {
   deleteSavedCase,
   deleteSavedWebAutomationCase,
@@ -180,9 +192,11 @@ import {
 } from './domain/caseRepository'
 import {
   ensureBackendProject,
+  listBackendProjects,
   loadSavedCasesWithBackend,
   loadTemplateConfigWithBackend,
-  saveGeneratedCasesWithBackend,
+  PlatformBackendRequestError,
+  PlatformBackendTransportError,
   saveTemplateConfigWithBackend,
   syncSavedCaseProjectsWithBackend,
   syncCaseOrderingWithBackend
@@ -193,57 +207,36 @@ import {
   collectAutomationModules,
   filterAutomationRecords
 } from './domain/automationView'
-import { downloadCsv, exportCasesToCsv } from './domain/csvExport'
 import {
-  filterOperations,
-  parseOpenApiDocument,
-  type HttpMethod,
-  type ParsedOpenApiDocument,
-  type ParsedOperation
+  type ParsedOpenApiDocument
 } from './domain/openapiParser'
 import {
   automationKindFromPath,
   automationPathFor,
-  caseDesignKindFromPath,
-  caseDesignPathFor,
   defaultNavKey,
   navKeyFromPath,
   navPathFor,
   type NavKey
 } from './domain/appNavigation'
 import { fetchCurrentUser, logout, changePassword, type AuthUser } from './domain/authRepository'
-import { setUnauthorizedHandler } from './domain/http'
+import { advanceAuthSessionEpoch, authedFetch, getAuthSessionEpoch, setUnauthorizedHandler } from './domain/http'
 import AppShell from './components/shell/AppShell.vue'
+import ResponsiveDrawer from './components/shell/ResponsiveDrawer.vue'
 import LoginScreen from './components/auth/LoginScreen.vue'
 import GlobalTopbar from './components/shell/GlobalTopbar.vue'
 import PrimarySidebar from './components/shell/PrimarySidebar.vue'
+import HelpDrawer from './components/shell/HelpDrawer.vue'
+import OverviewView, { type OverviewStatus } from './components/views/OverviewView.vue'
 import HomeView, { type HomeNavigateTarget } from './components/views/HomeView.vue'
+import type { HomeProject, HomeRun, HomeSection, HomeWorkItem } from './domain/homeWorkbench'
+import AssistantChainView from './components/views/AssistantChainView.vue'
 import SettingsCenterView from './components/views/SettingsCenterView.vue'
 import QualityWorkbenchView from './components/views/QualityWorkbenchView.vue'
 import ExecutionWorkbenchView from './components/views/ExecutionWorkbenchView.vue'
-import CaseWorkbenchView from './components/views/CaseWorkbenchView.vue'
+import EnvironmentManagementView from './components/views/EnvironmentManagementView.vue'
+import EnvironmentEditorSurface from './components/automation/EnvironmentEditorSurface.vue'
 import CasesView from './components/views/CasesView.vue'
-import WorkflowHeader from './components/workflow/WorkflowHeader.vue'
-import RequirementImportStage from './components/workflow/RequirementImportStage.vue'
-import AiPolicyDisclosure from './components/platformAi/AiPolicyDisclosure.vue'
-import AiRunSummaryView from './components/platformAi/AiRunSummaryView.vue'
-import AgentAssetsPanel from './components/platformAi/AgentAssetsPanel.vue'
-import RunPolicyEditor from './components/platformAi/RunPolicyEditor.vue'
-import GeneratedWebCaseTable from './components/workflow/GeneratedWebCaseTable.vue'
-import TestPointParseStage from './components/workflow/TestPointParseStage.vue'
-import NaturalLanguageCaseGenerationStage from './components/workflow/NaturalLanguageCaseGenerationStage.vue'
-import AutomationCompileStage from './components/workflow/AutomationCompileStage.vue'
 import ApiAutomationCaseTable from './components/automation/ApiAutomationCaseTable.vue'
-import AiReviewInspector from './components/workflow/AiReviewInspector.vue'
-import CaseDesignContextPane from './components/workflow/CaseDesignContextPane.vue'
-import CaseDeliveryStage from './components/workflow/CaseDeliveryStage.vue'
-import InterfaceCaseContextPane from './components/workflow/InterfaceCaseContextPane.vue'
-import InterfaceOperationTable from './components/workflow/InterfaceOperationTable.vue'
-import InterfaceCaseTable from './components/workflow/InterfaceCaseTable.vue'
-import InterfaceReviewInspector from './components/workflow/InterfaceReviewInspector.vue'
-import InterfaceCaseDeliveryStage from './components/workflow/InterfaceCaseDeliveryStage.vue'
-import ResponsiveDrawer from './components/workflow/ResponsiveDrawer.vue'
-import WorkflowStateView from './components/workflow/WorkflowStateView.vue'
 import WebAutomationWorkspace from './components/automation/WebAutomationWorkspace.vue'
 import WebStepEvidenceCard from './components/automation/WebStepEvidenceCard.vue'
 import ActionIrViewerDialog from './components/automation/ActionIrViewerDialog.vue'
@@ -251,9 +244,11 @@ import type { WebCaseStatusFilter } from './components/automation/WebAutomationC
 import { initialSidebarCollapsed, useViewportMode } from './ui/useViewportMode'
 import { useOnlineStatus } from './ui/useOnlineStatus'
 import { useDefects } from './ui/useDefects'
+import DefectFailureBanner from './components/defects/DefectFailureBanner.vue'
 import { useReports } from './ui/useReports'
+import { createWorkspaceStorage } from './ui/workspaceStorage'
+import { createTemplateOperationAdapter } from './ui/templateOperationAdapter'
 import { useTemplateConfig } from './ui/useTemplateConfig'
-import { useAiConfig } from './ui/useAiConfig'
 import { useCases } from './ui/useCases'
 import {
   automationStatusLabel,
@@ -264,173 +259,27 @@ import {
   webRunResultToAutomationLog
 } from './ui/automationFormat'
 import {
+  primaryAreaForNavKey,
+  primaryAreas,
   resolveNavDisplay,
   resolveSidebarActiveItemId,
   sidebarGroupsForRole,
   type SidebarBadges,
-  type SidebarItem
+  type SidebarItem,
+  type PrimaryArea
 } from './ui/navigation/appSidebar'
 import {
-  createImportedOpenApiProject,
   selectImportedProject,
-  upsertImportedProject,
   type ImportedOpenApiProject
 } from './domain/openapiProjectRepository'
-import { buildFigmaDesignDraftFromUrl } from './domain/figmaDesignImport'
-import { parseFigmaDesignWithBackend } from './domain/figmaDesignRepository'
-import {
-  importAiFigmaFile,
-  listAiFigmaChangeSets,
-  listAiFigmaDraftPoints,
-  listAiFigmaElementCandidates,
-  listAiFigmaNodes,
-  startAiFigmaFileAnalysis,
-  startAiFigmaNodeAnalysis,
-  type AiFigmaAnalysisRunResponse,
-  type AiFigmaChangeSetResponse,
-  type AiFigmaDraftPointResponse,
-  type AiFigmaElementCandidateListResponse,
-  type AiFigmaFileResponse,
-  type AiFigmaNodeListResponse
-} from './domain/aiFigmaRequirementRepository'
-import {
-  buildFigmaNodeTree,
-  figmaDraftEvidenceLabel,
-  groupFigmaElementCandidates,
-  sortFigmaChangeRows
-} from './domain/aiFigmaRequirementView'
-import {
-  ignoreAiMultiAgentConflict,
-  listAiMultiAgentConflicts,
-  listAiMultiAgentGraph,
-  listAiMultiAgentQualityScores,
-  mergeAiMultiAgentRun,
-  startAiMultiAgentRun,
-  type AiAgentMergeResponse,
-  type AiMultiAgentRunResponse
-} from './domain/aiMultiAgentRunRepository'
-import {
-  buildAiReviewInsightView,
-  buildMultiAgentMergeCandidatesFromSuggestions,
-  type AgentConflictView,
-  type AiReviewSuggestionView,
-  type QualityScoreView
-} from './domain/aiMultiAgentRunView'
 import {
   collectFailedDesignOriginResults,
   isDesignOriginAutomationCase,
-  isDesignOriginWebCase,
   summarizeFailedDesignOriginResults
 } from './domain/designOrigin'
-import { mapDesignOriginFailureItems } from './domain/designOriginFailureView'
-import {
-  applyAnalysisSnapshot,
-  createAnalysisProgressState,
-  isTerminalAnalysisStatus,
-  type AiAnalysisLogEntry
-} from './domain/aiAnalysisProgress'
-import { checkAiEnvironmentReadiness } from './domain/aiEnvironmentReadiness'
-import { mapRunEventsToLog } from './domain/aiRunEventLog'
-import {
-  confirmAiDraftTestPoint,
-  cancelAiAnalysisRun,
-  createAiAnalysisRun,
-  deleteAiDraftTestPoint,
-  editConfirmAiDraftTestPoint,
-  getAiAnalysisCoverageSummary,
-  getAiAnalysisRun,
-  listAiAnalysisToolCalls,
-  listAiAnalysisUnclearQuestions,
-  listAiCallRecords,
-  listAiDraftTestPoints,
-  listAiAnalysisRunEvents,
-  listAiRunPolicies,
-  loadAiConfigFromPlatform,
-  rejectAiDraftTestPoint,
-  resumeAiAnalysisRun,
-  retryAiAnalysisRun,
-  uploadAiSourceDocument,
-  type AiAnalysisCoverageSummary,
-  type AiAnalysisRun,
-  type AiDraftTestPoint,
-  type GeneratedAiCase,
-  type AiRunEvent,
-  type AiRunEventList,
-  type AiSourceDocument,
-  type AiToolCallRecord,
-  type AiUnclearQuestion
-} from './domain/aiPlatformRepository'
-import {
-  cancelWebCaseAgentRun,
-  getWebCaseAgentRun,
-  listWebCaseAgentArtifacts,
-  confirmAllWebCasePlanArtifacts,
-  listWebCaseAgentEvents,
-  recordAgentAssetOutcome,
-  startWebCaseAgentRun,
-  type WebCaseAgentArtifact,
-  type WebCaseAgentEvent,
-  type WebCaseAgentRun
-} from './domain/webCaseAgentRepository'
-import {
-  buildAiDraftTestPointView,
-  confidenceBucket,
-  type AiDraftTestPointFilter,
-  type AiDraftTestPointView
-} from './domain/aiDraftTestPointView'
-import {
-  formatVisualRegionCoordinates,
-  visualEvidenceForDraftPoint
-} from './domain/aiVisualRequirementView'
-import {
-  buildAiAnalysisCoverageView,
-  type AiAnalysisCoverageView
-} from './domain/aiAnalysisCoverageView'
-import {
-  buildDesignAutomationDraftCases,
-  finalizeDesignDraftCasesForLibrary,
-  toRequirementDesignDraftCases
-} from './domain/designAutomationDraft'
-import { designLocatorCards } from './domain/designLocatorView'
-import {
-  buildGeneratedCasesFromAiGeneratedCases,
-  buildNaturalLanguageCasesFromAgentArtifacts,
-  formatNaturalLanguageText,
-  importWebCaseDocuments,
-  type RequirementPointDraft,
-  summarizeImportedWebCases
-} from './domain/webCaseImport'
-import {
-  buildCaseDesignWorkflowView,
-  reviewRunStatusToWorkflowStatus,
-  type CaseDesignStage,
-  type WorkflowAsyncStatus
-} from './domain/caseDesignWorkflow'
-import { generatedWebCaseIdOffset } from './domain/caseGenerationBatch'
-import {
-  buildInterfaceCaseWorkflowView,
-  type InterfaceCaseStage
-} from './domain/interfaceCaseWorkflow'
-import {
-  inferRequirementSourceKind,
-  clearCaseDesignDraft,
-  loadCaseDesignDraft,
-  saveCaseDesignDraft,
-  type CaseReviewDecision,
-  type CaseReviewFindingDecisions,
-  type PersistedRequirementSourceKind
-} from './domain/caseDesignDraftRepository'
-import { buildCaseDesignSourceView } from './domain/caseDesignSourceView'
-import { buildCaseDesignReviewView } from './domain/caseDesignReviewView'
-import {
-  buildCaseDesignDeliveryView,
-  type CaseDesignDeliveryMode,
-  type CaseDesignDeliveryRiskItem
-} from './domain/caseDesignDelivery'
-import { parseRequirementDocumentWithBackend } from './domain/requirementDocumentRepository'
-import { buildRequirementImportText } from './domain/requirementDocumentPayload'
 import { exportProjectData, importProjectData } from './domain/projectDataRepository'
-import { loadTemplateConfig } from './domain/templateConfigRepository'
+import { loadTemplateConfig, TEMPLATE_CONFIG_STORAGE_KEY } from './domain/templateConfigRepository'
+import { loadJiraCsvTemplate } from './domain/jiraCsvTemplateRepository'
 import type {
   GeneratedWebAutomationCase,
   WebAutomationAction,
@@ -449,135 +298,29 @@ interface WorkspaceSyncConflictNotice {
   cases: boolean
 }
 
-interface StagedRequirementFile {
-  name: string
-  text: string
-  kind?: PersistedRequirementSourceKind
-  needsReattach?: boolean
-}
-
-interface RequirementSourcePickOptions {
-  replaceName?: string
-  kind?: PersistedRequirementSourceKind
-  localRecovery?: boolean
-}
-
-const FIGMA_REQUIREMENT_FILE_NAME = 'figma-link.txt'
-
 type NavHistoryMode = 'push' | 'replace' | 'skip'
 
-const savedCollapsed = localStorage.getItem('ai-test-platform.sidebar-collapsed')
+const workspaceStorage = createWorkspaceStorage(window.localStorage)
+const workspaceSessionStorage = createWorkspaceStorage(window.sessionStorage)
+const localStorage = workspaceStorage.storage
+const sessionStorage = workspaceSessionStorage.storage
+const savedCollapsed = window.localStorage.getItem('ai-test-platform.sidebar-collapsed')
 const railCollapsed = ref(initialSidebarCollapsed(savedCollapsed, window.innerWidth))
 const viewportMode = useViewportMode()
 const isOnline = useOnlineStatus()
 const isCompactDesktop = computed(() => viewportMode.value === 'compact' || viewportMode.value === 'narrow')
 const isNarrowViewport = computed(() => viewportMode.value === 'narrow')
 const narrowNavigationVisible = ref(false)
+const helpVisible = ref(false)
 const compactContextVisible = ref(false)
 const compactInspectorVisible = ref(false)
-const restoredCaseDesignDraft = loadCaseDesignDraft(localStorage)
 const globalSearch = ref('')
 const activeNav = ref<NavKey>(resolveInitialNav())
-const openApiFileInput = ref<HTMLInputElement>()
-const webCaseFileInput = ref<HTMLInputElement>()
-const pendingRequirementSourcePick = shallowRef<RequirementSourcePickOptions>()
-const requirementSourceInputAccept = computed(() =>
-  pendingRequirementSourcePick.value?.kind === 'openapi'
-    ? '.json,application/json'
-    : '.pdf,.md,.markdown,.json,.doc,.docx,.xls,.xlsx,.csv,.yaml,.yml,.txt,.png,.jpg,.jpeg,.webp,.gif,.bmp,application/pdf,text/markdown,application/json,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/x-yaml,text/yaml,text/csv,text/plain,image/*'
-)
+const homeSection = ref<HomeSection>('runs')
 const importedProjects = ref<ImportedOpenApiProject[]>([])
 const activeProjectId = ref('')
-const selectedOperationIds = ref<string[]>([])
-const generatedCases = ref<GeneratedInterfaceCase[]>([])
-const activeInterfaceCaseStage = ref<InterfaceCaseStage>('import')
-const interfaceReviewAttempted = ref(false)
-const ignoredInterfaceReviewFindingIds = ref<string[]>([])
-const selectedInterfaceCaseIds = ref<string[]>([])
-const interfaceReviewStatusFilter = ref('ALL')
-const generatedWebCases = ref<GeneratedWebAutomationCase[]>([])
-const stagedRequirementFiles = ref<StagedRequirementFile[]>([])
-const stagedRequirementSourceFiles = ref<File[]>([])
-const extractedRequirementPoints = ref<RequirementPointDraft[]>([])
 const requirementAnalysisProjectName = ref('默认项目')
-const aiSourceDocuments = shallowRef<AiSourceDocument[]>([])
-const aiAnalysisRun = shallowRef<AiAnalysisRun>()
-const aiDraftPoints = shallowRef<AiDraftTestPoint[]>([])
-const aiCoverageSummary = shallowRef<AiAnalysisCoverageSummary>()
-const aiUnclearQuestions = shallowRef<AiUnclearQuestion[]>([])
-const aiToolCalls = shallowRef<AiToolCallRecord[]>([])
-const aiAnalysisRunning = ref(false)
-const aiCaseGenerationRunning = ref(false)
-const aiCaseGenerationCancelling = ref(false)
-const webCaseAgentRun = shallowRef<WebCaseAgentRun>()
-const naturalPlanRunId = ref(restoredCaseDesignDraft?.naturalPlanRunId || '')
-const webCaseAgentEvents = shallowRef<WebCaseAgentEvent[]>([])
-const webCaseAgentNaturalPlanCount = ref(0)
-const deliveredWebCaseArtifactIds = new Set<string>()
-const webCaseAgentPollCoordinator = createWebRunPollCoordinator()
-const aiAnalysisDetailLoading = ref(false)
-const webRequirementFlowDismissed = ref(false)
-const aiAnalysisProgress = reactive({
-  percentage: 0,
-  text: '等待上传需求文档'
-})
-const aiCaseGenerationProgress = reactive({
-  percentage: 0,
-  text: '等待 AI 分析需求完成'
-})
-const aiAnalysisLog = shallowRef<AiAnalysisLogEntry[]>([])
-const aiAnalysisPollCoordinator = createWebRunPollCoordinator()
-const generationScopePointIds = ref<string[]>(restoredCaseDesignDraft?.generationScopePointIds || [])
-const generationRetryPointIds = ref<string[]>(restoredCaseDesignDraft?.generationRetryPointIds || [])
-const selectedGeneratedWebCaseIds = ref<string[]>(restoredCaseDesignDraft?.selectedGeneratedWebCaseIds || [])
-const caseGenerationConfirmed = ref(restoredCaseDesignDraft?.caseGenerationConfirmed === true)
-const generationScopeAllSelected = ref(true)
-const requirementAiReviewRun = shallowRef<AiMultiAgentRunResponse>()
-const caseAiReviewRun = shallowRef<AiMultiAgentRunResponse>()
-const activeAiReviewStage = ref<'requirement' | 'case'>('requirement')
-const aiMultiAgentRun = computed(() => activeAiReviewStage.value === 'case' ? caseAiReviewRun.value : requirementAiReviewRun.value)
-const aiMultiAgentConflicts = shallowRef<AgentConflictView[]>([])
-const aiMultiAgentQualityScores = shallowRef<QualityScoreView[]>([])
-const aiMultiAgentMergeResult = shallowRef<AiAgentMergeResponse>()
-const aiMultiAgentLoading = ref(false)
-const activeCaseDesignStage = ref<CaseDesignStage>(restoredCaseDesignDraft?.activeStage || 'requirement')
-const caseDesignLastSavedAt = ref(restoredCaseDesignDraft?.updatedAt || '')
-const caseDesignDraftSaveError = ref('')
-const requirementSourceErrors = ref<Record<string, string>>(restoredCaseDesignDraft?.sourceErrors || {})
-const aiAnalysisError = ref(restoredCaseDesignDraft?.analysisError || '')
-const aiGenerationError = ref(restoredCaseDesignDraft?.generationError || '')
-const showAiRunSummary = computed(() => aiAnalysisRun.value?.status === 'failed' || Boolean(aiAnalysisError.value))
-const caseReviewError = ref(
-  restoredCaseDesignDraft?.reviewError
-    || (restoredCaseDesignDraft?.caseReviewRun?.status === 'failed'
-      ? restoredCaseDesignDraft.caseReviewRun.errorSummary || 'AI 质量评审未完成'
-      : '')
-)
-const caseReviewAttempted = ref(
-  restoredCaseDesignDraft?.reviewAttempted
-    ?? Boolean(restoredCaseDesignDraft?.caseReviewRun || restoredCaseDesignDraft?.reviewError)
-)
-const restoredAiReviewInsight = ref(restoredCaseDesignDraft?.review.insight)
-const caseReviewFindingDecisions = ref<CaseReviewFindingDecisions>(
-  restoredCaseDesignDraft?.review.findingDecisions || {}
-)
-const caseDesignDraftPersistenceSuspended = ref(false)
-let caseDesignDraftTimer: ReturnType<typeof setTimeout> | undefined
-const deliveryMode = ref<CaseDesignDeliveryMode>('library')
-const deliveryExecuteNow = ref(false)
-const aiDraftSelection = shallowRef<AiDraftTestPoint[]>([])
-const aiDraftBulkConfirming = ref(false)
-const aiFigmaFile = shallowRef<AiFigmaFileResponse>()
-const aiFigmaNodes = shallowRef<AiFigmaNodeListResponse>({ items: [] })
-const aiFigmaAnalysisRun = shallowRef<AiFigmaAnalysisRunResponse>()
-const aiFigmaDraftPoints = shallowRef<AiFigmaDraftPointResponse[]>([])
-const aiFigmaChangeSets = shallowRef<AiFigmaChangeSetResponse[]>([])
-const aiFigmaElementCandidates = shallowRef<AiFigmaElementCandidateListResponse>({ items: [] })
-const selectedAiFigmaNodeId = ref('')
-const aiFigmaLoading = ref(false)
-const generationKind = ref<'interface' | 'web_automation'>(
-  restoredCaseDesignDraft?.generationKind || 'web_automation'
-)
+const generationKind = ref<'interface' | 'web_automation'>('web_automation')
 const automationCases = ref<SavedAutomationCase[]>(listSavedAutomationCases(localStorage))
 const webAutomationCases = ref<SavedWebAutomationRunCase[]>(listSavedWebAutomationRunCases(localStorage))
 const automationKind = ref<'api' | 'web'>(resolveInitialAutomationKind())
@@ -587,18 +330,86 @@ const automationConcurrencyLimit = ref(8)
 const apiAutomationLoopCount = ref(1)
 const webAutomationLoopCount = ref(1)
 const responseBodyMatchThreshold = ref(100)
-const apiLoopCountOptions = [1, 2, 3, 5, 10, 20].map((value) => ({ label: `${value}`, value }))
-const apiConcurrencyOptions = [1, 2, 4, 8, 16, 32].map((value) => ({ label: `${value}`, value }))
-const apiRunCountSelection = computed<number>({
-  get: () => (automationRunMode.value === 'concurrent' ? automationConcurrencyLimit.value : apiAutomationLoopCount.value),
-  set: (value) => {
-    if (automationRunMode.value === 'concurrent') {
-      automationConcurrencyLimit.value = value
-      return
-    }
-    apiAutomationLoopCount.value = value
+const apiRunCountMin = 1
+/** 循环次数/并发数：− 输入 ＋ 步进，允许直输但只接受正整数。 */
+const apiRunCountValue = computed(() =>
+  automationRunMode.value === 'concurrent' ? automationConcurrencyLimit.value : apiAutomationLoopCount.value
+)
+const apiRunCountInput = ref(String(apiRunCountValue.value))
+const apiRunCountError = ref('')
+const syncApiRunCountInput = () => {
+  apiRunCountInput.value = String(apiRunCountValue.value)
+  apiRunCountError.value = ''
+}
+const applyApiRunCount = (value: number) => {
+  if (automationRunMode.value === 'concurrent') {
+    automationConcurrencyLimit.value = value
+    return
   }
-})
+  apiAutomationLoopCount.value = value
+}
+const commitApiRunCount = (raw: string = apiRunCountInput.value) => {
+  const parsed = parseApiLoopCount(raw)
+  if (!parsed.valid) {
+    apiRunCountError.value = parsed.message || '循环次数必须是正整数'
+    return false
+  }
+  apiRunCountError.value = ''
+  applyApiRunCount(parsed.value)
+  apiRunCountInput.value = String(parsed.value)
+  return true
+}
+const stepApiRunCount = (delta: number) => {
+  commitApiRunCount()
+  applyApiRunCount(Math.max(apiRunCountMin, apiRunCountValue.value + delta))
+  apiRunCountInput.value = String(apiRunCountValue.value)
+  apiRunCountError.value = ''
+}
+/** 直输保持草稿态，非法值只提示不写回；合法值即时生效。 */
+const onApiRunCountInput = (event: Event) => {
+  const target = event.target as HTMLInputElement | null
+  const raw = target?.value ?? ''
+  apiRunCountInput.value = raw
+  const parsed = parseApiLoopCount(raw)
+  if (!parsed.valid) {
+    apiRunCountError.value = parsed.message || '循环次数必须是正整数'
+    return
+  }
+  apiRunCountError.value = ''
+  applyApiRunCount(parsed.value)
+}
+watch([automationRunMode, apiAutomationLoopCount, automationConcurrencyLimit], syncApiRunCountInput)
+const apiRunSnapshot = ref<ApiRunSnapshot>()
+const apiRunMonitor = ref<ApiRunMonitor>()
+const apiAutomationWorkspaceMode = ref<'prepare' | 'monitor'>('prepare')
+const apiRunMonitorRef = ref<InstanceType<typeof ApiRunMonitorView>>()
+const apiPreparationElement = ref<HTMLElement>()
+const apiMonitorEntry = ref<HTMLElement>()
+const apiPreparationScroll = ref({ top: 0, left: 0 })
+const apiRunConfirming = ref(false)
+let apiRunGeneration = 0
+const enterApiRunMonitor = async () => {
+  if (!apiRunMonitor.value) return
+  const isCurrent = beginWorkspaceOperation('apiMonitorNavigation')
+  const monitor = apiRunMonitor.value
+  const scroll = apiPreparationElement.value?.querySelector<HTMLElement>('.el-scrollbar__wrap')
+  apiPreparationScroll.value = { top: scroll?.scrollTop || 0, left: scroll?.scrollLeft || 0 }
+  apiAutomationWorkspaceMode.value = 'monitor'
+  await nextTick()
+  if (isCurrent() && apiRunMonitor.value === monitor && apiAutomationWorkspaceMode.value === 'monitor') apiRunMonitorRef.value?.focusHeading()
+}
+const returnApiRunPreparation = async () => {
+  const isCurrent = beginWorkspaceOperation('apiMonitorNavigation')
+  apiAutomationWorkspaceMode.value = 'prepare'
+  await nextTick()
+  if (!isCurrent() || apiAutomationWorkspaceMode.value !== 'prepare') return
+  const scroll = apiPreparationElement.value?.querySelector<HTMLElement>('.el-scrollbar__wrap')
+  if (scroll) { scroll.scrollTop = apiPreparationScroll.value.top; scroll.scrollLeft = apiPreparationScroll.value.left }
+  apiMonitorEntry.value?.focus({ preventScroll: true })
+}
+const apiExecutionScopeLabel = computed(() =>
+  resolveApiExecutionScopeLabel(automationSelection.value.length, filteredAutomationCases.value.length)
+)
 const apiAutomationRunning = ref(false)
 const webAutomationRunning = ref(false)
 const apiAutomationProgress = reactive({
@@ -606,7 +417,6 @@ const apiAutomationProgress = reactive({
   total: 0,
   runningCaseId: ''
 })
-const saveCasesLoading = ref(false)
 const automationSelection = ref<SavedAutomationCase[]>([])
 const automationGenerateVisible = ref(false)
 const automationGenerateProject = ref('ALL')
@@ -631,14 +441,38 @@ const webRunPollCoordinator = createWebRunPollCoordinator()
 let finalizedWebRunId = ''
 const jiraConfigForm = reactive<JiraConfig>(defaultJiraConfig())
 const jiraConfigLoading = ref(false)
+const jiraConfigReadState = ref<'idle' | 'loading' | 'ready' | 'error'>('idle')
 const jiraConfigTesting = ref(false)
-const jiraProjectJqlRows = ref<Array<{ key: string; value: string }>>([])
+const jiraProjectJqlRows = ref<JiraProjectJqlRow[]>([])
+/** 连接测试的真实结果(供设置页状态块展示;空 result 表示未测试) */
+const jiraConfigTestResult = ref<JiraConfigTestResult>({
+  state: 'idle',
+  message: '',
+  target: ''
+})
+/** 已保存配置的快照(JSON),含 token 与 JQL 行;用于页内与离开守卫判断未保存修改 */
+const jiraConfigSavedSnapshot = ref('')
+/** 保存前的前端校验结果(页面内 .j-error 呈现) */
+const jiraConfigValidationError = ref('')
+/** 连接测试世代:参数一变或重新发起,旧响应不得再写状态 */
+let jiraTestGeneration = 0
+
+/** 当前草稿快照(含 token 与 JQL 行内输入) */
+const jiraDraftSnapshot = computed(() => jiraDraftSnapshotOf(jiraConfigForm, jiraProjectJqlRows.value))
+const jiraConfigDirty = computed(() =>
+  Boolean(jiraConfigSavedSnapshot.value) && jiraDraftSnapshot.value !== jiraConfigSavedSnapshot.value
+)
+const templateOperationAdapter = createTemplateOperationAdapter({
+  beginTransport: () => {
+    const isCurrent = beginWorkspaceOperation('workspace', true)
+    return { fetch: workspaceFetch(isCurrent), projectName: currentBackendProjectName(), isCurrent }
+  }
+})
 const templateConfigModule = useTemplateConfig({
+  storage: localStorage,
+  identity: () => workspaceStorage.captureStrict(() => true),
+  operationAdapter: templateOperationAdapter,
   confirmDanger: (title, message, confirmLabel) => confirmDangerAction(title, message, confirmLabel),
-  persistTemplateConfig: async (config) => {
-    const result = await saveTemplateConfigWithBackend(localStorage, currentBackendProjectName(), config)
-    return result.config
-  },
   getGenerationSelectedCaseTypes: () => generation.selectedCaseTypeIds,
   setGenerationSelectedCaseTypes: (ids) => {
     generation.selectedCaseTypeIds = ids
@@ -658,22 +492,9 @@ const {
   createCaseTemplate,
   syncSelectedCaseTypes
 } = templateConfigModule
-const aiConfigModule = useAiConfig({
-  confirmDanger: (title, message, confirmLabel) => confirmDangerAction(title, message, confirmLabel),
-  getRequirementProjectName: () => requirementAnalysisProjectName.value
-})
-const {
-  aiConfig,
-  aiConfigReady,
-  aiRunPolicies,
-  aiRunPoliciesError,
-  aiPolicyDisclosureDismissed,
-  aiRequirementPolicy,
-  showAiPolicyDisclosure,
-  applyAiConfig,
-  refreshAiPlatformConfig
-} = aiConfigModule
 const casesModule = useCases({
+  storage: localStorage,
+  initialLibraryKind: activeNav.value === 'webCases' ? 'web_automation' : 'interface',
   confirmDanger: (title, message, confirmLabel) => confirmDangerAction(title, message, confirmLabel),
   navigateToNav: (next) => navigateToNav(next),
   getWebAutomationCases: () => webAutomationCases.value,
@@ -693,6 +514,7 @@ const casesModule = useCases({
 })
 const {
   savedCases,
+  savedWebCases,
   libraryCaseKind,
   libraryFilter,
   filteredLibraryCases,
@@ -708,13 +530,6 @@ const {
 const selectedCase = ref<GeneratedInterfaceCase | GeneratedWebAutomationCase | SavedInterfaceCase | SavedWebAutomationCase>()
 const selectedLibraryId = ref<string>()
 const editVisible = ref(false)
-const webCasePreviewVisible = ref(false)
-const previewedWebCase = computed<GeneratedWebAutomationCase | SavedWebAutomationCase | undefined>(() => {
-  const testCase = selectedCase.value
-  return testCase && 'pageName' in testCase.row && 'steps' in testCase.metadata
-    ? testCase as GeneratedWebAutomationCase | SavedWebAutomationCase
-    : undefined
-})
 const curlVisible = ref(false)
 const environmentVisible = ref(false)
 const automationConfigVisible = ref(false)
@@ -785,17 +600,18 @@ const selectedActionIrCase = computed(() => {
     || (!!resultSourceId && item.id === resultSourceId)
   )
 })
-const focusedWebAutomationCaseId = ref('')
 const workspaceSyncConflict = ref<WorkspaceSyncConflictNotice>()
 const workspaceSyncLoading = ref(false)
 const editRow = reactive<InterfaceCaseRow>(emptyEditRow())
 const webEditRow = reactive<WebAutomationCaseRow>(emptyWebEditRow())
-const reviewFindings = ref<CaseReviewFinding[]>([])
 const executionEnvironmentLibrary = ref<ExecutionEnvironmentLibrary>(loadExecutionEnvironmentLibrary(localStorage))
 const webExecutionEnvironmentLibrary = ref<ExecutionEnvironmentLibrary>(
   loadExecutionEnvironmentLibrary(localStorage, WEB_EXECUTION_ENV_LIBRARY_STORAGE_KEY)
 )
-const editingEnvironment = reactive<SavedExecutionEnvironment>(cloneEnvironment(defaultExecutionEnvironmentLibrary().environments[0]))
+const editingEnvironment = reactive<SavedExecutionEnvironment>(cloneEnvironment(
+  executionEnvironmentLibrary.value.environments.find((environment) => environment.id === executionEnvironmentLibrary.value.activeEnvironmentId)
+  || defaultExecutionEnvironmentLibrary().environments[0]
+))
 const editingWebAllowedRequestOriginsText = computed({
   get: () => (editingEnvironment.web?.allowedRequestOrigins || []).join('\n'),
   set: (value: string) => {
@@ -835,38 +651,12 @@ const webLoginDiscoverySelection = reactive({
 })
 let webLoginDiscoveryAbortController: AbortController | undefined
 
-const importFilter = reactive({
-  module: 'ALL',
-  method: 'ALL' as HttpMethod | 'ALL',
-  pathKeyword: '',
-  summaryKeyword: ''
-})
-
 const generation = reactive({
   granularity: 'risk' as GenerationGranularity,
   selectedCaseTypeIds: templateConfig.value.caseTypes
     .filter((caseType) => caseType.appliesTo === 'interface' || caseType.appliesTo === 'all')
     .filter((caseType) => caseType.enabled)
     .map((caseType) => caseType.id)
-})
-const aiDraftFilter = reactive<AiDraftTestPointFilter>({
-  module: 'ALL',
-  status: 'ALL',
-  confidence: 'ALL',
-  sourceDocumentId: 'ALL'
-})
-const previewFilter = reactive({
-  module: 'ALL',
-  caseType: 'ALL',
-  priority: 'ALL',
-  executionResult: 'ALL',
-  keyword: ''
-})
-
-const webPreviewFilter = reactive({
-  module: 'ALL',
-  caseType: 'ALL',
-  keyword: ''
 })
 
 const automationFilter = reactive({
@@ -898,6 +688,116 @@ const runnableWebRuntime = computed<BuiltWebExecutionRuntime | undefined>(() =>
   activeWebExecutionEnvironment.value ? buildWebExecutionRuntime(activeWebExecutionEnvironment.value) : undefined
 )
 
+/* ── 环境编辑器草稿:绑定目录所选环境 + 未保存修改的 guard ───────────────────── */
+
+/** 递归按键排序的 JSON:同一份环境配置换过对象/字段顺序也不算“有修改”。 */
+function stableStringify(value: unknown): string {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value) ?? 'null'
+  if (Array.isArray(value)) return `[${value.map((item) => stableStringify(item)).join(',')}]`
+  const entries = Object.entries(value as Record<string, unknown>)
+    .filter(([, item]) => item !== undefined)
+    .sort(([left], [right]) => left.localeCompare(right))
+  return `{${entries.map(([key, item]) => `${JSON.stringify(key)}:${stableStringify(item)}`).join(',')}}`
+}
+
+/**
+ * 参与“是否有未保存修改”比较的投影。
+ * 存储契约里会被保存丢弃的字段(web 环境的 auth/entries/cookieOrigins、更新时间)不参与比较,
+ * 否则刚打开或刚保存就会误报脏。比较基准与草稿都走同一个投影。
+ */
+function environmentComparable(environment: SavedExecutionEnvironment, kind: 'api' | 'web'): string {
+  const copy = cloneEnvironment(environment)
+  delete (copy as { updatedAt?: string }).updatedAt
+  if (kind === 'web') {
+    copy.auth = { type: 'none' }
+    copy.entries = []
+    const web = normalizeWebExecutionRuntimeConfig(copy.web)
+    web.cookieOrigins = []
+    copy.web = web
+  }
+  return stableStringify(copy)
+}
+
+/** 把编辑器绑定到某个环境:先清空草稿键,避免上一个环境独有的字段残留。 */
+function bindEditingEnvironment(environment: SavedExecutionEnvironment, kind: 'api' | 'web'): void {
+  for (const key of Object.keys(editingEnvironment)) delete (editingEnvironment as unknown as Record<string, unknown>)[key]
+  Object.assign(editingEnvironment, cloneEnvironment(environment))
+  if (kind === 'web') {
+    editingEnvironment.auth = editingEnvironment.auth || { type: 'none' }
+    editingEnvironment.web = normalizeWebExecutionRuntimeConfig(editingEnvironment.web)
+  }
+}
+
+/** 目录当前所选环境(找不到就退回第一条)。 */
+function selectedEnvironmentOf(kind: 'api' | 'web'): SavedExecutionEnvironment | undefined {
+  const library = kind === 'web' ? webExecutionEnvironmentLibrary.value : executionEnvironmentLibrary.value
+  return library.environments.find((environment) => environment.id === library.activeEnvironmentId)
+    || library.environments[0]
+}
+
+const environmentDraftBaseline = computed(() =>
+  currentEnvironmentLibrary.value.environments.find((environment) => environment.id === editingEnvironment.id)
+)
+
+/** 编辑器草稿与其已保存版本是否存在差异(类别切换/选其他环境/返回/导航/关窗口共用)。 */
+const environmentDraftDirty = computed(() => {
+  const baseline = environmentDraftBaseline.value
+  if (!baseline) return false
+  const kind = environmentEditorKind.value
+  return environmentComparable(baseline, kind) !== environmentComparable(editingEnvironment, kind)
+})
+
+/** 丢弃未保存草稿:编辑器重新绑定到当前兜底环境(基线与草稿同时回到已保存状态)。 */
+function discardEnvironmentDraft(): void {
+  const target = environmentDraftBaseline.value || selectedEnvironmentOf(environmentEditorKind.value)
+  if (target) bindEditingEnvironment(target, environmentEditorKind.value)
+}
+
+/** 冷启动/切换账号:编辑器必须绑定目录当前所选环境,不能停在默认环境。 */
+function syncEnvironmentEditorToLibrary(): void {
+  const target = selectedEnvironmentOf(environmentEditorKind.value)
+  if (target) bindEditingEnvironment(target, environmentEditorKind.value)
+}
+
+/** 确认框跨 await:发起时固定会话 authority,owner 切换后旧意图不得改新会话的页面。 */
+function captureEnvironmentIntent(): () => boolean {
+  return beginWorkspaceOperation('environmentDraft')
+}
+
+const confirmDiscardEnvironmentDraft = async (message: string): Promise<boolean> => {
+  try {
+    await ElMessageBox.confirm(message, '放弃未保存的环境修改？', {
+      confirmButtonText: '放弃修改',
+      cancelButtonText: '继续编辑',
+      type: 'warning',
+      customClass: 'theme-confirm-box environment-discard-confirm'
+    })
+    return true
+  } catch {
+    return false
+  }
+}
+
+/** 有未保存修改时先确认;取消则连页面状态都不动(草稿完整保留)。 */
+function runWithEnvironmentDraftGuard(message: string, action: () => void): void {
+  if (!environmentDraftDirty.value) {
+    action()
+    return
+  }
+  const isCurrentIntent = captureEnvironmentIntent()
+  void confirmDiscardEnvironmentDraft(message).then((confirmed) => {
+    if (!confirmed || !isCurrentIntent()) return
+    discardEnvironmentDraft()
+    action()
+  })
+}
+
+function cancelEnvironmentEditing(): void {
+  runWithEnvironmentDraftGuard('取消编辑会丢弃当前未保存的环境修改。', () => {
+    environmentVisible.value = false
+  })
+}
+
 const activeProject = computed(() => selectImportedProject(importedProjects.value, activeProjectId.value))
 const globalProjectLabel = computed(() =>
   activeProject.value?.title || requirementAnalysisProjectName.value || '默认项目'
@@ -913,41 +813,7 @@ const studioSectionLabel = computed(() =>
     ? '测试设计'
     : currentNav.value.label
 )
-const isWebAutomationGeneration = computed(() => generationKind.value === 'web_automation')
 const parsed = computed<ParsedOpenApiDocument | undefined>(() => activeProject.value?.document)
-
-const interfaceModuleOptions = computed(() => [
-  { value: 'ALL', label: '全部模块', count: parsed.value?.operations.length || 0 },
-  ...modules.value.map((module) => ({ value: module.name, label: module.name, count: module.count }))
-])
-
-const interfaceCaseTaskTitle = computed(() =>
-  activeProject.value ? `${activeProject.value.title} · 接口用例` : '新建接口用例'
-)
-const interfaceCaseSaveLabel = computed(() =>
-  generatedCases.value.length > 0 ? `当前 ${generatedCases.value.length} 条用例` : '等待生成'
-)
-const interfaceCaseSecondaryAction = computed(() =>
-  importedProjects.value.length > 0 || generatedCases.value.length > 0
-    ? { label: '新建任务', disabled: saveCasesLoading.value || !canEdit.value }
-    : undefined
-)
-
-const interfaceCaseWorkflow = computed(() => buildInterfaceCaseWorkflowView({
-  requestedStage: activeInterfaceCaseStage.value,
-  importedSourceCount: importedProjects.value.length,
-  parsedOperationCount: parsed.value?.operations.length || 0,
-  selectedOperationCount: selectedOperationIds.value.length,
-  generatedCaseCount: generatedCases.value.length,
-  reviewAttempted: interfaceReviewAttempted.value,
-  saving: saveCasesLoading.value
-}))
-
-// VIEWER 只读:主生成动作在角色无权写时禁用(后端仍有角色强制)
-const interfaceCaseWorkflowHeaderPrimaryAction = computed(() => ({
-  ...interfaceCaseWorkflow.value.primaryAction,
-  disabled: !canEdit.value || interfaceCaseWorkflow.value.primaryAction.disabled
-}))
 
 const modules = computed(() => {
   const counts = new Map<string, number>()
@@ -956,168 +822,6 @@ const modules = computed(() => {
   }
   return Array.from(counts.entries()).map(([name, count]) => ({ name, count }))
 })
-
-const filteredOperations = computed(() =>
-  parsed.value
-    ? filterOperations(parsed.value.operations, {
-        module: importFilter.module === 'ALL' ? undefined : importFilter.module,
-        method: importFilter.method,
-        pathKeyword: importFilter.pathKeyword.trim(),
-        summaryKeyword: importFilter.summaryKeyword.trim()
-      })
-    : []
-)
-
-const selectedOperationIdSet = computed(() => new Set(selectedOperationIds.value))
-const selectedOperations = computed(() =>
-  (parsed.value?.operations || []).filter((operation) => selectedOperationIdSet.value.has(operation.id))
-)
-const interfaceOperationSelectionVisible = computed(() =>
-  importedProjects.value.length > 0
-  && generatedCases.value.length === 0
-  && ['import', 'generate'].includes(interfaceCaseWorkflow.value.activeStage)
-)
-const interfaceOperationSelectionEmpty = computed(() =>
-  interfaceOperationSelectionVisible.value && filteredOperations.value.length === 0
-)
-
-const interfaceCaseReviewStatus = (testCase: GeneratedInterfaceCase): string =>
-  testCase.row.tags.split(',').map((tag) => tag.trim()).includes('AI已评审')
-    ? '已评审'
-    : testCase.metadata.reviewMeta.status
-
-const filteredCases = computed(() =>
-  generatedCases.value.filter((testCase) => {
-    const row = testCase.row
-    if (previewFilter.module !== 'ALL' && row.module !== previewFilter.module) return false
-    if (previewFilter.caseType !== 'ALL' && row.caseType !== previewFilter.caseType) return false
-    if (previewFilter.priority !== 'ALL' && row.priority !== previewFilter.priority) return false
-    if (previewFilter.executionResult !== 'ALL' && row.executionResult !== previewFilter.executionResult) return false
-    if (interfaceReviewStatusFilter.value !== 'ALL' && interfaceCaseReviewStatus(testCase) !== interfaceReviewStatusFilter.value) return false
-    const keyword = previewFilter.keyword.trim().toLowerCase()
-    if (!keyword) return true
-    return [row.caseId, row.title, row.path, row.interfaceName, row.tags]
-      .join(' ')
-      .toLowerCase()
-      .includes(keyword)
-  })
-)
-
-const previewModules = computed(() => Array.from(new Set(generatedCases.value.map((testCase) => testCase.row.module))))
-const previewCaseTypes = computed(() => Array.from(new Set(generatedCases.value.map((testCase) => testCase.row.caseType))))
-const previewPriorities = computed(() => Array.from(new Set(generatedCases.value.map((testCase) => testCase.row.priority))))
-const previewReviewStatuses = computed(() => Array.from(new Set(generatedCases.value.map(interfaceCaseReviewStatus))))
-const webCaseSummary = computed(() => summarizeImportedWebCases(generatedWebCases.value))
-const canAnalyzeRequirements = computed(() => readyRequirementSourceCount.value > 0)
-const canGenerateWebCases = computed(() => extractedRequirementPoints.value.length > 0)
-const aiAnalysisCompleted = computed(() => aiAnalysisRun.value?.status === 'succeeded')
-const aiCaseGenerationCompleted = computed(() => generatedWebCases.value.length > 0)
-const showWebRequirementFlow = computed(() => generationKind.value === 'web_automation' && !webRequirementFlowDismissed.value)
-const uploadedRequirementFileNames = computed(() => stagedRequirementFiles.value.map((file) => file.name))
-const visibleUploadedRequirementFileNames = computed(() => uploadedRequirementFileNames.value.slice(0, 4))
-const hiddenRequirementFileCount = computed(() => Math.max(0, uploadedRequirementFileNames.value.length - visibleUploadedRequirementFileNames.value.length))
-const aiFigmaNodeTree = computed(() => buildFigmaNodeTree(aiFigmaNodes.value.items))
-const aiFigmaChangeRows = computed(() =>
-  aiFigmaChangeSets.value.flatMap((changeSet) => sortFigmaChangeRows(changeSet.changes))
-)
-const aiFigmaCandidateGroups = computed(() => groupFigmaElementCandidates(aiFigmaElementCandidates.value.items))
-const aiMultiAgentUnresolvedConflicts = computed(() =>
-  aiMultiAgentConflicts.value.filter((conflict) => conflict.resolutionStatus === 'unresolved').length
-)
-const aiMultiAgentMergeCandidateCount = computed(() =>
-  aiDraftPoints.value.filter((point) => point.reviewStatus !== 'rejected').length || extractedRequirementPoints.value.length
-)
-const canMergeMultiAgentReview = computed(() =>
-  Boolean(aiMultiAgentRun.value)
-    && aiReviewInsight.value.suggestions.length > 0
-    && aiMultiAgentUnresolvedConflicts.value === 0
-)
-const aiReviewInsight = computed(() => buildAiReviewInsightView(aiMultiAgentRun.value?.outputSnapshot))
-const caseDesignSourceView = computed(() => buildCaseDesignSourceView(
-  stagedRequirementFiles.value.map((source) => ({
-    name: source.name,
-    kind: source.kind || inferRequirementSourceKind(source.name),
-    text: source.text,
-    needsReattach: Boolean(source.needsReattach)
-  })),
-  requirementSourceErrors.value
-))
-const readyRequirementSourceCount = computed(() =>
-  caseDesignSourceView.value.filter((source) => source.status === 'ready').length
-)
-const caseDesignParsedItems = computed(() => [
-  ...aiDraftPoints.value.map((point) => ({ id: `requirement-${point.pointId}`, kindLabel: '需求点', label: point.title })),
-  ...aiFigmaNodes.value.items.map((node) => ({ id: `figma-${node.figmaNodeId}`, kindLabel: 'Figma', label: node.nodeName }))
-])
-const caseReviewStatus = computed<WorkflowAsyncStatus>(() =>
-  aiMultiAgentLoading.value && activeAiReviewStage.value === 'case'
-    ? 'running'
-    : caseReviewError.value
-      ? 'failed'
-      : reviewRunStatusToWorkflowStatus(caseAiReviewRun.value?.status)
-)
-const caseDesignWorkflow = computed(() => buildCaseDesignWorkflowView({
-  requestedStage: activeCaseDesignStage.value,
-  sourceCount: readyRequirementSourceCount.value,
-  analysisStatus: aiAnalysisRunning.value
-    ? 'running'
-    : aiAnalysisError.value
-      ? 'failed'
-      : aiAnalysisCompleted.value
-        ? 'succeeded'
-        : 'idle',
-  confirmedDraftCount: aiDraftPoints.value.filter((point) =>
-    point.reviewStatus === 'confirmed' || point.reviewStatus === 'modified'
-  ).length,
-  pendingDraftCount: pendingAiDraftPoints.value.length,
-  generationStatus: aiCaseGenerationRunning.value
-    ? 'running'
-    : aiGenerationError.value
-      ? 'failed'
-      : aiCaseGenerationCompleted.value
-        ? 'succeeded'
-        : 'idle',
-  generatedCaseCount: generatedWebCases.value.length,
-  caseGenerationConfirmed: caseGenerationConfirmed.value,
-  reviewAttempted: caseReviewAttempted.value,
-  reviewStatus: caseReviewStatus.value,
-  automationCompileStatus: webCaseAgentRun.value?.mode === 'COMPILE' && (webCaseAgentRun.value.status === 'running' || aiCaseGenerationRunning.value)
-    ? 'running'
-    : aiGenerationError.value
-      ? 'failed'
-      : generatedWebCases.value.length > 0 && webCaseAgentRun.value?.mode === 'COMPILE' && webCaseAgentRun.value.status === 'succeeded'
-        ? 'succeeded'
-        : 'idle',
-  automationCompiledCaseCount: webCaseAgentRun.value?.mode === 'COMPILE' && webCaseAgentRun.value.status === 'succeeded'
-    ? generatedWebCases.value.length
-    : 0,
-  pendingReviewCount: aiMultiAgentUnresolvedConflicts.value,
-  saving: saveCasesLoading.value
-}))
-const caseDesignStageTitle = computed(() =>
-  caseDesignWorkflow.value.stages.find((stage) => stage.key === caseDesignWorkflow.value.activeStage)?.label
-  || '需求解析'
-)
-const caseDesignSaveLabel = computed(() => {
-  if (caseDesignWorkflow.value.activeStage === 'test-parse') {
-    return '确认需求解析出的测试点，确认后进入自然语言用例生成'
-  }
-  if (caseDesignWorkflow.value.activeStage === 'case-generate') {
-    return '根据已确认测试点生成自然语言标题、步骤和预期结果'
-  }
-  if (caseDesignWorkflow.value.activeStage === 'review') {
-    return '选择用例后可继续编辑 Locator 和执行步骤'
-  }
-  if (caseDesignWorkflow.value.activeStage === 'automation-compile') {
-    return '根据自然语言步骤定位页面元素，生成自动化步骤、元素断言和执行预期'
-  }
-  return ''
-})
-const activeAiReviewInsight = computed(() =>
-  (aiReviewInsight.value.summary || aiReviewInsight.value.suggestions.length > 0)
-    ? aiReviewInsight.value
-    : restoredAiReviewInsight.value || { stage: '', summary: '', suggestions: [] }
-)
 const selectedReviewCase = computed(() => {
   const testCase = selectedCase.value
   if (!testCase || !('pageName' in testCase.row)) return undefined
@@ -1128,198 +832,33 @@ const selectedReviewCase = computed(() => {
     sourceFile: testCase.row.sourceFile
   }
 })
-const reviewPriorityForSeverity = (severity: string): string => {
-  if (severity === 'critical') return 'P0'
-  if (severity === 'high') return 'P1'
-  return 'P2'
-}
-const caseDesignReviewFindings = computed<AiReviewSuggestionView[]>(() => {
-  const findings: AiReviewSuggestionView[] = [
-    ...activeAiReviewInsight.value.suggestions,
-    ...aiCoverageView.value.warningRows.map((row) => ({
-      findingId: `coverage_gap:coverage-warning:${row.key}`,
-      category: 'coverage_gap' as const,
-      title: row.section,
-      detail: row.message,
-      priority: 'P1'
-    })),
-    ...aiCoverageView.value.unclearQuestions.map((question) => ({
-      findingId: `coverage_gap:coverage-question:${question.questionId}`,
-      category: 'coverage_gap' as const,
-      title: question.questionText,
-      detail: question.sourceRef || '',
-      priority: reviewPriorityForSeverity(question.severity)
-    }))
-  ]
-  return [...new Map(findings.map((finding) => [finding.findingId, finding])).values()]
-})
-const caseDesignReviewView = computed(() => buildCaseDesignReviewView({
-  selectedCase: selectedReviewCase.value,
-  qualityScores: aiMultiAgentQualityScores.value,
-  conflicts: aiMultiAgentConflicts.value,
-  findings: caseDesignReviewFindings.value,
-  findingDecisions: caseReviewFindingDecisions.value
-}))
-const deliveryAutomationKind = computed<'api' | 'web'>(() =>
-  generationKind.value === 'web_automation' ? 'web' : 'api'
-)
-const activeDeliveryEnvironment = computed(() =>
-  deliveryAutomationKind.value === 'web'
-    ? activeWebExecutionEnvironment.value
-    : activeApiExecutionEnvironment.value
-)
-const deliveryEnvironmentValidation = computed(() =>
-  deliveryAutomationKind.value === 'web'
-    ? validateWebExecutionEnvironment(activeDeliveryEnvironment.value)
-    : validateExecutionEnvironment(activeDeliveryEnvironment.value)
-)
-const selectedWebCasesForAutomation = computed(() => {
-  const selectedIds = new Set(selectedGeneratedWebCaseIds.value)
-  return selectedIds.size > 0
-    ? generatedWebCases.value.filter((testCase) => selectedIds.has(testCase.id))
-    : generatedWebCases.value
-})
-const deliveryExecutabilityIssues = computed(() => {
-  if (deliveryAutomationKind.value !== 'web') return []
-  const pendingLocatorIssues = selectedWebCasesForAutomation.value.flatMap((testCase) =>
-    testCase.metadata.locators
-      .filter((locator) => locator.confirmed === false)
-      .map((locator) => `${testCase.row.caseId}：定位器 ${locator.name} 尚未确认`)
-  )
-  const prepared = generateWebAutomationCasesFromGeneratedCases(selectedWebCasesForAutomation.value)
-  const conversionIssues = validateWebAutomationConversionCases(prepared).map(
-    (issue) => `${issue.caseId}：${issue.message}`
-  )
-  return [...pendingLocatorIssues, ...conversionIssues]
-})
-const deliveryReviewRisks = computed<CaseDesignDeliveryRiskItem[]>(() => {
-  const risks: CaseDesignDeliveryRiskItem[] = aiMultiAgentConflicts.value
-    .filter((conflict) => conflict.resolutionStatus === 'unresolved')
-    .map((conflict) => ({
-      id: `conflict:${conflict.conflictId}`,
-      kind: 'conflict' as const,
-      priority: 'P0',
-      message: `未处理冲突 · ${conflict.conflictType} · ${conflict.targetKey}`
-    }))
-
-  for (const testCase of generatedWebCases.value) {
-    const view = buildCaseDesignReviewView({
-      selectedCase: {
-        id: testCase.row.caseId,
-        title: testCase.row.title,
-        module: testCase.row.module,
-        sourceFile: testCase.row.sourceFile
-      },
-      qualityScores: aiMultiAgentQualityScores.value,
-      conflicts: aiMultiAgentConflicts.value,
-      findings: caseDesignReviewFindings.value,
-      findingDecisions: caseReviewFindingDecisions.value
-    })
-    view.findings
-      .filter((finding) => finding.decision === 'pending')
-      .forEach((finding) => risks.push({
-        id: finding.category === 'coverage_gap'
-          ? `coverage:${finding.findingId}`
-          : `${testCase.row.caseId}:${finding.findingId}`,
-        kind: finding.category === 'coverage_gap' ? 'coverage_gap' : 'finding',
-        priority: finding.priority || 'P2',
-        message: finding.category === 'coverage_gap'
-          ? `覆盖缺口 · ${finding.title}${finding.detail ? ` · ${finding.detail}` : ''}`
-          : `${testCase.row.caseId} · ${finding.title}${finding.detail ? ` · ${finding.detail}` : ''}`
-      }))
-  }
-
-  return [...new Map(risks.map((risk) => [risk.id, risk])).values()]
-})
-const caseDesignDeliveryView = computed(() => buildCaseDesignDeliveryView({
-  mode: deliveryMode.value,
-  executeNow: deliveryExecuteNow.value,
-  generatedCount: generationKind.value === 'web_automation'
-    ? generatedWebCases.value.length
-    : generatedCases.value.length,
-  selectedAutomationCount: deliveryAutomationKind.value === 'web'
-    ? selectedWebCasesForAutomation.value.length
-    : generatedCases.value.length,
-  executabilityIssues: deliveryExecutabilityIssues.value,
-  reviewAttempted: caseReviewAttempted.value,
-  reviewStatus: caseReviewStatus.value,
-  reviewError: caseReviewError.value,
-  reviewRisks: deliveryReviewRisks.value,
-  environmentValid: deliveryEnvironmentValidation.value.valid,
-  environmentMessage: deliveryEnvironmentValidation.value.message || ''
-}))
-const caseDesignHeaderPrimaryAction = computed(() =>
-  caseDesignWorkflow.value.activeStage === 'deliver'
-    ? {
-        label: caseDesignDeliveryView.value.primaryLabel,
-        disabled: !canEdit.value || !caseDesignDeliveryView.value.canSubmit || saveCasesLoading.value,
-        loading: saveCasesLoading.value
-      }
-    : {
-        ...caseDesignWorkflow.value.primaryAction,
-        disabled: !canEdit.value || caseDesignWorkflow.value.primaryAction.disabled
-      }
-)
-const relevantConflictIdSet = computed(() => new Set(caseDesignReviewView.value.relevantConflictIds))
-const caseDesignRelevantConflicts = computed(() => aiMultiAgentConflicts.value.filter(
-  (conflict) => relevantConflictIdSet.value.has(conflict.conflictId)
-))
 const activeCaseDesignSource = ref(selectedReviewCase.value?.sourceFile || '')
 watch(selectedReviewCase, (testCase) => {
   if (testCase?.sourceFile) activeCaseDesignSource.value = testCase.sourceFile
 })
-const caseDesignActiveModule = computed<string>(() =>
-  (caseDesignWorkflow.value.activeStage === 'case-generate'
-    ? aiDraftFilter.module
-    : webPreviewFilter.module) || 'ALL'
-)
-const selectedReviewCaseCount = computed(() =>
-  selectedGeneratedWebCaseIds.value.length || (selectedReviewCase.value ? 1 : 0)
-)
-const shellInspectorVisible = computed(() =>
-  activeNav.value === 'api'
-  && generationKind.value === 'web_automation'
-  && caseDesignWorkflow.value.activeStage === 'review'
-)
-const interfaceContextVisible = computed(() =>
-  activeNav.value === 'api' && generationKind.value === 'interface'
-)
-const interfaceInspectorVisible = computed(() =>
-  interfaceContextVisible.value && interfaceCaseWorkflow.value.activeStage === 'review'
-)
-const caseDesignContextVisible = computed(() =>
-  activeNav.value === 'api'
-  && generationKind.value === 'web_automation'
-  && ['case-generate', 'review', 'automation-compile'].includes(caseDesignWorkflow.value.activeStage)
-)
-/** 设置中心工作台:4 个设置导航(平台 AI/模板与字段/Jira 配置/用户管理)合并为单页 + 左分组导航 */
+/** 设置中心工作台:设置导航(模板字段/用例类型/Jira 配置/用户管理)合并为单页 + 左分组导航 */
 const isSettingsCenterNav = computed(() =>
-  ['aiConfig', 'settings', 'jiraConfig', 'users'].includes(activeNav.value)
+  ['settings', 'caseTypes', 'jiraConfig', 'users'].includes(activeNav.value)
 )
 /** 质量工作台:报告与缺陷导航合并为单页 + 左分组导航(转缺陷→缺陷高亮联动) */
 const isQualityWorkbenchNav = computed(() =>
   ['reports', 'defects'].includes(activeNav.value)
 )
-/** 用例工作台:用例库(cases)与智能用例设计(api)并入单页 + 左分组导航;
- * api 画布保持自身布局(不重排),仅被壳收纳进内容区。 */
+const isCaseLibraryNav = (nav: NavKey) => nav === 'cases' || nav === 'webCases'
 const isCaseWorkbenchNav = computed(() =>
-  activeNav.value === 'cases' || activeNav.value === 'api'
+  isCaseLibraryNav(activeNav.value)
 )
 /** 任一工作台壳(设置中心/质量工作台/执行工作台/用例工作台)打开时,workspace 收成单行网格由壳占满;
- * Web 自动化除外——它自管全高布局,仍走 .is-web-automation 工作区。
- * 注:用例工作台的 api 导航不入 is-workbench——api 画布保留 .is-studio-* 修饰(不重排),
- * 由 .is-studio-* 工作区内的 .workbench 壳自适应撑满(见 studio-canvas.css)。 */
+ * Web 自动化除外——它自管全高布局,仍走 .is-web-automation 工作区。 */
 const isWorkbenchNav = computed(() =>
   isSettingsCenterNav.value
   || isQualityWorkbenchNav.value
-  || activeNav.value === 'cases'
+  || activeNav.value === 'overview'
+  || isCaseWorkbenchNav.value
   || (activeNav.value === 'automation' && automationKind.value === 'api')
 )
-const inlineInspectorVisible = computed(() =>
-  !isCompactDesktop.value && (shellInspectorVisible.value || interfaceInspectorVisible.value)
-)
 
-watch([viewportMode, activeCaseDesignStage, activeInterfaceCaseStage, generationKind], () => {
+watch([viewportMode, generationKind], () => {
   compactContextVisible.value = false
   compactInspectorVisible.value = false
   if (viewportMode.value !== 'narrow') narrowNavigationVisible.value = false
@@ -1332,308 +871,36 @@ watch([activeNav, automationKind], () => {
 })
 
 const globalLongTaskLabel = computed(() => {
-  if (aiAnalysisRunning.value) return `内容解析 · ${aiAnalysisProgress.text}`
-  if (aiCaseGenerationRunning.value) return `AI 生成 · ${aiCaseGenerationProgress.text}`
   if (webAutomationRunning.value) return 'Web 自动化执行中'
   if (apiAutomationRunning.value) return `API 自动化 · ${apiAutomationProgress.completed}/${apiAutomationProgress.total}`
   return ''
 })
 
 const openActiveLongTask = () => {
-  if (aiAnalysisRunning.value || aiCaseGenerationRunning.value) {
-    generationKind.value = 'web_automation'
-    activeCaseDesignStage.value = aiAnalysisRunning.value ? 'requirement' : 'case-generate'
-    navigateToNav('api')
+  if (webAutomationRunning.value && activeWebRunId.value) {
+    const runId = activeWebRunId.value
+    navigateToNav('automation', 'push', () => {
+      if (activeWebRunId.value !== runId) return
+      environmentVisible.value = false
+      automationKind.value = 'web'
+      applyNavChange('automation', 'replace')
+      enterWebRunMonitor()
+    })
+    return
+  }
+  if (apiAutomationRunning.value && apiRunMonitor.value) {
+    const monitor = apiRunMonitor.value
+    navigateToNav('automation', 'push', () => {
+      if (apiRunMonitor.value !== monitor) return
+      environmentVisible.value = false
+      automationKind.value = 'api'
+      applyNavChange('automation', 'replace')
+      void enterApiRunMonitor()
+    })
     return
   }
   navigateToNav('automation')
 }
-
-const selectCaseDesignModule = (module: string) => {
-  if (caseDesignWorkflow.value.activeStage === 'case-generate') {
-    aiDraftFilter.module = module
-    return
-  }
-  webPreviewFilter.module = module
-}
-
-const selectCaseDesignSource = (sourceFile: string) => {
-  activeCaseDesignSource.value = sourceFile
-  if (caseDesignWorkflow.value.activeStage === 'case-generate') {
-    const sourceOption = aiDraftPointView.value.sourceOptions.find((option) => option.label === sourceFile)
-    if (sourceOption) aiDraftFilter.sourceDocumentId = sourceOption.value
-    return
-  }
-  webPreviewFilter.keyword = sourceFile
-}
-
-const decideSelectedReviewFinding = (findingId: string, decision: CaseReviewDecision) => {
-  const testCase = selectedReviewCase.value
-  if (!testCase) return
-  const previousDecision = caseReviewFindingDecisions.value[testCase.id]?.[findingId]
-  if (decision === 'accepted' && previousDecision === 'accepted') return
-  caseReviewFindingDecisions.value = {
-    ...caseReviewFindingDecisions.value,
-    [testCase.id]: {
-      ...(caseReviewFindingDecisions.value[testCase.id] || {}),
-      [findingId]: decision
-    }
-  }
-  if (decision === 'modified' && selectedCase.value && 'pageName' in selectedCase.value.row) {
-    openWebEdit(selectedCase.value as GeneratedWebAutomationCase)
-  }
-  if (decision === 'accepted') void mergeAcceptedReviewFinding(findingId, testCase.id)
-}
-
-const bulkDecideReviewCases = (decision: CaseReviewDecision) => {
-  const selectedIds = new Set(
-    selectedGeneratedWebCaseIds.value.length > 0
-      ? selectedGeneratedWebCaseIds.value
-      : selectedCase.value ? [selectedCase.value.id] : []
-  )
-  const next: CaseReviewFindingDecisions = Object.fromEntries(
-    Object.entries(caseReviewFindingDecisions.value).map(([caseId, decisions]) => [caseId, { ...decisions }])
-  )
-  generatedWebCases.value.filter((testCase) => selectedIds.has(testCase.id)).forEach((testCase) => {
-    const view = buildCaseDesignReviewView({
-      selectedCase: {
-        id: testCase.row.caseId,
-        title: testCase.row.title,
-        module: testCase.row.module,
-        sourceFile: testCase.row.sourceFile
-      },
-      qualityScores: aiMultiAgentQualityScores.value,
-      conflicts: aiMultiAgentConflicts.value,
-      findings: caseDesignReviewFindings.value,
-      findingDecisions: next
-    })
-    const caseDecisions = { ...(next[testCase.row.caseId] || {}) }
-    view.findings.forEach((finding) => { caseDecisions[finding.findingId] = decision })
-    next[testCase.row.caseId] = caseDecisions
-  })
-  caseReviewFindingDecisions.value = next
-}
-
-const appendMergedPointsToGeneratedCases = (points: AiDraftTestPoint[]) => {
-  if (!points.length) return
-  const generated = buildNaturalLanguageCasesFromAgentArtifacts(
-    points.map((point) => ({
-      sourcePointId: point.pointId,
-      candidateJson: {
-        title: point.title,
-        module: point.module,
-        pageName: point.pageOrFeature || '未命名页面',
-        naturalSteps: point.steps,
-        naturalExpectedResult: point.expectedResult,
-        sourceFile: point.sourceFile,
-        precondition: ''
-      }
-    })),
-    points,
-    requirementAnalysisProjectName.value || '默认项目',
-    generatedWebCases.value.length
-  )
-  generatedWebCases.value = [...generatedWebCases.value, ...generated.cases]
-}
-
-const mergeAcceptedReviewFinding = async (findingId: string, caseId: string) => {
-  if (!aiMultiAgentRun.value) {
-    ElMessage.warning('请先启动 AI 评审')
-    return
-  }
-  const finding = caseDesignReviewFindings.value.find((item) => item.findingId === findingId)
-  if (!finding) return
-  const candidates = buildMultiAgentMergeCandidatesFromSuggestions([finding])
-  if (!candidates.length) return
-  aiMultiAgentLoading.value = true
-  try {
-    const result = await mergeAiMultiAgentRun(aiMultiAgentRun.value.runId, { candidates })
-    aiMultiAgentMergeResult.value = result
-    await loadMultiAgentReviewDetails(aiMultiAgentRun.value.runId)
-    if (result.status === 'blocked') {
-      ElMessage.warning(`仍有 ${result.unresolvedConflictCount} 个冲突未处理`)
-      return
-    }
-    if (result.aiEnrichmentFallback) {
-      ElMessage.warning('AI 增量补充不可用，已保留原评审候选')
-    }
-    const mergedRunPoints = await listAiDraftTestPoints(aiMultiAgentRun.value.runId)
-    const existingIds = new Set(aiDraftPoints.value.map((point) => point.pointId))
-    const appendedPoints = mergedRunPoints.items.filter((point) => !existingIds.has(point.pointId))
-    if (appendedPoints.length) {
-      aiDraftPoints.value = [...aiDraftPoints.value, ...appendedPoints]
-      extractedRequirementPoints.value = aiDraftPoints.value.map(aiDraftPointToRequirementPoint)
-      appendMergedPointsToGeneratedCases(appendedPoints)
-      ElMessage.success(`已采纳并补充 ${appendedPoints.length} 条用例`)
-    } else {
-      ElMessage.info('该建议已补充到用例列表')
-    }
-  } catch (error) {
-    const currentDecisions = caseReviewFindingDecisions.value[caseId]
-    if (currentDecisions?.[findingId] === 'accepted') {
-      caseReviewFindingDecisions.value = {
-        ...caseReviewFindingDecisions.value,
-        [caseId]: { ...currentDecisions, [findingId]: 'pending' }
-      }
-    }
-    caseReviewError.value = error instanceof Error ? error.message : '采纳建议并补充用例失败'
-    ElMessage.error(caseReviewError.value)
-  } finally {
-    aiMultiAgentLoading.value = false
-  }
-}
-const persistCaseDesignDraft = () => {
-  if (caseDesignDraftPersistenceSuspended.value) return
-  const updatedAt = new Date().toISOString()
-  const result = saveCaseDesignDraft(localStorage, {
-    version: 1,
-    activeStage: activeCaseDesignStage.value,
-    generationKind: generationKind.value,
-    projectName: requirementAnalysisProjectName.value,
-    analysisRunId: aiAnalysisRun.value?.runId || '',
-    naturalPlanRunId: naturalPlanRunId.value,
-    analysisRun: aiAnalysisRun.value || null,
-    requirementReviewRun: requirementAiReviewRun.value || null,
-    caseReviewRun: caseAiReviewRun.value || null,
-    activeReviewStage: activeAiReviewStage.value,
-    reviewAttempted: caseReviewAttempted.value,
-    selectedCaseId: selectedCase.value?.id || '',
-    selectedGeneratedWebCaseIds: selectedGeneratedWebCaseIds.value,
-    caseGenerationConfirmed: caseGenerationConfirmed.value,
-    generationScopePointIds: generationScopePointIds.value,
-    generationRetryPointIds: generationRetryPointIds.value,
-    sources: stagedRequirementFiles.value.map((source) => ({
-      name: source.name,
-      kind: source.kind || inferRequirementSourceKind(source.name),
-      text: source.text,
-      needsReattach: Boolean(source.needsReattach)
-    })),
-    sourceErrors: requirementSourceErrors.value,
-    extractedRequirementPoints: extractedRequirementPoints.value,
-    aiDraftPoints: aiDraftPoints.value,
-    generatedCases: generatedCases.value,
-    generatedWebCases: generatedWebCases.value,
-    analysisError: aiAnalysisError.value,
-    generationError: aiGenerationError.value,
-    reviewError: caseReviewError.value,
-    review: {
-      insight: activeAiReviewInsight.value,
-      qualityScores: aiMultiAgentQualityScores.value,
-      conflicts: aiMultiAgentConflicts.value,
-      findingDecisions: caseReviewFindingDecisions.value
-    },
-    updatedAt
-  })
-  caseDesignDraftSaveError.value = result.error || ''
-  if (result.saved) caseDesignLastSavedAt.value = updatedAt
-}
-
-watch([
-  activeCaseDesignStage,
-  generationKind,
-  requirementAnalysisProjectName,
-  stagedRequirementFiles,
-  requirementSourceErrors,
-  extractedRequirementPoints,
-  aiDraftPoints,
-  generatedCases,
-  generatedWebCases,
-  aiAnalysisRun,
-  requirementAiReviewRun,
-  caseAiReviewRun,
-  activeAiReviewStage,
-  selectedCase,
-  aiMultiAgentQualityScores,
-  aiMultiAgentConflicts,
-  activeAiReviewInsight,
-  aiAnalysisError,
-  aiGenerationError,
-  caseReviewError,
-  caseReviewAttempted,
-  caseReviewFindingDecisions,
-  generationScopePointIds,
-  generationRetryPointIds,
-  selectedGeneratedWebCaseIds,
-  caseGenerationConfirmed
-], () => {
-  if (caseDesignDraftPersistenceSuspended.value) return
-  if (caseDesignDraftTimer) clearTimeout(caseDesignDraftTimer)
-  caseDesignDraftTimer = setTimeout(persistCaseDesignDraft, 400)
-}, { deep: true })
-const aiDraftPointView = computed<AiDraftTestPointView>(() => buildAiDraftTestPointView(aiDraftPoints.value, {
-  module: aiDraftFilter.module,
-  status: aiDraftFilter.status,
-  confidence: aiDraftFilter.confidence,
-  sourceDocumentId: aiDraftFilter.sourceDocumentId
-}))
-const aiCoverageView = computed<AiAnalysisCoverageView>(() => buildAiAnalysisCoverageView({
-  draftPoints: aiDraftPoints.value,
-  warnings: aiCoverageWarnings.value,
-  unclearQuestions: aiUnclearQuestions.value
-}))
-const aiCoverageWarnings = computed(() =>
-  (aiCoverageSummary.value?.warnings || []).map((warning) => String(warning)).filter(Boolean)
-)
-const aiChunkProgressPercentage = computed(() => {
-  if (!aiAnalysisRun.value || aiAnalysisRun.value.totalChunks <= 0) return 0
-  return Math.min(100, Math.round((aiAnalysisRun.value.completedChunks / aiAnalysisRun.value.totalChunks) * 100))
-})
-const canGenerateAiWebCases = computed(() =>
-  aiDraftPoints.value.some((point) => point.reviewStatus === 'confirmed' || point.reviewStatus === 'modified')
-)
-const confirmedAiDraftPoints = computed(() => aiDraftPoints.value.filter((point) =>
-  point.reviewStatus === 'confirmed' || point.reviewStatus === 'modified'
-))
-const pendingAiDraftPoints = computed(() => aiDraftPoints.value.filter((point) =>
-  point.reviewStatus !== 'confirmed'
-  && point.reviewStatus !== 'modified'
-  && point.reviewStatus !== 'rejected'
-))
-const scopedAiDraftPoints = computed(() => {
-  const selected = new Set(generationScopePointIds.value)
-  return confirmedAiDraftPoints.value.filter((point) => selected.has(point.pointId))
-})
-watch(
-  () => confirmedAiDraftPoints.value.map((point) => point.pointId).join('|'),
-  () => {
-    const availableIds = confirmedAiDraftPoints.value.map((point) => point.pointId)
-    generationScopePointIds.value = generationScopeAllSelected.value
-      ? availableIds
-      : generationScopePointIds.value.filter((pointId) => availableIds.includes(pointId))
-  },
-  { immediate: true }
-)
-const webRequirementFlowHint = computed(() => {
-  if (!uploadedRequirementFileNames.value.length) {
-    return '第一步：选择需求文件，或导入 Figma 链接准备需求来源'
-  }
-  if (aiAnalysisRunning.value) {
-    return `AI分析需求进行中：${aiAnalysisProgress.text}`
-  }
-  if (!aiAnalysisCompleted.value) {
-    return '下一步：点击 AI分析需求，生成待评审测试点'
-  }
-  if (aiCaseGenerationRunning.value) {
-    return `AI用例生成进行中：${aiCaseGenerationProgress.text}`
-  }
-  if (!aiCaseGenerationCompleted.value) {
-    if (!canGenerateAiWebCases.value && aiDraftPointView.value.items.length > 0) {
-      return '下一步：先确认草稿测试点，必要时执行 AI评审，再点击 AI用例生成'
-    }
-    return '下一步：可执行 AI评审，然后点击 AI用例生成，生成最终用例内容'
-  }
-  return ''
-})
-const selectedDesignLocatorCards = computed(() => {
-  if (!selectedCase.value || !('pageName' in selectedCase.value.row)) return []
-  if (selectedCase.value.row.caseType !== '设计草案') return []
-  return designLocatorCards(selectedCase.value as GeneratedWebAutomationCase)
-})
-const hasSelectedDesignDraftCase = computed(() =>
-  !!selectedCase.value
-  && 'pageName' in selectedCase.value.row
-  && selectedCase.value.row.caseType === '设计草案'
-)
 const hasFilteredDesignOriginAutomationCases = computed(() =>
   automationKind.value === 'web'
   && automationFilter.source === 'design'
@@ -1645,38 +912,21 @@ const failedDesignOriginResults = computed(() =>
 const failedDesignOriginSummary = computed(() =>
   summarizeFailedDesignOriginResults(failedDesignOriginResults.value)
 )
-const designOriginFailureItems = computed(() =>
-  mapDesignOriginFailureItems(failedDesignOriginResults.value)
-)
 const designOriginFailureExpanded = ref(false)
-const webPreviewModules = computed(() => webCaseSummary.value.modules)
-const webPreviewCaseTypes = computed(() => webCaseSummary.value.caseTypes)
-const filteredWebCases = computed(() =>
-  generatedWebCases.value.filter((testCase) => {
-    if (webPreviewFilter.module !== 'ALL' && testCase.row.module !== webPreviewFilter.module) return false
-    if (webPreviewFilter.caseType !== 'ALL' && testCase.row.caseType !== webPreviewFilter.caseType) return false
-    const keyword = webPreviewFilter.keyword.trim().toLowerCase()
-    if (!keyword) return true
-    return [
-      testCase.row.caseId,
-      testCase.row.title,
-      testCase.row.pageName,
-      testCase.row.startUrl,
-      testCase.row.tags,
-      testCase.row.sourceFile
-    ]
-      .join(' ')
-      .toLowerCase()
-      .includes(keyword)
-  })
-)
 
 const currentNav = computed(() => resolveNavDisplay(activeNav.value, automationKind.value, generationKind.value))
-const activeSidebarItemId = computed(() => resolveSidebarActiveItemId(
-  activeNav.value,
-  automationKind.value,
-  generationKind.value
-))
+const activeSidebarItemId = computed(() => {
+  if (activeNav.value === 'home') {
+    return ({ runs: 'home', pending: 'home-pending', recent: 'home-recent' } as const)[homeSection.value]
+  }
+  return resolveSidebarActiveItemId(
+    activeNav.value,
+    automationKind.value,
+    generationKind.value
+  )
+})
+/** 顶部一级工作区胶囊:当前 navKey 归属哪个工作区 */
+const activePrimaryId = computed(() => primaryAreaForNavKey(activeNav.value))
 const sidebarBadges = computed<SidebarBadges>(() => ({}))
 const generationTemplateOptions = computed(() =>
   templateOptions.value.filter((option) =>
@@ -1685,43 +935,22 @@ const generationTemplateOptions = computed(() =>
       : option.kind === 'web_automation'
   )
 )
-const generationTemplate = computed<CaseTemplateDefinition | undefined>(() =>
-  templateConfig.value.caseTemplates.find((template) => template.id === generationTemplateId.value)
-    || templateConfig.value.caseTemplates.find((template) => template.id === generationTemplateOptions.value[0]?.value)
-)
-const generationTemplateFields = computed(() =>
-  generationTemplate.value
-    ? generationTemplate.value.builtIn
-      ? templateConfig.value.fieldsByKind[generationTemplate.value.kind] || []
-      : (templateConfig.value.fieldsByKind[generationTemplate.value.kind] || [])
-          .filter((field) => generationTemplate.value?.fieldKeys.includes(field.key))
-    : interfaceFields.value
-)
-const visibleWebAutomationFields = computed(() => webAutomationFields.value.filter((field) => field.visible))
 const visibleEditableFields = computed(() => visibleInterfaceFields.value)
 
 const automationCaseIndex = computed(() => buildAutomationCaseIndex(automationCases.value))
 const automationProjects = computed(() => automationCaseIndex.value.projectOptions)
 const webAutomationProjects = computed(() => collectWebAutomationProjects(webAutomationCases.value))
-const activeAutomationProjects = computed(() =>
-  automationKind.value === 'api' ? automationProjects.value : webAutomationProjects.value
-)
 const automationProjectRecords = computed(() =>
   automationFilter.project === 'ALL'
     ? automationCaseIndex.value.records
     : automationCaseIndex.value.records.filter((record) => record.project === automationFilter.project)
 )
-const automationProjectCases = computed(() => automationProjectRecords.value.map((record) => record.caseItem))
 const webAutomationProjectCases = computed(() =>
   automationFilter.project === 'ALL'
     ? webAutomationCases.value
     : webAutomationCases.value.filter((testCase) => testCase.project === automationFilter.project)
 )
 const automationModules = computed(() => collectAutomationModules(automationProjectRecords.value))
-const webAutomationModules = computed(() => collectWebAutomationModules(webAutomationProjectCases.value))
-const activeAutomationModules = computed(() =>
-  automationKind.value === 'api' ? automationModules.value : webAutomationModules.value
-)
 const automationMethods = computed(() => collectAutomationMethods(automationProjectRecords.value))
 const filteredAutomationRecords = computed(() =>
   filterAutomationRecords(automationCaseIndex.value.records, automationFilter)
@@ -1771,7 +1000,9 @@ const webAutomationWorkspacePreparation = computed(() => ({
   environmentId: webExecutionEnvironmentLibrary.value.activeEnvironmentId,
   environments: webExecutionEnvironmentLibrary.value.environments.map((environment) => ({
     value: environment.id,
-    label: environment.name
+    label: environment.name,
+    // 抽屉里的「环境地址」必须能跟着草稿所选环境走，所以选项自带地址。
+    baseUrl: environment.baseUrl
   })),
   browser: runnableWebRuntime.value?.browser || 'follow-case',
   browsers: webEnvironmentBrowserOptions.value,
@@ -1798,7 +1029,7 @@ const webAutomationWorkspaceScope = computed(() => ({
   ]
 }))
 const webAutomationResultStatusById = computed(() =>
-  Object.fromEntries(webAutomationCases.value.map((testCase) => [testCase.id, webAutomationResultStatus(testCase)]))
+  buildWebRunCaseStatusById(webAutomationCases.value, webAutomationRunReport.value?.results || [])
 )
 const webAutomationWorkspaceTable = computed(() => ({
   cases: filteredWebAutomationCases.value,
@@ -1836,16 +1067,12 @@ const automationResultMap = computed(() =>
   new Map((automationRunReport.value?.results || []).map((result) => [result.caseId, result]))
 )
 const webAutomationResultMap = computed(() =>
-  new Map((webAutomationRunReport.value?.results || []).map((result) => [result.caseId, result]))
+  buildWebRunCaseResultMap(webAutomationCases.value, webAutomationRunReport.value?.results || [])
 )
 const activeWebRunView = computed(() =>
   activeWebRunSnapshot.value ? buildWebRunView(activeWebRunSnapshot.value) : undefined
 )
 const webEnvironmentBrowserOptions = computed(() => buildBrowserOptions(webRunCapabilities.value))
-const activeWebEnvironmentBrowserLabel = computed(() => {
-  const browser = runnableWebRuntime.value?.browser || 'follow-case'
-  return webEnvironmentBrowserOptions.value.find((option) => option.value === browser)?.label || browser
-})
 const activeWebRunElapsed = computed(() => {
   const snapshot = activeWebRunSnapshot.value
   if (!snapshot) return '00:00'
@@ -1876,19 +1103,6 @@ const activeAutomationRunSummary = computed(() =>
         error: 0
       }
 )
-
-const missingCaseTypeFindings = computed(() => reviewFindings.value.filter((finding) => finding.code === 'missing_case_type'))
-const visibleInterfaceReviewFindings = computed(() => {
-  const ignored = new Set(ignoredInterfaceReviewFindingIds.value)
-  return reviewFindings.value.filter((finding) => !ignored.has(finding.id))
-})
-const visibleInterfaceReviewSummary = computed(() => ({
-  total: visibleInterfaceReviewFindings.value.length,
-  high: visibleInterfaceReviewFindings.value.filter((finding) => finding.severity === 'high').length,
-  medium: visibleInterfaceReviewFindings.value.filter((finding) => finding.severity === 'medium').length,
-  low: visibleInterfaceReviewFindings.value.filter((finding) => finding.severity === 'low').length,
-  info: visibleInterfaceReviewFindings.value.filter((finding) => finding.severity === 'info').length
-}))
 const workspaceSyncConflictText = computed(() => {
   const notice = workspaceSyncConflict.value
   if (!notice) return ''
@@ -1907,7 +1121,7 @@ const workspaceSyncState = computed<'synced' | 'syncing' | 'conflict'>(() => {
 
 const toggleRail = () => {
   railCollapsed.value = !railCollapsed.value
-  localStorage.setItem('ai-test-platform.sidebar-collapsed', String(railCollapsed.value))
+  window.localStorage.setItem('ai-test-platform.sidebar-collapsed', String(railCollapsed.value))
 }
 
 const toggleStudioNavigation = () => {
@@ -1918,20 +1132,84 @@ const toggleStudioNavigation = () => {
   toggleRail()
 }
 
-const navigateToNav = (next: NavKey, historyMode: NavHistoryMode = 'push') => {
+const applyNavChange = (next: NavKey, historyMode: NavHistoryMode) => {
+  if (next !== activeNav.value) {
+    if (isCaseLibraryNav(activeNav.value)) {
+      casesModule.invalidateLibraryActions()
+      editVisible.value = false
+      curlVisible.value = false
+      automationGenerateVisible.value = false
+      selectedCase.value = undefined
+      selectedLibraryId.value = undefined
+      casesModule.bulkEditVisible.value = false
+      casesModule.fieldAssignmentVisible.value = false
+    }
+    if (isCaseLibraryNav(next)) {
+      casesModule.switchLibraryCaseKind(next === 'webCases' ? 'web_automation' : 'interface')
+    }
+  }
   activeNav.value = next
 
   if (typeof window === 'undefined' || historyMode === 'skip') return
 
   const targetPath = next === 'automation'
     ? automationPathFor(automationKind.value)
-    : next === 'api'
-      ? caseDesignPathFor(generationKind.value)
-      : navPathFor(next)
+    : navPathFor(next)
   if (window.location.pathname === targetPath) return
 
   const method = historyMode === 'replace' ? 'replaceState' : 'pushState'
   window.history[method]({}, '', targetPath)
+}
+
+const navigateToNav = (next: NavKey, historyMode: NavHistoryMode = 'push', onNavigated?: () => void) => {
+  const target: NavKey = next === 'api' ? 'cases' : next
+  const applyNavigation = () => {
+    applyNavChange(target, historyMode)
+    onNavigated?.()
+  }
+  if (target !== activeNav.value && defects.defectRecoveryDirty.value) {
+    const epoch = getAuthSessionEpoch()
+    const owner = currentUser.value?.id
+    void defects.confirmDiscardDefectChanges().then(confirmed => {
+      if (epoch !== getAuthSessionEpoch() || currentUser.value?.id !== owner) return
+      if (!confirmed) { restoreLocationForActiveNav(); return }
+      applyNavigation()
+    })
+    return
+  }
+  // Jira 配置存在未保存修改时,离开本页先确认;取消则留在本页(草稿完整保留)
+  if (activeNav.value === 'jiraConfig' && target !== 'jiraConfig' && jiraConfigDirty.value) {
+    // 确认框跨 await:发起时固定 Jira 会话 authority,owner 切换/重新登录后旧意图不得覆盖新会话导航
+    const isCurrentJiraIntent = captureJiraIntent()
+    void confirmDiscardJiraDraft('离开「Jira 配置」会丢弃当前未保存的连接设置与 JQL 映射。').then((confirmed) => {
+      if (confirmed && isCurrentJiraIntent()) applyNavigation()
+    })
+    return
+  }
+  // 环境配置页存在未保存修改时,离开本页先确认;取消则留在本页(草稿完整保留,地址栏回到本页)
+  if (activeNav.value === 'environments' && target !== 'environments' && environmentDraftDirty.value) {
+    const isCurrentIntent = captureEnvironmentIntent()
+    void confirmDiscardEnvironmentDraft('离开「环境配置」会丢弃当前未保存的环境修改。').then((confirmed) => {
+      if (!isCurrentIntent()) return
+      if (!confirmed) {
+        restoreLocationForActiveNav()
+        return
+      }
+      discardEnvironmentDraft()
+      applyNavigation()
+    })
+    return
+  }
+  applyNavigation()
+}
+
+/** 取消离开时把地址栏恢复到当前页(浏览器前进/后退已经把 URL 改掉的情况)。 */
+const restoreLocationForActiveNav = () => {
+  if (typeof window === 'undefined') return
+  const currentPath = activeNav.value === 'automation'
+    ? automationPathFor(automationKind.value)
+    : navPathFor(activeNav.value)
+  if (window.location.pathname !== currentPath) window.history.pushState({}, '', currentPath)
 }
 
 const selectSidebarItem = (item: SidebarItem) => {
@@ -1943,19 +1221,97 @@ const selectSidebarItem = (item: SidebarItem) => {
     automationKind.value = item.automationKind
   }
 
+  if (item.navKey === 'home') {
+    homeSection.value = item.homeSection || 'runs'
+    navigateToNav('home')
+    void nextTick(() => homeViewRef.value?.focusSection(homeSection.value))
+    return
+  }
   if (item.navKey) navigateToNav(item.navKey)
+}
+
+/** 顶部一级工作区切换:先切子视图种类,再落到该工作区默认页面。 */
+const selectPrimaryArea = (area: PrimaryArea) => {
+  if (area.caseDesignKind) {
+    generationKind.value = area.caseDesignKind
+  }
+
+  if (area.automationKind) {
+    automationKind.value = area.automationKind
+  }
+
+  navigateToNav(area.navKey)
+}
+
+const openAssistantPage = () => {
+  navigateToNav('assistant')
 }
 
 /** 首页阶段模块按钮 → 精确落位(带 kind 先切子视图再导航)。 */
 const handleHomeNavigate = (target: HomeNavigateTarget) => {
-  if (target.caseDesignKind) generationKind.value = target.caseDesignKind
   if (target.automationKind) automationKind.value = target.automationKind
+  if (target.navKey === 'home') return
+  if (target.navKey === 'cases' || target.navKey === 'webCases') {
+    const { navKey, caseId } = target
+    navigateToNav(navKey, 'push', () => {
+      if (!caseId) return
+      if (navKey === 'webCases') {
+        const found = savedWebCases.value.find((item) => item.libraryId === caseId)
+        if (found) openWebEdit(found)
+      } else {
+        const found = savedCases.value.find((item) => item.libraryId === caseId)
+        if (found) openEdit(found)
+      }
+    })
+    return
+  }
   navigateToNav(target.navKey)
+  if (target.navKey === 'automation' && target.automationKind === 'api' && target.monitor && apiRunMonitor.value) {
+    void enterApiRunMonitor()
+  } else if (target.navKey === 'automation' && target.automationKind === 'web' && target.runId === activeWebRunId.value) {
+    enterWebRunMonitor()
+  }
+  if (target.navKey === 'automation' && target.caseId) {
+    if (target.automationKind === 'web') {
+      webAutomationWorkspaceMode.value = 'workbench'
+      const webCase = webAutomationCases.value.find((item) => item.automationLibraryId === target.caseId)
+      if (webCase) {
+        automationFilter.project = target.project || webCase.project || 'ALL'
+        automationFilter.module = webCase.module || 'ALL'
+        automationFilter.source = 'ALL'
+        automationFilter.keyword = ''
+        webAutomationStatusFilter.value = 'ALL'
+        webAutomationSelectedIds.value = [webCase.id]
+      }
+    } else {
+      apiAutomationWorkspaceMode.value = 'prepare'
+      const apiCase = automationCases.value.find((item) => item.automationLibraryId === target.caseId)
+      if (apiCase) {
+        automationFilter.project = target.project || apiCase.project || 'ALL'
+        automationFilter.module = apiCase.module || 'ALL'
+        automationFilter.method = 'ALL'
+        automationFilter.keyword = ''
+        automationSelection.value = [apiCase]
+      }
+    }
+  }
+
+  if (target.navKey === 'reports' && target.reportId) {
+    selectedReportProject.value = target.project || selectedReportProject.value
+    reports.reportEnvironmentFilter.value = 'ALL'
+    reports.reportKeyword.value = ''
+    selectedReportId.value = target.reportId
+    reports.reportOpenRequest.value += 1
+  }
+  if (target.navKey === 'defects' && target.defectId) {
+    const row = defects.defectIssueRecords.value.find((item) => item.id === target.defectId)
+    if (row) nextTick(() => defects.openDefectDetail(row))
+  }
 }
 
 const expandStudioNavigation = () => {
   railCollapsed.value = false
-  localStorage.setItem('ai-test-platform.sidebar-collapsed', 'false')
+  window.localStorage.setItem('ai-test-platform.sidebar-collapsed', 'false')
 }
 
 const syncNavWithLocation = (historyMode: Exclude<NavHistoryMode, 'push'> = 'replace') => {
@@ -1964,1515 +1320,15 @@ const syncNavWithLocation = (historyMode: Exclude<NavHistoryMode, 'push'> = 'rep
   const pathname = normalizeNavPath(window.location.pathname)
   const next = navKeyFromPath(pathname)
   if (next === 'automation') automationKind.value = automationKindFromPath(pathname)
-  if (next === 'api') generationKind.value = caseDesignKindFromPath(pathname)
   const targetPath = next === 'automation'
     ? automationPathFor(automationKind.value)
-    : next === 'api'
-      ? caseDesignPathFor(generationKind.value)
-      : navPathFor(next)
+    : navPathFor(next)
+  if (isCaseLibraryNav(next)) {
+    // 尾斜杠和旧书签也规范化；replace 不增加历史记录。
+    navigateToNav(next, window.location.pathname === targetPath ? 'skip' : 'replace')
+    return
+  }
   navigateToNav(next, pathname === targetPath ? 'skip' : historyMode)
-}
-
-const onFileSelected = async (event: Event) => {
-  const input = event.target as HTMLInputElement
-  const files = Array.from(input.files || [])
-  if (files.length === 0) return
-
-  try {
-    await importOpenApiFiles(files)
-  } catch (error) {
-    ElMessage.error(error instanceof Error ? error.message : '导入失败')
-  } finally {
-    input.value = ''
-  }
-}
-
-const pickOpenApiFiles = async () => {
-  const chooserWindow = window as Window & {
-    showOpenFilePicker?: (options?: unknown) => Promise<Array<{ getFile: () => Promise<File> }>>
-  }
-
-  if (typeof chooserWindow.showOpenFilePicker === 'function') {
-    try {
-      const handles = await chooserWindow.showOpenFilePicker({
-        multiple: true,
-        types: [
-          {
-            description: 'OpenAPI JSON',
-            accept: {
-              'application/json': ['.json']
-            }
-          }
-        ]
-      })
-      const files = await Promise.all(handles.map((handle) => handle.getFile()))
-      if (files.length > 0) {
-        await importOpenApiFiles(files)
-      }
-      return
-    } catch (error) {
-      if (error instanceof DOMException && error.name === 'AbortError') return
-    }
-  }
-
-  openApiFileInput.value?.click()
-}
-
-const onWebCaseFileSelected = async (event: Event) => {
-  const input = event.target as HTMLInputElement
-  const pickOptions = pendingRequirementSourcePick.value
-  pendingRequirementSourcePick.value = undefined
-  const selectedFiles = Array.from(input.files || [])
-  const files = pickOptions?.replaceName ? selectedFiles.slice(0, 1) : selectedFiles
-  if (files.length === 0) return
-
-  try {
-    await importWebCaseFiles(files, pickOptions)
-  } catch (error) {
-    ElMessage.error(error instanceof Error ? error.message : '导入 Web 自动化用例失败')
-  } finally {
-    input.value = ''
-  }
-}
-
-const pickRequirementSourceFiles = async (options: RequirementSourcePickOptions = {}) => {
-  const chooserWindow = window as Window & {
-    showOpenFilePicker?: (options?: unknown) => Promise<Array<{ getFile: () => Promise<File> }>>
-  }
-
-  if (typeof chooserWindow.showOpenFilePicker === 'function') {
-    try {
-      const handles = await chooserWindow.showOpenFilePicker({
-        multiple: !options.replaceName,
-        types: requirementSourceFilePickerTypes(options.kind)
-      })
-      const files = await Promise.all(handles.map((handle) => handle.getFile()))
-      if (files.length > 0) {
-        await importWebCaseFiles(files, options)
-      }
-      return
-    } catch (error) {
-      if (error instanceof DOMException && error.name === 'AbortError') return
-    }
-  }
-
-  pendingRequirementSourcePick.value = options
-  await nextTick()
-  webCaseFileInput.value?.click()
-}
-
-const pickWebCaseFiles = async () => pickRequirementSourceFiles()
-
-const requirementSourceFilePickerTypes = (kind: PersistedRequirementSourceKind | undefined) => {
-  if (kind === 'openapi') {
-    return [{
-      description: 'OpenAPI JSON',
-      accept: { 'application/json': ['.json'] }
-    }]
-  }
-  return [{
-    description: '需求文件',
-    accept: {
-      'text/markdown': ['.md', '.markdown'],
-      'application/json': ['.json'],
-      'application/x-yaml': ['.yaml', '.yml'],
-      'application/pdf': ['.pdf'],
-      'application/msword': ['.doc'],
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
-      'application/vnd.ms-excel': ['.xls'],
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
-      'text/csv': ['.csv'],
-      'text/plain': ['.txt'],
-      'image/png': ['.png'],
-      'image/jpeg': ['.jpg', '.jpeg'],
-      'image/webp': ['.webp'],
-      'image/gif': ['.gif'],
-      'image/bmp': ['.bmp']
-    }
-  }]
-}
-
-const importOpenApiFiles = async (files: File[]) => {
-  const payloads = await Promise.all(
-    files.map(async (file) => ({
-      name: file.name,
-      json: JSON.parse(await file.text())
-    }))
-  )
-  importOpenApiPayloads(payloads)
-}
-
-const promptFigmaDesignImport = async (replacementSourceName?: string) => {
-  beginCaseDesignTask()
-  try {
-    const { value } = await ElMessageBox.prompt('请输入 Figma 设计链接', '导入 Figma 链接', {
-      confirmButtonText: '导入',
-      cancelButtonText: '取消',
-      inputPlaceholder: 'https://www.figma.com/design/...'
-    })
-    if (!value?.trim()) return
-
-    const draft = await parseFigmaDesignInput(value.trim())
-    generationKind.value = 'web_automation'
-    const requirementText = buildRequirementImportText(draft)
-    upsertStagedRequirementSources(
-      [{
-        name: replacementSourceName || FIGMA_REQUIREMENT_FILE_NAME,
-        text: requirementText,
-        kind: 'figma',
-        needsReattach: false
-      }],
-      [new File([requirementText], replacementSourceName || FIGMA_REQUIREMENT_FILE_NAME, { type: 'text/plain' })],
-      {},
-      Boolean(replacementSourceName)
-    )
-    if (!replacementSourceName) requirementAnalysisProjectName.value = draft.projectName || '默认项目'
-    await importStructuredAiFigma(value.trim(), requirementAnalysisProjectName.value)
-    ElMessage.success('已导入 Figma 设计链接，请继续执行 AI 分析')
-  } catch {
-    return
-  }
-}
-
-const importStructuredAiFigma = async (url: string, projectName: string) => {
-  aiFigmaLoading.value = true
-  try {
-    const project = await ensureBackendProject(projectName || '默认项目')
-    const imported = await importAiFigmaFile({ projectId: project.id, figmaUrl: url })
-    aiFigmaFile.value = imported
-    await reloadAiFigmaWorkspace(imported.figmaFileId)
-    ElMessage.success('已导入结构化 Figma 节点')
-  } catch (error) {
-    aiFigmaFile.value = undefined
-    aiFigmaNodes.value = { items: [] }
-    aiFigmaAnalysisRun.value = undefined
-    aiFigmaDraftPoints.value = []
-    aiFigmaChangeSets.value = []
-    aiFigmaElementCandidates.value = { items: [] }
-    selectedAiFigmaNodeId.value = ''
-    console.warn('Structured Figma import unavailable', error)
-  } finally {
-    aiFigmaLoading.value = false
-  }
-}
-
-const reloadAiFigmaWorkspace = async (figmaFileId: string) => {
-  const [nodes, changeSets, candidates] = await Promise.all([
-    listAiFigmaNodes(figmaFileId),
-    listAiFigmaChangeSets(figmaFileId),
-    listAiFigmaElementCandidates(figmaFileId)
-  ])
-  aiFigmaNodes.value = nodes
-  aiFigmaChangeSets.value = changeSets.items
-  aiFigmaElementCandidates.value = candidates
-  selectedAiFigmaNodeId.value = nodes.items[0]?.figmaNodeId || ''
-}
-
-const analyzeAiFigmaFile = async () => {
-  if (!aiFigmaFile.value) {
-    ElMessage.warning('请先导入 Figma 链接')
-    return
-  }
-  aiFigmaLoading.value = true
-  try {
-    const run = await startAiFigmaFileAnalysis(aiFigmaFile.value.figmaFileId)
-    aiFigmaAnalysisRun.value = run
-    const draftList = await listAiFigmaDraftPoints(run.runId)
-    aiFigmaDraftPoints.value = draftList.items
-    ElMessage.success(`Figma 已生成 ${draftList.items.length} 条草稿测试点`)
-  } catch (error) {
-    ElMessage.error(error instanceof Error ? error.message : 'Figma 分析失败')
-  } finally {
-    aiFigmaLoading.value = false
-  }
-}
-
-const analyzeSelectedAiFigmaNode = async () => {
-  if (!selectedAiFigmaNodeId.value) {
-    ElMessage.warning('请先选择 Figma 节点')
-    return
-  }
-  aiFigmaLoading.value = true
-  try {
-    const run = await startAiFigmaNodeAnalysis(selectedAiFigmaNodeId.value)
-    aiFigmaAnalysisRun.value = run
-    const draftList = await listAiFigmaDraftPoints(run.runId)
-    aiFigmaDraftPoints.value = draftList.items
-    ElMessage.success(`Figma 节点已生成 ${draftList.items.length} 条草稿测试点`)
-  } catch (error) {
-    ElMessage.error(error instanceof Error ? error.message : 'Figma 节点分析失败')
-  } finally {
-    aiFigmaLoading.value = false
-  }
-}
-
-const parseFigmaDesignInput = async (url: string) => {
-  try {
-    const parsed = await parseFigmaDesignWithBackend(url)
-    return {
-      ...parsed,
-      designDraftCases: toRequirementDesignDraftCases(buildDesignAutomationDraftCases(parsed))
-    }
-  } catch {
-    const draft = buildFigmaDesignDraftFromUrl(url)
-    return {
-      ...draft,
-      designDraftCases: toRequirementDesignDraftCases(buildDesignAutomationDraftCases(draft))
-    }
-  }
-}
-
-const copyText = async (value: string, message: string) => {
-  await navigator.clipboard.writeText(value)
-  ElMessage.success(message)
-}
-
-const toggleDesignLocatorConfirmed = (locatorId: string) => {
-  if (!selectedCase.value || !('pageName' in selectedCase.value.row)) return
-  const webCase = selectedCase.value as GeneratedWebAutomationCase
-  const locator = webCase.metadata.locators.find((item) => item.id === locatorId)
-  if (!locator) return
-  locator.confirmed = !locator.confirmed
-  if (isWebEditableCase(webCase)) {
-    saveGeneratedWebAutomationCases(localStorage, [webCase])
-  }
-}
-
-const importWebCaseFiles = async (
-  files: File[],
-  options: RequirementSourcePickOptions = {}
-) => {
-  beginCaseDesignTask()
-  const settled = await Promise.allSettled(files.map(async (file) => ({
-    file,
-    text: await readRequirementSourceText(file, options.kind)
-  })))
-  const payloads: StagedRequirementFile[] = []
-  const sourceFiles: File[] = []
-  const sourceErrors: Record<string, string> = {}
-
-  settled.forEach((result, index) => {
-    const originalFile = files[index]
-    const name = options.replaceName || originalFile.name
-    const kind = options.kind || inferRequirementSourceKind(name)
-    if (result.status === 'fulfilled') {
-      payloads.push({ name, text: result.value.text, kind, needsReattach: false })
-      sourceFiles.push(new File([originalFile], name, { type: originalFile.type }))
-      return
-    }
-    payloads.push({ name, text: '', kind, needsReattach: false })
-    sourceFiles.push(new File([originalFile], name, { type: originalFile.type }))
-    sourceErrors[name] = presentRequirementSourceError(result.reason, kind)
-  })
-
-  if (payloads.length === 0) return
-  generationKind.value = 'web_automation'
-  upsertStagedRequirementSources(payloads, sourceFiles, sourceErrors, options.localRecovery === true)
-  if (!options.localRecovery) requirementAnalysisProjectName.value = '默认项目'
-
-  const readyCount = payloads.length - Object.keys(sourceErrors).length
-  if (readyCount > 0) {
-    ElMessage.success(
-      options.localRecovery
-        ? `已恢复 ${readyCount} 个来源，其他分析结果保持不变`
-        : `已上传 ${readyCount} 个需求文件，请继续执行 AI 分析`
-    )
-  }
-  if (Object.keys(sourceErrors).length > 0) {
-    ElMessage.error(`有 ${Object.keys(sourceErrors).length} 个来源无法读取，可单独重试或替换`)
-  }
-}
-
-const readRequirementSourceText = async (
-  file: File,
-  kind: PersistedRequirementSourceKind | undefined
-): Promise<string> => {
-  const text = await readRequirementFileText(file)
-  if (kind !== 'openapi') return text
-  try {
-    parseOpenApiDocument(JSON.parse(text), file.name)
-    return text
-  } catch (error) {
-    throw new Error(error instanceof Error ? error.message : 'OpenAPI 文件格式无效')
-  }
-}
-
-const presentRequirementSourceError = (error: unknown, kind: PersistedRequirementSourceKind): string => {
-  const message = error instanceof Error ? error.message : '文件读取失败'
-  return kind === 'openapi' ? `OpenAPI 导入失败：${message}` : `来源读取失败：${message}`
-}
-
-const upsertStagedRequirementSources = (
-  payloads: StagedRequirementFile[],
-  files: File[],
-  sourceErrors: Record<string, string> = {},
-  preserveWorkflow = false
-) => {
-  const incomingNames = new Set(payloads.map((file) => file.name))
-  stagedRequirementFiles.value = [
-    ...stagedRequirementFiles.value.filter((file) => !incomingNames.has(file.name)),
-    ...payloads
-  ]
-  stagedRequirementSourceFiles.value = [
-    ...stagedRequirementSourceFiles.value.filter((file) => !incomingNames.has(file.name)),
-    ...files
-  ]
-  requirementSourceErrors.value = {
-    ...Object.fromEntries(Object.entries(requirementSourceErrors.value).filter(([name]) => !incomingNames.has(name))),
-    ...sourceErrors
-  }
-  if (preserveWorkflow) return
-  extractedRequirementPoints.value = []
-  resetAiRequirementAnalysis()
-  generatedWebCases.value = []
-  selectedCase.value = undefined
-  resetCaseGenerationSelectionState()
-  webPreviewFilter.module = 'ALL'
-  webPreviewFilter.caseType = 'ALL'
-  webPreviewFilter.keyword = ''
-  resetWebRequirementFlowProgress()
-}
-
-const retryRequirementSource = async (name: string) => {
-  const source = stagedRequirementFiles.value.find((item) => item.name === name)
-  if (!source) return
-  const kind = source.kind || inferRequirementSourceKind(source.name)
-  const originalFile = stagedRequirementSourceFiles.value.find((file) => file.name === name)
-  if (source.needsReattach || !originalFile) {
-    await replaceRequirementSource(name)
-    return
-  }
-  await importWebCaseFiles([originalFile], { replaceName: name, kind, localRecovery: true })
-}
-
-const replaceRequirementSource = async (name: string) => {
-  const source = stagedRequirementFiles.value.find((item) => item.name === name)
-  if (!source) return
-  const kind = source.kind || inferRequirementSourceKind(source.name)
-  if (kind === 'figma') {
-    await promptFigmaDesignImport(name)
-    return
-  }
-  await pickRequirementSourceFiles({ replaceName: name, kind, localRecovery: true })
-}
-
-const removeRequirementSource = (name: string) => {
-  stagedRequirementFiles.value = stagedRequirementFiles.value.filter((source) => source.name !== name)
-  stagedRequirementSourceFiles.value = stagedRequirementSourceFiles.value.filter((file) => file.name !== name)
-  requirementSourceErrors.value = Object.fromEntries(
-    Object.entries(requirementSourceErrors.value).filter(([sourceName]) => sourceName !== name)
-  )
-  ElMessage.success(`已移除来源 ${name}，其他分析结果保持不变`)
-}
-
-const resetWebRequirementFlowProgress = () => {
-  webRequirementFlowDismissed.value = false
-  aiAnalysisProgress.percentage = 0
-  aiAnalysisProgress.text = stagedRequirementFiles.value.length > 0 ? '等待点击 AI分析需求' : '等待上传需求文档'
-  aiCaseGenerationProgress.percentage = 0
-  aiCaseGenerationProgress.text = aiAnalysisCompleted.value ? '等待点击 AI用例生成' : '等待 AI 分析需求完成'
-  aiCaseGenerationRunning.value = false
-}
-
-const resetCaseGenerationSelectionState = () => {
-  generationScopePointIds.value = []
-  generationScopeAllSelected.value = true
-  generationRetryPointIds.value = []
-  selectedGeneratedWebCaseIds.value = []
-  naturalPlanRunId.value = ''
-}
-
-const setGenerationScopeAll = (checked: boolean) => {
-  generationScopeAllSelected.value = checked
-  generationScopePointIds.value = checked
-    ? confirmedAiDraftPoints.value.map((point) => point.pointId)
-    : []
-}
-
-const setGenerationScopePointIds = (pointIds: string[]) => {
-  generationScopePointIds.value = pointIds
-}
-
-const setAiAnalysisProgress = (percentage: number, text: string) => {
-  aiAnalysisProgress.percentage = percentage
-  aiAnalysisProgress.text = text
-}
-
-const setAiCaseGenerationProgress = (percentage: number, text: string) => {
-  aiCaseGenerationProgress.percentage = percentage
-  aiCaseGenerationProgress.text = text
-}
-
-const presentAiWorkflowError = (error: unknown, fallback: string) => {
-  const message = error instanceof Error ? error.message : fallback
-  if (/timed out|timeout|超时/i.test(message)) {
-    return `${fallback}：请求超时，请稍后重试或在 AI 配置中提高超时时间`
-  }
-  return message
-}
-
-const AI_ANALYSIS_POLL_INTERVAL_MS = 1500
-const AI_ANALYSIS_MAX_CONSECUTIVE_FAILURES = 5
-const AI_ANALYSIS_HEARTBEAT_STALE_MS = 45 * 1000
-
-const analysisProgressTextWithHeartbeat = (run: AiAnalysisRun, fallback: string): string => {
-  if (run.status !== 'running' || !run.heartbeatAt) return fallback
-  const heartbeatAt = Date.parse(run.heartbeatAt)
-  if (Number.isNaN(heartbeatAt)) return fallback
-  const ageSeconds = Math.max(0, Math.round((Date.now() - heartbeatAt) / 1000))
-  if (ageSeconds > AI_ANALYSIS_HEARTBEAT_STALE_MS / 1000) {
-    return `${fallback} · 暂未收到新的工作器心跳，可继续等待或取消`
-  }
-  return `${fallback} · 后端仍在等待模型响应（${ageSeconds} 秒前心跳）`
-}
-
-/**
- * Polls an AI analysis run until it reaches a terminal status, streaming the
- * AI's processing actions (chunk progress, draft points, model calls) into the
- * progress bar + live log. Resolves with the terminal run on success, throws
- * (so the caller surfaces `presentAiWorkflowError`) on failure/cancel, and
- * keeps polling while the task remains active, including intentionally long-running model calls.
- * A newer run supersedes an in-flight poll via the coordinator token.
- */
-const monitorAiAnalysisRun = async (runId: string, prefixLog: AiAnalysisLogEntry[] = []): Promise<AiAnalysisRun | null> => {
-  const poll = aiAnalysisPollCoordinator.start(runId)
-  if (!poll.shouldStart) return null
-  const state = createAnalysisProgressState()
-  state.log = [...prefixLog]
-  state.seq = prefixLog.length
-  let consecutiveFailures = 0
-  try {
-    while (aiAnalysisPollCoordinator.isCurrent(runId, poll.token)) {
-      let run!: AiAnalysisRun
-      try {
-        const [fetchedRun, draftList, callList, eventList] = await Promise.all([
-          getAiAnalysisRun(runId),
-          listAiDraftTestPoints(runId),
-          listAiCallRecords(runId),
-          listAiAnalysisRunEvents(runId).catch(() => null)
-        ])
-        if (!aiAnalysisPollCoordinator.isCurrent(runId, poll.token)) return fetchedRun
-        consecutiveFailures = 0
-        run = fetchedRun
-        aiAnalysisRun.value = run
-        aiDraftPoints.value = draftList.items
-        extractedRequirementPoints.value = draftList.items.map(aiDraftPointToRequirementPoint)
-        const view = applyAnalysisSnapshot(state, {
-          run,
-          draftPoints: draftList.items,
-          callRecords: callList.items
-        })
-        setAiAnalysisProgress(
-          Math.max(aiAnalysisProgress.percentage, view.percentage),
-          analysisProgressTextWithHeartbeat(run, view.text)
-        )
-        aiAnalysisLog.value = eventList && eventList.items.length > 0
-          ? [...prefixLog, ...mapRunEventsToLog(eventList.items)]
-          : view.log
-      } catch (error) {
-        if (!aiAnalysisPollCoordinator.isCurrent(runId, poll.token)) throw error
-        consecutiveFailures += 1
-        if (consecutiveFailures >= AI_ANALYSIS_MAX_CONSECUTIVE_FAILURES) throw error
-        await delayWebRunPoll(Math.min(6000, AI_ANALYSIS_POLL_INTERVAL_MS * consecutiveFailures))
-        continue
-      }
-      if (isTerminalAnalysisStatus(run.status)) {
-        await loadAiAnalysisDetails(runId)
-        if (run.status === 'failed' || run.status === 'cancelled') {
-          throw new Error(run.errorSummary || 'AI 分析需求失败')
-        }
-        return run
-      }
-      await delayWebRunPoll(AI_ANALYSIS_POLL_INTERVAL_MS)
-    }
-  } finally {
-    if (aiAnalysisPollCoordinator.isCurrent(runId, poll.token)) aiAnalysisPollCoordinator.stop(runId)
-  }
-  return aiAnalysisRun.value ?? null
-}
-
-const cancelCurrentAiAnalysisRun = async () => {
-  if (!aiAnalysisRun.value || !aiAnalysisRunning.value) return
-  try {
-    const run = await cancelAiAnalysisRun(aiAnalysisRun.value.runId)
-    aiAnalysisRun.value = run
-    aiAnalysisError.value = '分析任务已取消'
-    setAiAnalysisProgress(aiAnalysisProgress.percentage, '分析任务已取消')
-    ElMessage.info('已请求取消分析任务')
-  } catch (error) {
-    ElMessage.error(error instanceof Error ? error.message : '取消 AI 分析任务失败')
-  }
-}
-
-const checkAiEnvironmentBeforeAnalysis = async (): Promise<{ ready: boolean; logs: AiAnalysisLogEntry[] }> => {
-  const checkingLog: AiAnalysisLogEntry = {
-    id: 'ai-environment-check-pending',
-    kind: 'info',
-    text: '正在检查 Platform AI 环境…'
-  }
-  aiAnalysisLog.value = [checkingLog]
-  setAiAnalysisProgress(4, '正在检查 AI 环境')
-  try {
-    const [config, policies] = await Promise.all([
-      loadAiConfigFromPlatform(),
-      listAiRunPolicies()
-    ])
-    applyAiConfig(config)
-    aiRunPolicies.value = policies
-    aiRunPoliciesError.value = ''
-    const readiness = checkAiEnvironmentReadiness(config, policies.items.find((policy) => policy.taskType === 'requirement_analysis'))
-    aiAnalysisLog.value = readiness.logs
-    if (!readiness.ready) {
-      aiAnalysisError.value = readiness.message
-      setAiAnalysisProgress(0, 'AI 环境未就绪，未开始分析')
-      ElMessage.error(readiness.message)
-    }
-    return { ready: readiness.ready, logs: readiness.logs }
-  } catch (error) {
-    const detail = error instanceof Error ? error.message : '无法读取 AI 环境配置'
-    const message = /404/.test(detail)
-      ? 'Platform AI 未就绪：运行策略接口不可用，请先重启后端服务'
-      : `Platform AI 未就绪：${detail}`
-    const failureLog: AiAnalysisLogEntry = {
-      id: 'ai-environment-check-failed',
-      kind: 'error',
-      text: message
-    }
-    aiAnalysisLog.value = [checkingLog, failureLog]
-    aiAnalysisError.value = message
-    setAiAnalysisProgress(0, 'AI 环境检查失败，未开始分析')
-    ElMessage.error(message)
-    return { ready: false, logs: aiAnalysisLog.value }
-  }
-}
-
-const analyzeRequirementPointsWithAi = async () => {
-  if (!canAnalyzeRequirements.value) {
-    ElMessage.warning('请先上传可用的需求来源')
-    return
-  }
-  aiAnalysisRunning.value = true
-  aiAnalysisError.value = ''
-  try {
-    const readiness = await checkAiEnvironmentBeforeAnalysis()
-    if (!readiness.ready) return
-    setAiAnalysisProgress(8, '准备上传需求文档')
-    const project = await ensureBackendProject(requirementAnalysisProjectName.value || '默认项目')
-    const sourceFiles = requirementSourceFilesForAiUpload()
-    const uploaded = []
-    setAiAnalysisProgress(22, `正在上传 ${sourceFiles.length} 个需求文档`)
-    for (const file of sourceFiles) {
-      uploaded.push(await uploadAiSourceDocument(project.id, file))
-    }
-    aiSourceDocuments.value = uploaded
-    setAiAnalysisProgress(55, '已上传文档，正在创建 AI 分析任务')
-    const run = await createAiAnalysisRun({
-      projectId: project.id,
-      documentIds: uploaded.map((document) => document.documentId),
-      targetCaseKind: 'web_automation',
-      templateId: generationTemplateId.value,
-      analysisStrategy: 'full'
-    })
-    aiAnalysisRun.value = run
-    const finishedRun = await monitorAiAnalysisRun(run.runId, readiness.logs)
-    if (!finishedRun) return
-    completeAiRequirementAnalysis('AI分析需求完成')
-  } catch (error) {
-    setAiAnalysisProgress(0, 'AI分析需求未完成')
-    aiAnalysisError.value = presentAiWorkflowError(error, 'AI 分析需求失败')
-    ElMessage.error(aiAnalysisError.value)
-  } finally {
-    aiAnalysisRunning.value = false
-  }
-}
-
-const completeAiRequirementAnalysis = (progressPrefix: string) => {
-  generatedWebCases.value = []
-  selectedCase.value = undefined
-  resetCaseGenerationSelectionState()
-
-  const draftPointCount = aiDraftPoints.value.length
-  setAiAnalysisProgress(100, `${progressPrefix}，共生成 ${draftPointCount} 条草稿测试点`)
-  setAiCaseGenerationProgress(0, '等待确认草稿测试点并点击 AI用例生成')
-
-  // The parsed points are the generation input. Persist the completed state now
-  // so a refresh cannot strand the user on the parsing step or lose the draft.
-  if (draftPointCount > 0) activeCaseDesignStage.value = 'test-parse'
-  if (caseDesignDraftTimer) clearTimeout(caseDesignDraftTimer)
-  persistCaseDesignDraft()
-
-  ElMessage.success(
-    draftPointCount > 0
-      ? `AI 已生成 ${draftPointCount} 条草稿测试点，已进入测试解析`
-      : '内容解析完成，但未提取到可生成的测试点'
-  )
-}
-
-const loadAiAnalysisDetails = async (runId: string) => {
-  aiAnalysisDetailLoading.value = true
-  try {
-    const [coverage, questions, toolCalls] = await Promise.allSettled([
-      getAiAnalysisCoverageSummary(runId),
-      listAiAnalysisUnclearQuestions(runId),
-      listAiAnalysisToolCalls(runId)
-    ])
-    aiCoverageSummary.value = coverage.status === 'fulfilled' ? coverage.value : undefined
-    aiUnclearQuestions.value = questions.status === 'fulfilled' ? questions.value.items : []
-    aiToolCalls.value = toolCalls.status === 'fulfilled' ? toolCalls.value.items : []
-  } finally {
-    aiAnalysisDetailLoading.value = false
-  }
-}
-
-const startRequirementAiReview = async () => {
-  if (stagedRequirementFiles.value.length === 0 && aiDraftPoints.value.length === 0 && extractedRequirementPoints.value.length === 0) {
-    ElMessage.warning('请先完成 AI分析需求或准备需求内容')
-    return
-  }
-  await startAiReview('requirement')
-}
-
-const startCaseAiReview = async () => {
-  if (generatedWebCases.value.length === 0) {
-    ElMessage.warning('请先完成自然语言用例生成')
-    return
-  }
-  caseReviewAttempted.value = true
-  await startAiReview('case')
-}
-
-const invalidateCaseReview = () => {
-  caseAiReviewRun.value = undefined
-  activeAiReviewStage.value = 'case'
-  aiMultiAgentConflicts.value = []
-  aiMultiAgentQualityScores.value = []
-  aiMultiAgentMergeResult.value = undefined
-  caseReviewAttempted.value = false
-  caseReviewFindingDecisions.value = {}
-  restoredAiReviewInsight.value = undefined
-  caseReviewError.value = ''
-  if (activeCaseDesignStage.value === 'deliver' || activeCaseDesignStage.value === 'automation-compile') activeCaseDesignStage.value = 'review'
-}
-
-const startAiReview = async (stage: 'requirement' | 'case') => {
-  activeAiReviewStage.value = stage
-  aiMultiAgentLoading.value = true
-  try {
-    const existingProjectId = webCaseAgentRun.value?.projectId
-      || aiAnalysisRun.value?.projectId
-      || aiDraftPoints.value[0]?.projectId
-    const projectId = existingProjectId
-      || (await ensureBackendProject(requirementAnalysisProjectName.value || '默认项目')).id
-    const reviewStage = stage
-    const run = await startAiMultiAgentRun({
-      projectId,
-      targetCaseKind: 'web_automation',
-      inputSummary: {
-        reviewStage,
-        artifacts: stage === 'case' ? aiReviewCaseArtifacts() : aiReviewRequirementArtifacts(),
-        sourceFiles: stagedRequirementFiles.value.map((file) => file.name),
-        draftPointCount: aiDraftPoints.value.length,
-        requirementPointCount: extractedRequirementPoints.value.length,
-        generatedCaseCount: generatedWebCases.value.length
-      }
-    })
-    if (stage === 'case') {
-      caseAiReviewRun.value = run
-    } else {
-      requirementAiReviewRun.value = run
-    }
-    aiMultiAgentMergeResult.value = undefined
-    await loadMultiAgentReviewDetails(run.runId)
-    restoredAiReviewInsight.value = undefined
-    if (stage === 'case') activeCaseDesignStage.value = 'review'
-    const effectiveRun = stage === 'case' ? caseAiReviewRun.value || run : run
-    const effectiveStatus = reviewRunStatusToWorkflowStatus(effectiveRun.status)
-    if (stage === 'case' && effectiveStatus === 'failed') {
-      caseReviewError.value = effectiveRun.errorSummary || 'AI 质量评审未完成'
-      ElMessage.warning(caseReviewError.value)
-    } else if (stage === 'case' && effectiveStatus === 'running') {
-      caseReviewError.value = ''
-      ElMessage.info('用例阶段 AI 评审已启动')
-    } else {
-      if (stage === 'case') caseReviewError.value = ''
-      ElMessage.success(`${stage === 'case' ? '用例阶段' : '需求阶段'}AI评审已完成`)
-    }
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'AI评审失败'
-    if (stage === 'case') caseReviewError.value = message
-    ElMessage.error(message)
-  } finally {
-    aiMultiAgentLoading.value = false
-  }
-}
-
-const aiReviewRequirementArtifacts = () => {
-  if (aiDraftPoints.value.length > 0) {
-    return aiDraftPoints.value.map((point) => ({
-      pointId: point.pointId,
-      title: point.title,
-      module: point.module,
-      pageOrFeature: point.pageOrFeature,
-      objective: point.objective,
-      steps: point.steps,
-      expectedResult: point.expectedResult,
-      reviewStatus: point.reviewStatus,
-      sourceFile: point.sourceFile
-    }))
-  }
-  return extractedRequirementPoints.value.map((point) => ({
-    title: point.title,
-    module: point.module,
-    pageName: point.pageName,
-    sourceFile: point.sourceFile
-  }))
-}
-
-const aiReviewCaseArtifacts = () =>
-  generatedWebCases.value.map((testCase) => ({
-    caseId: testCase.row.caseId,
-    title: testCase.row.title,
-    module: testCase.row.module,
-    pageName: testCase.row.pageName,
-    caseType: testCase.row.caseType,
-    startUrl: testCase.row.startUrl,
-    steps: testCase.metadata.steps.map((step) => `${step.name || step.action} ${step.target}`.trim()).join('\n'),
-    expectedResult: testCase.row.assertions,
-    sourceFile: testCase.row.sourceFile
-  }))
-
-const loadMultiAgentReviewDetails = async (runId: string) => {
-  const [graph, conflicts, scores] = await Promise.allSettled([
-    listAiMultiAgentGraph(runId),
-    listAiMultiAgentConflicts(runId),
-    listAiMultiAgentQualityScores(runId)
-  ])
-  if (graph.status === 'fulfilled') {
-    if (requirementAiReviewRun.value?.runId === runId) {
-      requirementAiReviewRun.value = {
-        ...requirementAiReviewRun.value,
-        status: graph.value.status,
-        inputSnapshot: graph.value.inputSnapshot,
-        outputSnapshot: graph.value.outputSnapshot,
-        errorSummary: graph.value.errorSummary
-      }
-    }
-    if (caseAiReviewRun.value?.runId === runId) {
-      caseAiReviewRun.value = {
-        ...caseAiReviewRun.value,
-        status: graph.value.status,
-        inputSnapshot: graph.value.inputSnapshot,
-        outputSnapshot: graph.value.outputSnapshot,
-        errorSummary: graph.value.errorSummary
-      }
-    }
-  }
-  if (conflicts.status === 'fulfilled') aiMultiAgentConflicts.value = conflicts.value.items
-  if (scores.status === 'fulfilled') aiMultiAgentQualityScores.value = scores.value.items
-}
-
-const ignoreUnresolvedMultiAgentConflicts = async () => {
-  if (!aiMultiAgentRun.value) return
-  const unresolved = aiMultiAgentConflicts.value.filter((conflict) => conflict.resolutionStatus === 'unresolved')
-  if (unresolved.length === 0) {
-    ElMessage.info('暂无未处理冲突')
-    return
-  }
-  aiMultiAgentLoading.value = true
-  try {
-    await Promise.all(unresolved.map((conflict) =>
-      ignoreAiMultiAgentConflict(conflict.conflictId, '前端评审选择忽略该冲突，继续合并')
-    ))
-    await loadMultiAgentReviewDetails(aiMultiAgentRun.value.runId)
-    ElMessage.success(`已忽略 ${unresolved.length} 个未处理冲突`)
-  } catch (error) {
-    ElMessage.error(error instanceof Error ? error.message : '处理冲突失败')
-  } finally {
-    aiMultiAgentLoading.value = false
-  }
-}
-
-const ignoreSingleReviewConflict = async (conflictId: string) => {
-  try {
-    await ignoreAiMultiAgentConflict(conflictId, '前端评审选择忽略该冲突')
-    if (caseAiReviewRun.value) await loadMultiAgentReviewDetails(caseAiReviewRun.value.runId)
-  } catch (error) {
-    caseReviewError.value = error instanceof Error ? error.message : '处理评审冲突失败'
-    ElMessage.error(caseReviewError.value)
-  }
-}
-
-const mergeMultiAgentReview = async () => {
-  if (!aiMultiAgentRun.value) {
-    ElMessage.warning('暂无可合并的 AI评审')
-    return
-  }
-  if (!canMergeMultiAgentReview.value) {
-    ElMessage.warning(
-      aiMultiAgentUnresolvedConflicts.value > 0
-        ? '请先处理未解决的冲突'
-        : '暂无可合并的测试点'
-    )
-    return
-  }
-  const candidates = buildMultiAgentMergeCandidatesFromSuggestions(aiReviewInsight.value.suggestions)
-  if (candidates.length === 0) {
-    ElMessage.warning('暂无可合并的测试点')
-    return
-  }
-  aiMultiAgentLoading.value = true
-  try {
-    const result = await mergeAiMultiAgentRun(aiMultiAgentRun.value.runId, { candidates })
-    aiMultiAgentMergeResult.value = result
-    await loadMultiAgentReviewDetails(aiMultiAgentRun.value.runId)
-    if (result.status === 'blocked') {
-      ElMessage.warning(`仍有 ${result.unresolvedConflictCount} 个冲突未处理`)
-      return
-    }
-    if (result.aiEnrichmentFallback) {
-      ElMessage.warning('AI 增量补充不可用，已保留原评审候选')
-    }
-    const mergedRunPoints = await listAiDraftTestPoints(aiMultiAgentRun.value.runId)
-    const existingIds = new Set(aiDraftPoints.value.map((point) => point.pointId))
-    const appendedPoints = mergedRunPoints.items.filter((point) => !existingIds.has(point.pointId))
-    if (appendedPoints.length) {
-      aiDraftPoints.value = [...aiDraftPoints.value, ...appendedPoints]
-      extractedRequirementPoints.value = aiDraftPoints.value.map(aiDraftPointToRequirementPoint)
-      appendMergedPointsToGeneratedCases(appendedPoints)
-    }
-    ElMessage.success(`已合并 ${result.mergedCount} 个测试点到待评审草稿`)
-  } catch (error) {
-    ElMessage.error(error instanceof Error ? error.message : '对齐补充失败')
-  } finally {
-    aiMultiAgentLoading.value = false
-  }
-}
-
-const refreshAiAnalysisRunData = async (runId: string) => {
-  const [run, draftList] = await Promise.all([
-    getAiAnalysisRun(runId),
-    listAiDraftTestPoints(runId)
-  ])
-  aiAnalysisRun.value = run
-  aiDraftPoints.value = draftList.items
-  extractedRequirementPoints.value = draftList.items.map(aiDraftPointToRequirementPoint)
-  await loadAiAnalysisDetails(runId)
-}
-
-const resumeCurrentAiAnalysisRun = async () => {
-  if (!aiAnalysisRun.value) return
-  aiAnalysisRunning.value = true
-  aiAnalysisError.value = ''
-  setAiAnalysisProgress(46, '正在恢复 AI 分析任务')
-  try {
-    const result = await resumeAiAnalysisRun(aiAnalysisRun.value.runId)
-    const targetRunId = result.runId || aiAnalysisRun.value.runId
-    const finishedRun = await monitorAiAnalysisRun(targetRunId)
-    if (!finishedRun) return
-    completeAiRequirementAnalysis('AI分析需求已恢复完成')
-  } catch (error) {
-    setAiAnalysisProgress(0, 'AI分析需求未完成')
-    aiAnalysisError.value = presentAiWorkflowError(error, '恢复 AI 分析失败')
-    ElMessage.error(aiAnalysisError.value)
-  } finally {
-    aiAnalysisRunning.value = false
-  }
-}
-
-const retryCurrentAiAnalysisRun = async () => {
-  if (!aiAnalysisRun.value) return
-  aiAnalysisRunning.value = true
-  aiAnalysisError.value = ''
-  try {
-    const readiness = await checkAiEnvironmentBeforeAnalysis()
-    if (!readiness.ready) return
-    setAiAnalysisProgress(18, '正在重试 AI 分析任务')
-    const run = await retryAiAnalysisRun(aiAnalysisRun.value.runId)
-    aiAnalysisRun.value = run
-    const finishedRun = await monitorAiAnalysisRun(run.runId, readiness.logs)
-    if (!finishedRun) return
-    completeAiRequirementAnalysis('AI分析需求重试完成')
-  } catch (error) {
-    setAiAnalysisProgress(0, 'AI分析需求未完成')
-    aiAnalysisError.value = presentAiWorkflowError(error, '重试 AI 分析失败')
-    ElMessage.error(aiAnalysisError.value)
-  } finally {
-    aiAnalysisRunning.value = false
-  }
-}
-
-const generateNaturalLanguageCasesWithAi = async (retryFailedBatches = false) => {
-  const confirmedPointIds = (retryFailedBatches && generationRetryPointIds.value.length > 0
-    ? generationRetryPointIds.value
-    : scopedAiDraftPoints.value.map((point) => point.pointId))
-  if (!confirmedPointIds.length) {
-    ElMessage.warning('请先确认至少一个测试点')
-    return
-  }
-  aiGenerationError.value = ''
-  aiCaseGenerationRunning.value = true
-  webCaseAgentEvents.value = []
-  try {
-    const project = await ensureBackendProject(requirementAnalysisProjectName.value || '默认项目')
-    const run = await startWebCaseAgentRun({
-      projectId: project.id,
-      analysisRunId: aiAnalysisRun.value?.runId,
-      pointIds: confirmedPointIds,
-      environmentId: '',
-      baseUrl: '',
-      browser: 'chromium',
-      viewport: '1440x900',
-      mode: 'PLAN'
-    })
-    webCaseAgentRun.value = run
-    naturalPlanRunId.value = run.runId
-    await monitorWebCaseAgentRun(run.runId)
-    return
-  } catch (error) {
-    aiGenerationError.value = presentAiWorkflowError(error, '自然语言用例生成失败')
-    ElMessage.error(aiGenerationError.value)
-    aiCaseGenerationRunning.value = false
-    return
-  }
-
-}
-
-const appendAgentArtifacts = (artifacts: WebCaseAgentArtifact[]) => {
-  const fresh = artifacts.filter((artifact) => {
-    // 正式用例仍严格只取 ACCEPTED；自然语言计划在生成完成后即作为「待确认」用例展示，
-    // 由用户点击「确认用例」触发 confirmAll 完成人工确认（b241e2d 收紧 acceptance 时
-    // 连同这条展示链路一起丢掉了：计划不展示 → 表格为空 → 「确认用例」永远不可达）。
-    const deliverable = artifact.acceptanceState === 'ACCEPTED' && artifact.accepted
-    const reviewablePlan = artifact.artifactType === 'natural_web_case_plan'
-      && artifact.acceptanceState === 'PENDING_HUMAN_CONFIRMATION'
-    return (deliverable || reviewablePlan) && !deliveredWebCaseArtifactIds.has(`${artifact.artifactId}:${artifact.revision ?? 1}`)
-  })
-  if (!fresh.length) return
-  const naturalPlans = fresh.filter((artifact) => artifact.artifactType === 'natural_web_case_plan')
-  if (naturalPlans.length > 0) {
-    const generatedPlans = buildNaturalLanguageCasesFromAgentArtifacts(
-      naturalPlans,
-      aiDraftPoints.value,
-      requirementAnalysisProjectName.value || '默认项目',
-      generatedWebCases.value.length
-    )
-    generatedWebCases.value = [...generatedWebCases.value, ...generatedPlans.cases]
-    generatedPlans.cases.forEach((testCase, index) => {
-      const artifact = naturalPlans[index]
-      if (artifact) {
-        testCase.metadata.agentRunId = artifact.runId
-        testCase.metadata.agentSourcePointId = artifact.sourcePointId
-        testCase.metadata.artifactId = artifact.artifactId
-        testCase.metadata.artifactRevision = artifact.revision
-        testCase.metadata.artifactResultOrigin = artifact.resultOrigin
-        testCase.metadata.artifactAcceptanceState = artifact.acceptanceState
-        testCase.metadata.artifactModelProfileVersion = artifact.modelProfileVersion
-        testCase.metadata.artifactFieldOrigins = artifact.fieldOrigins
-        testCase.metadata.artifactEvidenceIds = artifact.evidenceIds
-        testCase.metadata.artifactParentArtifactId = artifact.parentArtifactId
-        testCase.metadata.artifactIdempotencyKey = artifact.idempotencyKey
-      }
-    })
-    naturalPlanRunId.value = naturalPlans[0]?.runId || naturalPlanRunId.value
-    naturalPlans.forEach((artifact) => deliveredWebCaseArtifactIds.add(`${artifact.artifactId}:${artifact.revision ?? 1}`))
-    selectedCase.value ||= generatedPlans.cases[0]
-    persistCaseDesignDraft()
-  }
-  const freshAutomation = fresh.filter((artifact) => artifact.artifactType !== 'natural_web_case_plan')
-  if (!freshAutomation.length) return
-  const cases = freshAutomation.map((artifact) => ({
-    ...artifact.candidateJson,
-    sourcePointId: artifact.sourcePointId,
-    sourceText: ''
-  })) as unknown as GeneratedAiCase[]
-  const generated = buildGeneratedCasesFromAiGeneratedCases(
-    cases,
-    aiDraftPoints.value,
-    requirementAnalysisProjectName.value || '默认项目',
-    generatedWebCaseIdOffset(generatedWebCases.value)
-  )
-  if (!generated.cases.length) return
-  generated.cases.forEach((testCase, index) => {
-    const source = freshAutomation[index]
-    if (source) {
-      testCase.metadata.agentRunId = source.runId
-      testCase.metadata.agentSourcePointId = source.sourcePointId
-    }
-    // 证据闭环:把用例绑定的页面证据(locator entry_id)带到表格,供「证据 N」徽章与追溯。
-    testCase.metadata.agentEvidenceIds = source?.evidenceIds
-    testCase.metadata.agentExpectedResultEvidenceIds = freshAutomation[index]?.expectedResultEvidenceIds
-    testCase.metadata.artifactId = source?.artifactId
-    testCase.metadata.artifactRevision = source?.revision
-    testCase.metadata.artifactResultOrigin = source?.resultOrigin
-    testCase.metadata.artifactAcceptanceState = source?.acceptanceState
-    testCase.metadata.artifactModelProfileVersion = source?.modelProfileVersion
-    testCase.metadata.artifactFieldOrigins = source?.fieldOrigins
-    testCase.metadata.artifactEvidenceIds = source?.evidenceIds
-    testCase.metadata.artifactParentArtifactId = source?.parentArtifactId
-    testCase.metadata.artifactIdempotencyKey = source?.idempotencyKey
-  })
-  const compiledByPointId = new Map(generated.cases.map((testCase) => [testCase.metadata.agentSourcePointId, testCase]))
-  const updatedCaseIds = new Set<string>()
-  generatedWebCases.value = generatedWebCases.value.map((existingCase) => {
-    const compiledCase = compiledByPointId.get(existingCase.metadata.agentSourcePointId)
-    if (!compiledCase) return existingCase
-    updatedCaseIds.add(existingCase.id)
-    return {
-      ...compiledCase,
-      id: existingCase.id,
-      row: {
-        ...compiledCase.row,
-        caseId: existingCase.row.caseId,
-        naturalSteps: existingCase.row.naturalSteps,
-        naturalExpectedResult: existingCase.row.naturalExpectedResult
-      }
-    }
-  })
-  generatedWebCases.value.push(
-    ...generated.cases.filter((testCase) => !updatedCaseIds.has(testCase.id) && !generatedWebCases.value.some((item) => item.metadata.agentSourcePointId === testCase.metadata.agentSourcePointId))
-  )
-  const refreshedSelectedCase = generatedWebCases.value.find((testCase) => testCase.id === selectedCase.value?.id)
-  if (refreshedSelectedCase) selectedCase.value = refreshedSelectedCase
-  freshAutomation.forEach((artifact) => deliveredWebCaseArtifactIds.add(`${artifact.artifactId}:${artifact.revision ?? 1}`))
-  selectedCase.value ||= generated.cases[0]
-  if (webCaseAgentRun.value?.mode !== 'COMPILE') invalidateCaseReview()
-  persistCaseDesignDraft()
-}
-
-const agentNaturalPlanCount = (artifacts: WebCaseAgentArtifact[]) =>
-  artifacts.filter((artifact) => artifact.artifactType === 'natural_web_case_plan').length
-
-const monitorWebCaseAgentRun = async (runId: string) => {
-  const poll = webCaseAgentPollCoordinator.start(runId)
-  if (!poll.shouldStart) return
-  try {
-    while (webCaseAgentPollCoordinator.isCurrent(runId, poll.token)) {
-      const after = webCaseAgentEvents.value[webCaseAgentEvents.value.length - 1]?.sequenceNo || 0
-      const [run, events, artifacts] = await Promise.all([
-        getWebCaseAgentRun(runId),
-        listWebCaseAgentEvents(runId, after),
-        listWebCaseAgentArtifacts(runId)
-      ])
-      if (!webCaseAgentPollCoordinator.isCurrent(runId, poll.token)) return
-      webCaseAgentRun.value = run
-      if (events.length) webCaseAgentEvents.value = [...webCaseAgentEvents.value, ...events]
-      webCaseAgentNaturalPlanCount.value = agentNaturalPlanCount(artifacts)
-      const pendingPlans = artifacts.filter((artifact) => artifact.artifactType === 'natural_web_case_plan' && artifact.acceptanceState !== 'ACCEPTED')
-      if (pendingPlans.length > 0) webCaseAgentNaturalPlanCount.value = pendingPlans.length
-      appendAgentArtifacts(artifacts)
-      const total = Math.max(run.requestedPointIds.length, 1)
-      setAiCaseGenerationProgress(
-        Math.min(96, Math.round((run.completedPointIds.length / total) * 92) + 4),
-        `Agent ${run.currentStage} · 已完成 ${run.completedPointIds.length} / ${run.requestedPointIds.length} 个测试点`
-      )
-      if (run.status === 'succeeded') {
-        generationRetryPointIds.value = []
-        setAiCaseGenerationProgress(100, `Agent 已完成，累计生成 ${generatedWebCases.value.length} 条 Web 用例`)
-        ElMessage.success(`Agent 已生成 ${generatedWebCases.value.length} 条可评审 Web 用例`)
-        return
-      }
-      if (run.status === 'failed' || run.status === 'blocked' || run.status === 'partial' || run.status === 'cancelled') {
-        const pending = run.requestedPointIds.filter((pointId) => !run.completedPointIds.includes(pointId))
-        // PLAN 任务在「计划已生成、等待人工确认」时也以 blocked 落库——这不是失败，
-        // 不应把用户引向重试，而应展示待确认用例并提示点「确认用例」。
-        if (run.mode === 'PLAN' && run.status === 'blocked' && webCaseAgentNaturalPlanCount.value > 0) {
-          generationRetryPointIds.value = []
-          aiGenerationError.value = ''
-          setAiCaseGenerationProgress(100, `已生成 ${webCaseAgentNaturalPlanCount.value} 条待确认用例，点击「确认用例」后进入质量评审`)
-          ElMessage.success(`已生成 ${webCaseAgentNaturalPlanCount.value} 条待确认用例，点击「确认用例」完成确认`)
-          return
-        }
-        generationRetryPointIds.value = pending
-        aiGenerationError.value = run.status === 'cancelled'
-          ? ''
-          : run.errorSummary || (run.status === 'blocked'
-            ? `Agent 已阻塞，${pending.length} 个测试点未完成；请先检查 Web 环境配置和登录状态后重试`
-            : `Agent 生成失败，可重试 ${pending.length} 个未完成测试点`)
-        setAiCaseGenerationProgress(
-          Math.round((run.completedPointIds.length / total) * 100),
-          run.status === 'cancelled'
-            ? `已终止，已保留 ${generatedWebCases.value.length} 条用例`
-            : `Agent 未完成，已保留 ${generatedWebCases.value.length} 条用例`
-        )
-        return
-      }
-      await new Promise((resolve) => window.setTimeout(resolve, 900))
-    }
-  } finally {
-    if (webCaseAgentPollCoordinator.isCurrent(runId, poll.token)) {
-      webCaseAgentPollCoordinator.stop(runId)
-      aiCaseGenerationRunning.value = false
-      aiCaseGenerationCancelling.value = false
-    }
-  }
-}
-
-const generateWebCasesWithAi = async (retryFailedAgentRun = false, preserveCurrentCases = false) => {
-  const webEnvironment = activeWebExecutionEnvironment.value
-  const webRuntime = webEnvironment ? buildWebExecutionRuntime(webEnvironment) : undefined
-  if (!webEnvironment?.baseUrl.trim() || !webRuntime) {
-    ElMessage.warning('请先在 Web 运行环境中配置 Base URL，再由浏览器采集真实页面定位器')
-    return
-  }
-  const confirmedById = new Set(confirmedAiDraftPoints.value.map((point) => point.pointId))
-  const requestedPointIds = (retryFailedAgentRun && generationRetryPointIds.value.length
-    ? generationRetryPointIds.value
-    : scopedAiDraftPoints.value.map((point) => point.pointId)
-  ).filter((pointId) => confirmedById.has(pointId))
-  if (!requestedPointIds.length && !retryFailedAgentRun && pendingAiDraftPoints.value.length) {
-    const confirmedCount = await confirmAiDraftPoints(pendingAiDraftPoints.value, '确认并生成')
-    if (confirmedCount) return compileWebAutomationCases()
-  }
-  if (!requestedPointIds.length) {
-    ElMessage.warning('请先确认至少一个 AI 草稿测试点')
-    return
-  }
-  if (!retryFailedAgentRun && !preserveCurrentCases) {
-    generatedWebCases.value = []
-    caseGenerationConfirmed.value = false
-    selectedCase.value = undefined
-    generationRetryPointIds.value = []
-    selectedGeneratedWebCaseIds.value = []
-    deliveredWebCaseArtifactIds.clear()
-    webCaseAgentNaturalPlanCount.value = 0
-    invalidateCaseReview()
-  }
-  aiGenerationError.value = ''
-  aiCaseGenerationRunning.value = true
-  aiCaseGenerationCancelling.value = false
-  // 用户 2026-10-14：重试编译时清理上一次「素材取证 · 已阻塞」的运行展示——
-  // 先清空旧运行对象与旧时间线，再创建新任务，工作区不再残留上一次的标题/阻塞统计/日志内容。
-  webCaseAgentRun.value = undefined
-  webCaseAgentEvents.value = []
-  setAiCaseGenerationProgress(4, `正在创建 Agent 任务（${requestedPointIds.length} 个测试点）`)
-  try {
-    const project = await ensureBackendProject(requirementAnalysisProjectName.value || '默认项目')
-    const login = webRuntime.login.enabled ? {
-      enabled: true,
-      url: resolveWebLoginDiscoveryUrl(webEnvironment.baseUrl, webRuntime.login.loginUrl),
-      usernameLocator: webRuntime.login.usernameLocator,
-      passwordLocator: webRuntime.login.passwordLocator,
-      submitLocator: webRuntime.login.submitLocator,
-      username: webRuntime.login.username,
-      password: webRuntime.login.password,
-      successType: webRuntime.login.successType,
-      successTarget: webRuntime.login.successTarget
-    } : undefined
-    const planRunId = naturalPlanRunId.value || generatedWebCases.value
-      .map((testCase) => testCase.metadata.agentRunId)
-      .find((runId): runId is string => Boolean(runId)) || ''
-    if (!planRunId) {
-      throw new Error('缺少自然语言用例计划，请返回用例生成阶段重新确认用例')
-    }
-    // The confirmation endpoint is idempotent. Reconfirm here so a refresh or
-    // an interrupted UI request cannot send COMPILE with unaccepted plan artifacts.
-    await confirmAllWebCasePlanArtifacts(planRunId)
-    naturalPlanRunId.value = planRunId
-    const run = await startWebCaseAgentRun({
-      projectId: project.id,
-      analysisRunId: aiAnalysisRun.value?.runId,
-      pointIds: requestedPointIds,
-      environmentId: webEnvironment.id,
-      baseUrl: webEnvironment.baseUrl.trim(),
-      browser: webRuntime.browser === 'follow-case' ? 'chromium' : webRuntime.browser,
-      viewport: webRuntime.viewport,
-      mode: 'COMPILE',
-      planRunId,
-      browserDiscovery: {
-        headless: webRuntime.headless,
-        timeoutMs: webRuntime.navigationTimeoutMs,
-        waitUntil: webRuntime.waitUntil,
-        authToken: webRuntime.authToken,
-        extraHeaders: webRuntime.extraHeaders,
-        cookieOrigins: webRuntime.cookieOrigins,
-        allowedRequestOrigins: webRuntime.allowedRequestOrigins,
-        networkPolicyMode: webRuntime.networkPolicyMode,
-        reuseSession: true,
-        ...((webRuntime.sessionId || webLoginSessionId.value) ? { sessionId: webRuntime.sessionId || webLoginSessionId.value } : {}),
-        ...(login ? { login } : {})
-      }
-    })
-    webCaseAgentRun.value = run
-    await monitorWebCaseAgentRun(run.runId)
-  } catch (error) {
-    aiGenerationError.value = presentAiWorkflowError(error, 'Agent 用例生成失败')
-    setAiCaseGenerationProgress(0, 'Agent 用例生成未完成')
-    ElMessage.error(aiGenerationError.value)
-    aiCaseGenerationRunning.value = false
-  }
-}
-
-const compileWebAutomationCases = async (retryFailedAgentRun = false) => {
-  await generateWebCasesWithAi(retryFailedAgentRun, true)
-}
-
-const cancelAiCaseGeneration = async () => {
-  if (!webCaseAgentRun.value || !aiCaseGenerationRunning.value) return
-  aiCaseGenerationCancelling.value = true
-  setAiCaseGenerationProgress(aiCaseGenerationProgress.percentage, '正在请求终止 Agent 任务')
-  try {
-    webCaseAgentRun.value = await cancelWebCaseAgentRun(webCaseAgentRun.value.runId)
-  } catch (error) {
-    aiCaseGenerationCancelling.value = false
-    ElMessage.error(error instanceof Error ? error.message : '终止 Agent 任务失败')
-  }
-}
-
-const isConfirmableAiDraftPoint = (point: AiDraftTestPoint) =>
-  point.reviewStatus !== 'confirmed' && point.reviewStatus !== 'modified' && point.reviewStatus !== 'rejected'
-
-const confirmAiDraftPoint = async (point: AiDraftTestPoint) => {
-  try {
-    const updated = await confirmAiDraftTestPoint(point.pointId, '确认生成')
-    replaceAiDraftPoint(updated)
-    ElMessage.success('已确认 AI 草稿测试点')
-  } catch (error) {
-    ElMessage.error(error instanceof Error ? error.message : '确认失败')
-  }
-}
-
-const confirmAiDraftPoints = async (points: AiDraftTestPoint[], comment: string) => {
-  const targets = points.filter(isConfirmableAiDraftPoint)
-  if (targets.length === 0) {
-    ElMessage.info('暂无可确认的 AI 草稿测试点')
-    return 0
-  }
-  aiDraftBulkConfirming.value = true
-  let confirmedCount = 0
-  try {
-    for (const point of targets) {
-      const updated = await confirmAiDraftTestPoint(point.pointId, comment)
-      replaceAiDraftPoint(updated)
-      confirmedCount += 1
-    }
-    ElMessage.success(`已确认 ${confirmedCount} 条 AI 草稿测试点`)
-  } catch (error) {
-    ElMessage.error(error instanceof Error ? error.message : '批量确认失败')
-  } finally {
-    aiDraftBulkConfirming.value = false
-  }
-  return confirmedCount
-}
-
-const confirmSelectedAiDraftPoints = async () => {
-  await confirmAiDraftPoints(aiDraftSelection.value, '批量确认')
-}
-
-const confirmAllVisibleAiDraftPoints = async () => {
-  await confirmAiDraftPoints(aiDraftPointView.value.items, '全部确认')
-}
-
-const editConfirmAiDraftPoint = async (point: AiDraftTestPoint) => {
-  try {
-    const { value } = await ElMessageBox.prompt('请输入测试点标题', '编辑确认', {
-      confirmButtonText: '确认',
-      cancelButtonText: '取消',
-      inputValue: point.title
-    })
-    if (!value?.trim()) return
-    const updated = await editConfirmAiDraftTestPoint(point.pointId, {
-      title: value.trim(),
-      objective: point.objective,
-      steps: point.steps,
-      expectedResult: point.expectedResult,
-      comment: '编辑确认'
-    })
-    replaceAiDraftPoint(updated)
-    ElMessage.success('已编辑确认 AI 草稿测试点')
-  } catch {
-    return
-  }
-}
-
-const editAiDraftPointFromDetails = async (payload: {
-  point: AiDraftTestPoint
-  title: string
-  objective: string
-  steps: string
-  expectedResult: string
-}) => {
-  try {
-    const updated = await editConfirmAiDraftTestPoint(payload.point.pointId, {
-      title: payload.title,
-      objective: payload.objective,
-      steps: payload.steps,
-      expectedResult: payload.expectedResult,
-      comment: '详情编辑确认'
-    })
-    replaceAiDraftPoint(updated)
-    ElMessage.success('已保存测试点修改')
-  } catch (error) {
-    ElMessage.error(error instanceof Error ? error.message : '保存测试点修改失败')
-  }
-}
-
-const rejectAiDraftPoint = async (point: AiDraftTestPoint) => {
-  try {
-    const updated = await rejectAiDraftTestPoint(point.pointId, '拒绝生成')
-    replaceAiDraftPoint(updated)
-    ElMessage.success('已拒绝 AI 草稿测试点')
-  } catch (error) {
-    ElMessage.error(error instanceof Error ? error.message : '拒绝失败')
-  }
-}
-
-const deleteAiDraftPoint = async (point: AiDraftTestPoint) => {
-  const confirmed = await confirmDangerAction('删除测试点', `确认删除测试点“${point.title}”吗？`)
-  if (!confirmed) return
-  try {
-    await deleteAiDraftTestPoint(point.pointId)
-    aiDraftPoints.value = aiDraftPoints.value.filter((item) => item.pointId !== point.pointId)
-    aiDraftSelection.value = aiDraftSelection.value.filter((item) => item.pointId !== point.pointId)
-    generationScopePointIds.value = generationScopePointIds.value.filter((pointId) => pointId !== point.pointId)
-    extractedRequirementPoints.value = aiDraftPoints.value.map(aiDraftPointToRequirementPoint)
-    ElMessage.success('已删除测试点')
-  } catch (error) {
-    ElMessage.error(error instanceof Error ? error.message : '删除测试点失败')
-  }
-}
-
-const replaceAiDraftPoint = (point: AiDraftTestPoint) => {
-  aiDraftPoints.value = aiDraftPoints.value.map((item) => item.pointId === point.pointId ? point : item)
-  extractedRequirementPoints.value = aiDraftPoints.value.map(aiDraftPointToRequirementPoint)
-}
-
-const resetAiRequirementAnalysis = () => {
-  aiSourceDocuments.value = []
-  aiAnalysisRun.value = undefined
-  aiDraftPoints.value = []
-  aiDraftSelection.value = []
-  aiCoverageSummary.value = undefined
-  aiUnclearQuestions.value = []
-  aiToolCalls.value = []
-  resetAiReviewState()
-  aiDraftFilter.module = 'ALL'
-  aiDraftFilter.status = 'ALL'
-  aiDraftFilter.confidence = 'ALL'
-  aiDraftFilter.sourceDocumentId = 'ALL'
-  resetCaseGenerationSelectionState()
-  resetWebRequirementFlowProgress()
-}
-
-const resetAiReviewState = () => {
-  requirementAiReviewRun.value = undefined
-  caseAiReviewRun.value = undefined
-  activeAiReviewStage.value = 'requirement'
-  aiMultiAgentConflicts.value = []
-  aiMultiAgentQualityScores.value = []
-  aiMultiAgentMergeResult.value = undefined
-  caseReviewAttempted.value = false
-  caseReviewFindingDecisions.value = {}
-  restoredAiReviewInsight.value = undefined
-  caseReviewError.value = ''
-}
-
-const requirementSourceFilesForAiUpload = (): File[] => {
-  const fileByName = new Map(stagedRequirementSourceFiles.value.map((file) => [file.name, file]))
-  return stagedRequirementFiles.value
-    .filter((source) => !source.needsReattach && !requirementSourceErrors.value[source.name])
-    .map((source) => fileByName.get(source.name) || new File([source.text], source.name, { type: 'text/plain' }))
-}
-
-const aiDraftPointToRequirementPoint = (point: AiDraftTestPoint): RequirementPointDraft => ({
-  project: requirementAnalysisProjectName.value || '默认项目',
-  module: point.module || '默认模块',
-  pageName: point.pageOrFeature || 'AI分析',
-  title: point.title,
-  sourceFile: point.sourceFile || 'AI草稿测试点',
-  sourceDocumentType: 'markdown'
-})
-
-const aiDraftStatusText = (status: string): string => {
-  if (status === 'confirmed') return '已确认'
-  if (status === 'modified') return '已修改'
-  if (status === 'rejected') return '已拒绝'
-  return 'AI生成'
-}
-
-const aiDraftStatusTagType = (status: string): 'success' | 'warning' | 'info' | 'danger' => {
-  if (status === 'confirmed' || status === 'modified') return 'success'
-  if (status === 'rejected') return 'danger'
-  if (status === 'ai_generated') return 'warning'
-  return 'info'
-}
-
-const aiDraftConfidenceText = (confidenceScore: number): string =>
-  `${Math.round(confidenceScore * 100)}%`
-
-const aiDraftConfidenceTagType = (confidenceScore: number): 'success' | 'warning' | 'info' => {
-  const bucket = confidenceBucket(confidenceScore)
-  if (bucket === 'high') return 'success'
-  if (bucket === 'medium') return 'warning'
-  return 'info'
-}
-
-const aiDraftVisualEvidence = (point: AiDraftTestPoint) => visualEvidenceForDraftPoint(point)
-
-const aiDraftVisualCoordinateText = (point: AiDraftTestPoint): string => {
-  const evidence = aiDraftVisualEvidence(point)
-  return evidence?.coordinates ? formatVisualRegionCoordinates(evidence.coordinates) : '-'
-}
-
-const aiQuestionSeverityTagType = (severity: string): 'success' | 'warning' | 'info' | 'danger' => {
-  if (severity === 'critical' || severity === 'high') return 'danger'
-  if (severity === 'medium') return 'warning'
-  if (severity === 'low') return 'info'
-  return 'info'
-}
-
-const aiToolCallStatusTagType = (status: string): 'success' | 'warning' | 'info' | 'danger' => {
-  if (status === 'succeeded') return 'success'
-  if (status === 'failed' || status === 'blocked') return 'danger'
-  if (status === 'pending') return 'warning'
-  return 'info'
-}
-
-const readRequirementFileText = async (file: File): Promise<string> => {
-  const extension = file.name.toLowerCase().split('.').pop() || ''
-  if (shouldParseRequirementFileViaBackend(extension)) {
-    try {
-      const parsed = await parseRequirementDocumentWithBackend(file)
-      return buildRequirementImportText(parsed)
-    } catch {
-      return fallbackRequirementFileText(file, extension)
-    }
-  }
-  return await file.text()
-}
-
-const shouldParseRequirementFileViaBackend = (extension: string): boolean =>
-  ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp'].includes(extension)
-
-const fallbackRequirementFileText = async (file: File, extension: string): Promise<string> => {
-  if (['txt', 'csv', 'md', 'markdown', 'json', 'yaml', 'yml'].includes(extension)) {
-    return await file.text()
-  }
-  return ''
-}
-
-const importOpenApiPayloads = (payloads: Array<{ name: string; json: unknown }>) => {
-  let latestProject: ImportedOpenApiProject | undefined
-  for (const payload of payloads) {
-    latestProject = createImportedOpenApiProject(parseOpenApiDocument(payload.json, payload.name))
-    importedProjects.value = upsertImportedProject(importedProjects.value, latestProject)
-  }
-  if (latestProject) {
-    switchImportedProject(latestProject.id)
-    ElMessage.success(`已导入 ${payloads.length} 个项目，当前项目 ${latestProject.title}`)
-  }
-}
-
-const switchImportedProject = (projectId: string) => {
-  const project = selectImportedProject(importedProjects.value, projectId)
-  if (!project) return
-
-  activeProjectId.value = project.id
-  importFilter.module = 'ALL'
-  importFilter.method = 'ALL'
-  importFilter.pathKeyword = ''
-  importFilter.summaryKeyword = ''
-  selectedOperationIds.value = project.document.operations.map((operation) => operation.id)
-  reviewFindings.value = []
 }
 
 const switchAutomationProject = (project: string) => {
@@ -3505,9 +1361,12 @@ const onProjectDataSelected = async (event: Event) => {
 
   try {
     const json = JSON.parse(await file.text())
-    const result = importProjectData(localStorage, json)
+    // Validate the unchanged package API in memory; only the template writer may touch its three keys.
+    const validation = new Map<string,string>()
+    const result = importProjectData({ setItem: (key: string, value: string) => { validation.set(key,value) } } as Storage, json)
+    if (!await templateConfigModule.importConfig(json.payload.templateConfig)) return
+    for (const [key,value] of validation) if (key !== TEMPLATE_CONFIG_STORAGE_KEY) localStorage.setItem(key,value)
     savedCases.value = listSavedCases(localStorage)
-    templateConfig.value = loadTemplateConfig(localStorage)
     executionEnvironmentLibrary.value = loadExecutionEnvironmentLibrary(localStorage)
     webExecutionEnvironmentLibrary.value = loadExecutionEnvironmentLibrary(localStorage, WEB_EXECUTION_ENV_LIBRARY_STORAGE_KEY)
     syncSelectedCaseTypes()
@@ -3517,100 +1376,6 @@ const onProjectDataSelected = async (event: Event) => {
   } finally {
     input.value = ''
   }
-}
-
-const toggleOperation = (operation: ParsedOperation, checked: boolean) => {
-  const selected = new Set(selectedOperationIds.value)
-  if (checked) {
-    selected.add(operation.id)
-  } else {
-    selected.delete(operation.id)
-  }
-  selectedOperationIds.value = Array.from(selected)
-}
-
-const selectFilteredOperations = () => {
-  selectedOperationIds.value = Array.from(new Set([
-    ...selectedOperationIds.value,
-    ...filteredOperations.value.map((operation) => operation.id)
-  ]))
-}
-
-const clearSelectedOperations = () => {
-  selectedOperationIds.value = []
-}
-
-const generateCases = () => {
-  if (!parsed.value || selectedOperations.value.length === 0) {
-    ElMessage.warning('请选择接口')
-    return
-  }
-
-  generatedCases.value = generateInterfaceCases({
-    project: parsed.value.title,
-    sourceFile: parsed.value.sourceFile,
-    operations: selectedOperations.value,
-    granularity: generation.granularity
-  })
-    .filter((testCase) => {
-      const definition = defaultCaseTypes.find((caseType) => caseType.name === testCase.row.caseType)
-      return definition
-        ? generation.selectedCaseTypeIds.includes(definition.id) && enabledInterfaceCaseTypeIds.value.has(definition.id)
-        : true
-    })
-    .map(applyConfiguredCaseTypeName)
-  generatedCases.value = applyInterfaceFieldTemplateToCases(generatedCases.value, generationTemplateFields.value)
-  reviewFindings.value = []
-  interfaceReviewAttempted.value = false
-  ignoredInterfaceReviewFindingIds.value = []
-  selectedInterfaceCaseIds.value = []
-  selectedCase.value = generatedCases.value[0]
-  ElMessage.success(`已生成 ${generatedCases.value.length} 条用例`)
-}
-
-const runAiReview = () => {
-  if (generatedCases.value.length === 0) {
-    ElMessage.warning('请先生成用例')
-    return
-  }
-
-  generatedCases.value = markCasesAsAiReviewed(generatedCases.value)
-  reviewFindings.value = actionableReviewFindings(reviewGeneratedCases(generatedCases.value, {
-    expectedCaseTypes: interfaceCaseTypes.value
-      .filter((caseType) => caseType.enabled)
-      .map((caseType) => caseType.name)
-  }))
-  interfaceReviewAttempted.value = true
-  ignoredInterfaceReviewFindingIds.value = []
-  ElMessage.success(reviewFindings.value.length ? 'AI 评审已生成' : 'AI 评审通过')
-}
-
-const supplementMissingCases = () => {
-  if (!parsed.value || missingCaseTypeFindings.value.length === 0) return
-
-  const supplements = applyInterfaceFieldTemplateToCases(supplementMissingCaseTypes({
-    existingCases: generatedCases.value,
-    operations: parsed.value.operations,
-    findings: missingCaseTypeFindings.value
-  }).map(applyConfiguredCaseTypeName), interfaceFields.value)
-
-  if (supplements.length === 0) {
-    ElMessage.info('没有需要补充的缺失用例')
-    reviewFindings.value = actionableReviewFindings(reviewGeneratedCases(generatedCases.value, {
-      expectedCaseTypes: interfaceCaseTypes.value
-        .filter((caseType) => caseType.enabled)
-        .map((caseType) => caseType.name)
-    }))
-    return
-  }
-
-  generatedCases.value = [...generatedCases.value, ...supplements]
-  reviewFindings.value = actionableReviewFindings(reviewGeneratedCases(generatedCases.value, {
-    expectedCaseTypes: interfaceCaseTypes.value
-      .filter((caseType) => caseType.enabled)
-      .map((caseType) => caseType.name)
-  }))
-  ElMessage.success(`已补充 ${supplements.length} 条缺失用例`)
 }
 
 const openAutomationGenerateDialog = () => {
@@ -3681,33 +1446,16 @@ const exportAutomationJson = () => {
   exportApiAutomationJson()
 }
 
-const exportAutomationCurlScript = () => {
-  if (filteredAutomationCases.value.length === 0) {
-    ElMessage.warning('没有可导出的自动化用例')
-    return
-  }
-  const environment = resolveRunnableEnvironment()
-  if (!environment) return
-
-  const script = [
-    '#!/usr/bin/env bash',
-    'set -euo pipefail',
-    '',
-    ...filteredAutomationCases.value.flatMap((testCase) => [
-      `echo ${JSON.stringify(`Running ${testCase.id} ${testCase.name}`)}`,
-      buildAutomationCurlCommand(testCase, environment),
-      ''
-    ])
-  ].join('\n')
-  downloadTextFile('API自动化-curl执行脚本.sh', script, 'text/x-shellscript;charset=utf-8')
-}
-
 const delayWebRunPoll = (delayMs: number) => new Promise((resolve) => window.setTimeout(resolve, delayMs))
 
 const loadWebRunCapabilities = async () => {
+  const isCurrent = beginWorkspaceOperation('capabilities')
+  if (!isCurrent()) return
   try {
-    webRunCapabilities.value = await getWebAutomationCapabilities()
+    const capabilities = await getWebAutomationCapabilities()
+    if (isCurrent()) webRunCapabilities.value = capabilities
   } catch (error) {
+    if (!isCurrent()) return
     webRunCapabilities.value = undefined
     if (automationKind.value === 'web') {
       const message = error instanceof WebAutomationRunRequestError
@@ -3836,13 +1584,15 @@ const hydrateActiveWebRunCasesFromSnapshot = (snapshot: WebAutomationRunSnapshot
 
   const activeById = new Map(activeWebRunCases.value.map((testCase) => [testCase.id, testCase]))
   const savedById = new Map(webAutomationCases.value.map((testCase) => [testCase.id, testCase]))
+  const savedIds = new Set(savedById.keys())
   let changed = false
 
   for (const caseId of recoveredIds) {
-    if (activeById.has(caseId)) continue
-    const savedCase = savedById.get(caseId)
+    const originalId = resolveWebRunCaseId(caseId, savedIds)
+    if (!originalId || activeById.has(originalId)) continue
+    const savedCase = savedById.get(originalId)
     if (!savedCase) continue
-    activeById.set(caseId, savedCase)
+    activeById.set(originalId, savedCase)
     changed = true
   }
 
@@ -3887,12 +1637,6 @@ const finalizeWebRunSnapshot = (snapshot: WebAutomationRunSnapshot) => {
 
   const report = snapshotToReport(snapshot)
   const casesToRun = activeWebRunCases.value
-  for (const result of report.results) {
-    const source = casesToRun.find((testCase) => testCase.id === result.caseId || testCase.sourceCaseId === result.sourceCaseId)
-    const agentRunId = source?.agentRunId
-    const pointId = source?.agentSourcePointId
-    if (agentRunId && pointId) void recordAgentAssetOutcome(agentRunId, pointId, result.status === 'passed').catch(() => undefined)
-  }
   if (report.results.length > 0) {
     const reportRecord = buildSavedAutomationReportRecord(report, {
       reportId: `web-report-${Date.now()}`,
@@ -3912,25 +1656,28 @@ const finalizeWebRunSnapshot = (snapshot: WebAutomationRunSnapshot) => {
   }
 
   if (snapshot.status === 'stopped') {
-    ElMessage.info('Web 执行已停止，已保留当前日志和截图')
+    ElMessage.info({ message: 'Web 执行已停止，已保留当前日志和截图', customClass: 'web-run-terminal-feedback' })
   } else if (snapshot.status === 'failed') {
-    ElMessage.error(snapshot.diagnostics[snapshot.diagnostics.length - 1] || 'Web 执行任务异常结束')
+    ElMessage.error({ message: snapshot.diagnostics[snapshot.diagnostics.length - 1] || 'Web 执行任务异常结束', customClass: 'web-run-terminal-feedback' })
   } else {
-    ElMessage.success(
-      `执行完成：通过 ${report.summary.passed}，失败 ${report.summary.failed}，错误 ${report.summary.error}`
-    )
+    ElMessage.success({
+      message: `执行完成：通过 ${report.summary.passed}，失败 ${report.summary.failed}，错误 ${report.summary.error}`,
+      customClass: 'web-run-terminal-feedback'
+    })
   }
 }
 
-const monitorActiveWebRun = async (runId: string) => {
+const monitorActiveWebRun = async (runId: string, isCurrent = beginWorkspaceOperation('webRun')) => {
+  if (!isCurrent()) return
+  webRunPollCoordinator.stop()
   const poll = webRunPollCoordinator.start(runId)
   if (!poll.shouldStart) return
   let consecutiveFailures = 0
   try {
-    while (webRunPollCoordinator.isCurrent(runId, poll.token) && activeWebRunId.value === runId) {
+    while (isCurrent() && webRunPollCoordinator.isCurrent(runId, poll.token) && activeWebRunId.value === runId) {
       try {
         const snapshot = await getWebAutomationRun(runId)
-        if (!webRunPollCoordinator.isCurrent(runId, poll.token)) return
+        if (!isCurrent() || !webRunPollCoordinator.isCurrent(runId, poll.token)) return
         consecutiveFailures = 0
         webRunConnectionState.value = 'polling'
         applyWebRunSnapshot(snapshot)
@@ -3940,7 +1687,7 @@ const monitorActiveWebRun = async (runId: string) => {
         }
         await delayWebRunPoll(500)
       } catch (error) {
-        if (!webRunPollCoordinator.isCurrent(runId, poll.token)) return
+        if (!isCurrent() || !webRunPollCoordinator.isCurrent(runId, poll.token)) return
         consecutiveFailures += 1
         webRunConnectionState.value = consecutiveFailures >= 3 ? 'interrupted' : 'retrying'
         if (error instanceof WebAutomationRunRequestError && error.status === 404) {
@@ -3951,32 +1698,51 @@ const monitorActiveWebRun = async (runId: string) => {
       }
     }
   } finally {
-    if (webRunPollCoordinator.isCurrent(runId, poll.token)) {
+    if (isCurrent() && webRunPollCoordinator.isCurrent(runId, poll.token)) {
       webRunPollCoordinator.stop(runId)
     }
   }
 }
 
 const resolveVisualWebAutomationRunProjectId = async (
-  cases: SavedWebAutomationRunCase[]
+  cases: SavedWebAutomationRunCase[],
+  isCurrent: () => boolean
 ): Promise<number | undefined> => {
   const projectNames = Array.from(new Set(cases.map((item) => (item.project || '').trim()).filter(Boolean)))
   if (projectNames.length !== 1) {
     return undefined
   }
   try {
-    const project = await ensureBackendProject(projectNames[0])
+    const project = await ensureBackendProject(projectNames[0], { fetchImpl: workspaceFetch(isCurrent) })
     return project.id
   } catch {
     return undefined
   }
 }
 
+/** 发起瞬间的 live 值 → 请求快照（只在第一个 await 之前调用）。 */
+const captureWebRunStartRequest = (): WebRunStartRequest => ({
+  scopeLabel: effectiveWebAutomationScope.value.actionLabel,
+  selectedCaseIds: [...webAutomationSelectedIds.value],
+  loopCount: webAutomationLoopCount.value,
+  environmentId: activeWebExecutionEnvironment.value?.id || '',
+  environmentName: activeWebExecutionEnvironment.value?.name || '',
+  environmentBaseUrl: activeWebExecutionEnvironment.value?.baseUrl || '',
+  browser: runnableWebRuntime.value?.browser || 'follow-case',
+  mode: webAutomationRunMode.value
+})
+
 const startVisualWebAutomationRun = async (
-  explicitCases?: SavedWebAutomationRunCase[]
+  explicitCases?: SavedWebAutomationRunCase[],
+  confirmedRequest?: WebRunStartRequest
 ): Promise<boolean> => {
   if (webAutomationRunning.value) return false
-  const casesToRun = explicitCases || effectiveWebAutomationScope.value.cases
+  const isCurrent = beginWorkspaceOperation('webRun')
+  if (!isCurrent()) return false
+  const request = isWebRunStartRequest(confirmedRequest) ? confirmedRequest : captureWebRunStartRequest()
+  // 快照：范围用例 / 环境 / 浏览器 / 循环次数 / 运行时配置。之后跨 await 只读这份快照。
+  const frozen = freezeWebRunStart(request, explicitCases || effectiveWebAutomationScope.value.cases)
+  const casesToRun = frozen.cases
   if (!explicitCases && !webAutomationPreflight.value.canExecute) {
     webRunCreationError.value = webAutomationPreflight.value.blockingReason
     return false
@@ -3985,32 +1751,55 @@ const startVisualWebAutomationRun = async (
     webRunCreationError.value = '没有可执行的 Web 自动化用例'
     return false
   }
-  const webRuntime = resolveWebRuntimeEnvironment()
-  if (!webRuntime) return false
+  const environmentSnapshot = cloneEnvironment(
+    activeWebExecutionEnvironment.value || defaultWebExecutionEnvironmentLibrary().environments[0]
+  )
+  if (frozen.environmentId && !environmentSnapshot.id) environmentSnapshot.id = frozen.environmentId
+  // 确认框显示的环境地址就是本次要用的地址；即便 live 环境随后被改动，也只发快照里的地址。
+  if (frozen.environmentBaseUrl) environmentSnapshot.baseUrl = frozen.environmentBaseUrl
+  // 浏览器同理：确认框里的执行浏览器就是提交的 browserOverride（follow-case 表示跟随用例）。
+  if (frozen.browser && frozen.browser !== 'follow-case') {
+    environmentSnapshot.web = {
+      ...normalizeWebExecutionRuntimeConfig(environmentSnapshot.web),
+      browser: frozen.browser as WebRuntimeBrowser
+    }
+  }
+  // 校验与运行时构建都用快照，不再回读 live 环境。
+  const validation = validateWebExecutionEnvironment(environmentSnapshot)
+  if (!validation.valid) {
+    ElMessage.warning(validation.message)
+    environmentVisible.value = true
+    openEnvironmentEditor(environmentSnapshot.id, 'web')
+    return false
+  }
+  const frozenRuntime = buildWebExecutionRuntime(environmentSnapshot)
 
   clearWebRunLocalMessages()
   // 先置运行态再解析项目 id：解析含后端调用（await），期间保持互斥，双击不会并发双启动（第二十六轮 C-2）。
   webAutomationRunning.value = true
-  const runProjectId = await resolveVisualWebAutomationRunProjectId(casesToRun)
+  const runProjectId = await resolveVisualWebAutomationRunProjectId(casesToRun, isCurrent)
+  if (!isCurrent()) return false
   activeWebRunCases.value = [...casesToRun]
   webRunConnectionState.value = 'polling'
   finalizedWebRunId = ''
   webRunPollCoordinator.stop()
   try {
     const created = await createWebAutomationRun(casesToRun, {
-      mode: webAutomationRunMode.value,
-      loopCount: webAutomationLoopCount.value,
-      browserOverride: webRuntime.browser,
-      runtime: webRuntime,
+      mode: frozen.mode,
+      loopCount: frozen.loopCount,
+      browserOverride: frozenRuntime.browser,
+      runtime: frozenRuntime,
       projectId: runProjectId
     })
+    if (!isCurrent()) return false
     activeWebRunId.value = created.runId
     applyWebRunSnapshot(created)
     sessionStorage.setItem(WEB_AUTOMATION_ACTIVE_RUN_SESSION_KEY, created.runId)
     webAutomationWorkspaceMode.value = 'workbench'
-    void monitorActiveWebRun(created.runId)
+    void monitorActiveWebRun(created.runId, isCurrent)
     return true
   } catch (error) {
+    if (!isCurrent()) return false
     webAutomationRunning.value = false
     webRunConnectionState.value = 'interrupted'
     const message = error instanceof WebAutomationRunRequestError
@@ -4023,58 +1812,86 @@ const startVisualWebAutomationRun = async (
 }
 
 const pauseActiveWebRun = async () => {
-  if (!activeWebRunId.value) return
+  const currentOperation = beginWorkspaceOperation('webRunControl')
+  const runId = activeWebRunId.value
+  const runOperation = workspaceOperations.get('webRun')
+  const isCurrent = () => currentOperation() && activeWebRunId.value === runId && workspaceOperations.get('webRun') === runOperation
+  if (!runId || !isCurrent()) return
   webRunControlLoading.value = 'pause'
   try {
-    applyWebRunSnapshot(await pauseWebAutomationRun(activeWebRunId.value))
+    const snapshot = await pauseWebAutomationRun(runId)
+    if (!isCurrent()) return
+    applyWebRunSnapshot(snapshot)
   } catch (error) {
-    ElMessage.error(error instanceof WebAutomationRunRequestError ? error.toFallbackMessage() : '暂停执行失败')
+    if (isCurrent()) ElMessage.error(error instanceof WebAutomationRunRequestError ? error.toFallbackMessage() : '暂停执行失败')
   } finally {
-    webRunControlLoading.value = ''
+    if (isCurrent()) webRunControlLoading.value = ''
   }
 }
 
 const resumeActiveWebRun = async () => {
-  if (!activeWebRunId.value) return
+  const currentOperation = beginWorkspaceOperation('webRunControl')
+  const runId = activeWebRunId.value
+  const runOperation = workspaceOperations.get('webRun')
+  const isCurrent = () => currentOperation() && activeWebRunId.value === runId && workspaceOperations.get('webRun') === runOperation
+  if (!runId || !isCurrent()) return
   webRunControlLoading.value = 'resume'
   try {
-    const snapshot = await resumeWebAutomationRun(activeWebRunId.value)
+    const snapshot = await resumeWebAutomationRun(runId)
+    if (!isCurrent()) return
     applyWebRunSnapshot(snapshot)
-    if (webRunConnectionState.value === 'interrupted') void monitorActiveWebRun(activeWebRunId.value)
+    if (webRunConnectionState.value === 'interrupted') {
+      // Release this control before the restarted monitor advances the run generation.
+      webRunControlLoading.value = ''
+      void monitorActiveWebRun(activeWebRunId.value)
+    }
   } catch (error) {
-    ElMessage.error(error instanceof WebAutomationRunRequestError ? error.toFallbackMessage() : '继续执行失败')
+    if (isCurrent()) ElMessage.error(error instanceof WebAutomationRunRequestError ? error.toFallbackMessage() : '继续执行失败')
   } finally {
-    webRunControlLoading.value = ''
+    if (isCurrent()) webRunControlLoading.value = ''
   }
 }
 
 const stopActiveWebRun = async () => {
-  if (!activeWebRunId.value) return
+  const currentOperation = beginWorkspaceOperation('webRunControl')
+  const runId = activeWebRunId.value
+  const runOperation = workspaceOperations.get('webRun')
+  const isCurrent = () => currentOperation() && activeWebRunId.value === runId && workspaceOperations.get('webRun') === runOperation
+  if (!runId || !isCurrent()) return
   webRunControlLoading.value = 'stop'
   try {
-    const snapshot = await stopWebAutomationRun(activeWebRunId.value)
+    const snapshot = await stopWebAutomationRun(runId)
+    if (!isCurrent()) return
     applyWebRunSnapshot(snapshot)
     if (isTerminalWebAutomationRun(snapshot.status)) finalizeWebRunSnapshot(snapshot)
   } catch (error) {
-    ElMessage.error(error instanceof WebAutomationRunRequestError ? error.toFallbackMessage() : '停止执行失败')
+    if (isCurrent()) ElMessage.error(error instanceof WebAutomationRunRequestError ? error.toFallbackMessage() : '停止执行失败')
   } finally {
-    webRunControlLoading.value = ''
+    if (isCurrent()) webRunControlLoading.value = ''
   }
 }
 
-const activeWebRunCaseById = (caseOrId: SavedWebAutomationRunCase | string) => {
+const activeWebRunResultById = (caseOrId: SavedWebAutomationRunCase | string) => {
   const caseId = typeof caseOrId === 'string' ? caseOrId : caseOrId.id
-  return activeWebRunCases.value.find((testCase) => testCase.id === caseId)
+  const originalId = resolveWebRunCaseId(caseId, new Set(activeWebRunCases.value.map((item) => item.id)))
+  const testCase = activeWebRunCases.value.find((item) => item.id === originalId)
+  const result = webAutomationRunReport.value?.results.find((row) => row.caseId === caseId)
+    || (originalId ? webAutomationResultMap.value.get(originalId) : undefined)
+  return testCase && result ? { testCase, result } : undefined
 }
 
 const openWebAutomationRunLog = (caseOrId: SavedWebAutomationRunCase | string) => {
-  const testCase = activeWebRunCaseById(caseOrId)
-  if (testCase) openWebAutomationLog(testCase)
+  const resolved = activeWebRunResultById(caseOrId)
+  if (!resolved) return
+  selectedAutomationResult.value = webRunResultToAutomationLog(resolved.result)
+  automationLogVisible.value = true
 }
 
 const transferWebAutomationRunResultToDefect = (caseOrId: SavedWebAutomationRunCase | string) => {
-  const testCase = activeWebRunCaseById(caseOrId)
-  if (testCase) transferWebAutomationResultToDefect(testCase)
+  const resolved = activeWebRunResultById(caseOrId)
+  if (resolved && (resolved.result.status === 'failed' || resolved.result.status === 'error')) {
+    defects.createDefectsFromWebResults([resolved.result], resolved.testCase.project)
+  }
 }
 
 const enterWebRunMonitor = () => {
@@ -4099,6 +1916,9 @@ const returnWebRunWorkbench = async () => {
 }
 
 const recoverWebRunSession = async (historyMode: 'push' | 'replace' = 'replace') => {
+  const isCurrent = beginWorkspaceOperation('webRun')
+  if (!isCurrent()) return
+  webRunPollCoordinator.stop()
   const recovery = resolveWebRunRecovery(
     window.location.search,
     sessionStorage.getItem(WEB_AUTOMATION_ACTIVE_RUN_SESSION_KEY) || ''
@@ -4110,6 +1930,7 @@ const recoverWebRunSession = async (historyMode: 'push' | 'replace' = 'replace')
 
   try {
     const snapshot = await getWebAutomationRun(recovery.runId)
+    if (!isCurrent()) return
     activeWebRunId.value = snapshot.runId
     applyWebRunSnapshot(snapshot)
     sessionStorage.setItem(WEB_AUTOMATION_ACTIVE_RUN_SESSION_KEY, snapshot.runId)
@@ -4119,9 +1940,10 @@ const recoverWebRunSession = async (historyMode: 'push' | 'replace' = 'replace')
     if (!isTerminalWebAutomationRun(snapshot.status)) {
       // 刷新恢复的轮询同样属于「运行中」：置位运行态，避免重跑按钮在恢复期间出现（第二十六轮 C-1）。
       webAutomationRunning.value = true
-      void monitorActiveWebRun(snapshot.runId)
+      void monitorActiveWebRun(snapshot.runId, isCurrent)
     }
   } catch (error) {
+    if (!isCurrent()) return
     if (error instanceof WebAutomationRunRequestError && error.status === 404) {
       clearRecoveredWebRun()
       return
@@ -4139,69 +1961,171 @@ const executeAllAutomationCases = async () => {
     return
   }
 
+  if (!canEdit.value || apiAutomationRunning.value || apiRunConfirming.value) return
+  const isCurrent = beginWorkspaceOperation('apiRunStart')
+  if (!isCurrent()) return
   const casesToRun = automationSelection.value.length > 0 ? automationSelection.value : filteredAutomationCases.value
-  await executeApiAutomationCases(casesToRun)
+  if (casesToRun.length === 0) {
+    ElMessage.warning('没有可执行的自动化用例')
+    return
+  }
+  const loopValidation = parseApiLoopCount(String(apiAutomationLoopCount.value))
+  if (!loopValidation.valid) {
+    ElMessage.warning(loopValidation.message || '循环次数必须是正整数')
+    return
+  }
+  const environment = resolveRunnableEnvironment()
+  if (!environment) return
+
+  // 启动前锁定本次范围/环境/参数；确认后即使准备页继续改动，也不会改写这一批任务。
+  const snapshot = buildApiRunSnapshot({
+    cases: casesToRun,
+    environment,
+    environmentName: activeApiExecutionEnvironment.value?.name || '默认环境',
+    options: {
+      mode: automationRunMode.value,
+      concurrencyLimit: automationConcurrencyLimit.value,
+      responseBodyMatchThreshold: responseBodyMatchThreshold.value,
+      loopCount: loopValidation.value
+    },
+    scopeLabel: apiExecutionScopeLabel.value,
+    frozenAt: new Date().toISOString()
+  })
+  apiRunConfirming.value = true
+  let confirmed = false
+  try {
+    confirmed = await confirmApiRunSnapshot(snapshot)
+  } finally {
+    if (isCurrent()) apiRunConfirming.value = false
+  }
+  if (!confirmed || !isCurrent()) return
+  apiRunSnapshot.value = snapshot
+  await executeApiAutomationCases(snapshot)
+}
+
+const confirmApiRunSnapshot = async (snapshot: ApiRunSnapshot): Promise<boolean> => {
+  const modeLabel = snapshot.options.mode === 'sequential'
+    ? '顺序'
+    : snapshot.options.mode === 'concurrent' ? '并发' : '按模块'
+  try {
+    await ElMessageBox.confirm(
+      [
+        `执行范围：${snapshot.scopeLabel}（用例 ${snapshot.cases.length} 条）`,
+        `运行环境：${snapshot.environmentName || '默认环境'} · ${snapshot.environment.baseUrl || '未配置地址'}`,
+        `执行方式：${modeLabel} · 循环 ${snapshot.options.loopCount ?? 1} 次 · 并发 ${snapshot.options.concurrencyLimit ?? 8}`,
+        `返回体一致度：${snapshot.options.responseBodyMatchThreshold ?? 100}%`,
+        '',
+        '确认后本次用例、环境与运行参数即锁定，准备页后续修改不会影响这一批执行。'
+      ].join('\n'),
+      '确认本次执行',
+      { confirmButtonText: '开始执行', cancelButtonText: '取消', type: 'info', customClass: 'api-execution-confirm' }
+    )
+    return true
+  } catch {
+    return false
+  }
 }
 
 const executeApiAutomationCases = async (
-  casesToRun: SavedAutomationCase[]
+  snapshot: ApiRunSnapshot
 ): Promise<boolean> => {
+  if (!canEdit.value || apiAutomationRunning.value) return false
+  const currentOperation = beginWorkspaceOperation('apiRun')
+  const generation = ++apiRunGeneration
+  const owner = currentUser.value?.id
+  const isCurrent = () => currentOperation() && apiRunGeneration === generation && currentUser.value?.id === owner
+  if (!isCurrent()) return false
+  const casesToRun = snapshot.cases as SavedAutomationCase[]
   if (casesToRun.length === 0) {
     ElMessage.warning('没有可执行的自动化用例')
     return false
   }
-  const environment = resolveRunnableEnvironment()
-  if (!environment) return false
 
   apiAutomationRunning.value = true
+  automationRunReport.value = undefined
+  apiRunMonitor.value = createApiRunMonitor(snapshot)
+  const monitor = apiRunMonitor.value
+  const acceptsEvent = () => isCurrent() && apiRunMonitor.value === monitor && monitor.status === 'running'
   apiAutomationProgress.completed = 0
-  apiAutomationProgress.total = casesToRun.length
+  apiAutomationProgress.total = monitor.rows.length
   apiAutomationProgress.runningCaseId = ''
+  // Keep preparation mounted; its filters, table selection and both scroll axes survive.
+  void enterApiRunMonitor()
+  const reportStorage = workspaceStorage.capture(isCurrent)
+  const pendingRequests = new Set<Promise<unknown>>()
   try {
-    automationRunReport.value = await runAutomationCases(
+    const report = await runAutomationCases(
       casesToRun,
-      environment,
-      {
-        mode: automationRunMode.value,
-        concurrencyLimit: automationConcurrencyLimit.value,
-        responseBodyMatchThreshold: responseBodyMatchThreshold.value,
-        loopCount: apiAutomationLoopCount.value
+      snapshot.environment,
+      snapshot.options,
+      async (request) => {
+        if (!acceptsEvent()) throw new Error('本次 API 执行上下文已失效')
+        const pending = executeBrowserRequest(request, acceptsEvent)
+        pendingRequests.add(pending)
+        try {
+          const response = await pending
+          if (!acceptsEvent()) throw new Error('本次 API 执行上下文已失效')
+          return response
+        } finally {
+          pendingRequests.delete(pending)
+        }
       },
-      executeBrowserRequest,
       {
         onProgress: (progress) => {
+          if (!acceptsEvent()) return
           apiAutomationProgress.completed = progress.completed
           apiAutomationProgress.total = progress.total
           apiAutomationProgress.runningCaseId = progress.runningCaseId || ''
+          monitor.progress = { ...progress }
+        },
+        onCaseStart: (testCase) => {
+          if (acceptsEvent()) recordApiCaseStart(monitor, testCase)
+        },
+        onResult: (result) => {
+          if (acceptsEvent()) recordApiCaseResult(monitor, result)
         }
       }
     )
+    if (!acceptsEvent()) return false
+    completeApiRunMonitor(monitor, report)
+    automationRunReport.value = report
     const reportRecord: SavedAutomationReport = {
-      ...automationRunReport.value,
+      ...report,
       reportId: `report-${Date.now()}`,
-      name: `${activeApiExecutionEnvironment.value?.name || '默认环境'}-${new Date().toLocaleString('zh-CN', {
+      name: `${snapshot.environmentName || '默认环境'}-${new Date().toLocaleString('zh-CN', {
         hour12: false
       })}`,
-      project: automationFilter.project !== 'ALL' ? automationFilter.project : (casesToRun[0]?.project || '全部项目'),
-      environmentName: activeApiExecutionEnvironment.value?.name || '默认环境',
-      moduleScope:
-        automationFilter.module !== 'ALL'
-          ? [automationFilter.module]
-          : Array.from(new Set(casesToRun.map((testCase) => testCase.module))),
+      project: casesToRun[0]?.project || '全部项目',
+      environmentName: snapshot.environmentName || '默认环境',
+      moduleScope: Array.from(new Set(casesToRun.map((testCase) => testCase.module))),
       createdAt: new Date().toISOString()
     }
-    appendAutomationReport(localStorage, reportRecord)
+    appendAutomationReport(reportStorage, reportRecord)
     refreshAutomationReports()
     selectedReportProject.value = reportRecord.project
     selectedReportId.value = reportRecord.reportId
-    ElMessage.success(`执行完成：通过 ${automationRunReport.value.summary.passed}，失败 ${automationRunReport.value.summary.failed}，错误 ${automationRunReport.value.summary.error}`)
+    ElMessage.success(`执行完成：通过 ${report.summary.passed}，失败 ${report.summary.failed}，错误 ${report.summary.error}`)
     return true
   } catch (error) {
-    ElMessage.error(error instanceof Error ? error.message : 'API 自动化执行失败')
+    if (!isCurrent()) return false
+    // A request-construction throw can reject a concurrent batch while siblings
+    // remain in flight. Terminal status rejects their later start/result events.
+    monitor.status = 'error'
+    monitor.endedAt = new Date().toISOString()
+    monitor.errorMessage = error instanceof Error ? error.message : 'API 自动化执行失败'
+    ElMessage.error(monitor.errorMessage)
     return false
   } finally {
-    apiAutomationRunning.value = false
-    apiAutomationProgress.runningCaseId = ''
+    // A local construction failure does not cancel already-dispatched requests.
+    // Keep the start lock until they settle, without accepting any late results.
+    await Promise.allSettled([...pendingRequests])
+    if (isCurrent()) {
+      if (monitor.status === 'error') {
+        for (const row of monitor.rows) if (row.status === 'running' && !row.result) row.status = 'unreturned'
+      }
+      apiAutomationRunning.value = false
+      apiAutomationProgress.runningCaseId = ''
+    }
   }
 }
 
@@ -4210,79 +2134,256 @@ const refreshAutomationCases = () => {
   webAutomationCases.value = listSavedWebAutomationRunCases(localStorage)
 }
 
-const applyJiraConfig = (config: JiraConfig) => {
+const applyJiraConfig = (config: JiraConfig, options: { resetTestResult?: boolean } = {}) => {
   Object.assign(jiraConfigForm, config)
-  syncJiraProjectJqlRowsFromForm()
-}
-
-const syncJiraProjectJqlRowsFromForm = () => {
-  jiraProjectJqlRows.value = Object.entries(jiraConfigForm.projectJql).map(([key, value]) => ({ key, value }))
+  jiraConfigReadState.value = 'ready'
+  jiraProjectJqlRows.value = jiraRowsFromProjectJql(config.projectJql)
+  jiraConfigSavedSnapshot.value = jiraDraftSnapshotOf(config, jiraProjectJqlRows.value)
+  jiraConfigValidationError.value = ''
+  // 连接参数变化后,旧的测试结论不再适用;保存(参数未变)则保留结论
+  if (options.resetTestResult !== false) {
+    jiraTestGeneration += 1
+    jiraConfigTestResult.value = { state: 'idle', message: '', target: '' }
+  }
 }
 
 const syncJiraProjectJqlFormFromRows = () => {
-  const next: Record<string, string> = {}
-  for (const row of jiraProjectJqlRows.value) {
-    const key = row.key.trim()
-    if (key) next[key] = row.value
-  }
-  jiraConfigForm.projectJql = next
+  jiraConfigForm.projectJql = jiraProjectJqlFromRows(jiraProjectJqlRows.value)
 }
 
+/** 提交体:行数组是唯一来源,token/地址做去空格处理后再发请求 */
+const currentJiraPayload = (): JiraConfig => ({
+  ...jiraConfigForm,
+  baseUrl: jiraConfigForm.baseUrl.trim(),
+  username: jiraConfigForm.username.trim(),
+  projectJql: jiraProjectJqlFromRows(jiraProjectJqlRows.value)
+})
+
+/** 丢弃未保存草稿前的统一确认(重新加载 / 离开本页共用同一套文案与语义) */
+const confirmDiscardJiraDraft = async (message: string): Promise<boolean> => {
+  if (!jiraConfigDirty.value) return true
+  try {
+    await ElMessageBox.confirm(message, '放弃未保存的 Jira 配置？', {
+      confirmButtonText: '放弃修改',
+      cancelButtonText: '继续编辑',
+      type: 'warning',
+      customClass: 'theme-confirm-box'
+    })
+    return true
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Jira 侧所有「await 之后仍要落动作」的唯一 authority。
+ * 发起时固定会话 epoch + 本资源操作序号,await 结束后用同一口径校验一次:
+ * owner 切换/重新登录、或同一资源上有更新的操作,都让旧意图失效(不再每处补 flag)。
+ */
+function captureJiraIntent(): () => boolean {
+  return beginWorkspaceOperation('jiraConfig')
+}
+
+/** Jira 写动作(保存 / 连接测试 / 映射增删)的唯一门禁:只读角色一律拒绝;读(重新加载)不受限。 */
+const rejectJiraWrite = (): boolean => {
+  if (canEdit.value) return false
+  jiraConfigValidationError.value = '当前账号为只读角色，不能修改或测试 Jira 连接配置。'
+  ElMessage.warning('当前账号为只读角色，不能修改或测试 Jira 连接配置。')
+  return true
+}
+
+// 编辑即清除上一次的校验提示,避免旧错误留在新草稿上
+watch(jiraDraftSnapshot, () => {
+  if (jiraConfigValidationError.value) jiraConfigValidationError.value = ''
+})
+
+// 连接参数一变,进行中/已完成的连接测试结论立即失效(原型 edited(true) → stale)
+watch(
+  () => jiraConnectionSnapshot(jiraConfigForm),
+  (next, previous) => {
+    if (next === previous) return
+    const wasTesting = jiraConfigTesting.value
+    jiraTestGeneration += 1
+    jiraConfigTesting.value = false
+    if (!wasTesting && !['success', 'failed'].includes(jiraConfigTestResult.value.state)) return
+    jiraConfigTestResult.value = {
+      state: 'stale',
+      message: '连接参数已改变，原测试状态已失效；请按当前参数重新测试。',
+      target: jiraConfigTestResult.value.target
+    }
+  }
+)
+
+/** 存在未保存修改时阻止浏览器关闭/刷新 */
+const handleJiraBeforeUnload = (event: BeforeUnloadEvent) => {
+  if (!jiraConfigDirty.value) return
+  event.preventDefault()
+  event.returnValue = ''
+}
+
+watch(
+  jiraConfigDirty,
+  (dirty) => {
+    if (typeof window === 'undefined') return
+    if (dirty) window.addEventListener('beforeunload', handleJiraBeforeUnload)
+    else window.removeEventListener('beforeunload', handleJiraBeforeUnload)
+  },
+  { immediate: true }
+)
+
+/** 环境草稿存在未保存修改时同样阻止关闭/刷新；与 Jira 各自 addEventListener,互不覆盖。 */
+const handleEnvironmentBeforeUnload = (event: BeforeUnloadEvent) => {
+  if (!environmentDraftDirty.value) return
+  event.preventDefault()
+  event.returnValue = ''
+}
+
+watch(
+  environmentDraftDirty,
+  (dirty) => {
+    if (typeof window === 'undefined') return
+    if (dirty) window.addEventListener('beforeunload', handleEnvironmentBeforeUnload)
+    else window.removeEventListener('beforeunload', handleEnvironmentBeforeUnload)
+  },
+  { immediate: true }
+)
+
 const addJiraProjectJqlRow = () => {
+  if (rejectJiraWrite()) return
   jiraProjectJqlRows.value.push({ key: '', value: '' })
 }
 
 const removeJiraProjectJqlRow = async (index: number) => {
+  if (rejectJiraWrite()) return
   const row = jiraProjectJqlRows.value[index]
   // 空行是未填写的草稿行，删除无数据损失；有内容的映射删除前需二次确认。
   if (row && (row.key.trim() || row.value.trim())) {
     const label = row.key.trim()
     const message = label ? `确认删除项目「${label}」的 JQL 映射吗？` : '确认删除这条 JQL 映射吗？'
+    // 确认框跨 await:用发起时的行内容 + 会话 authority 判定,旧意图不得 splice 新 owner 的行
+    const isCurrent = captureJiraIntent()
+    const rowKey = row.key
+    const rowValue = row.value
     const confirmed = await confirmDangerAction('删除 JQL 映射', message)
-    if (!confirmed) return
+    if (!confirmed || !isCurrent()) return
+    const currentIndex = jiraProjectJqlRows.value.findIndex(
+      (candidate) => candidate.key === rowKey && candidate.value === rowValue
+    )
+    if (currentIndex < 0) return
+    jiraProjectJqlRows.value.splice(currentIndex, 1)
+    syncJiraProjectJqlFormFromRows()
+    return
   }
   jiraProjectJqlRows.value.splice(index, 1)
   syncJiraProjectJqlFormFromRows()
 }
 
 const loadJiraSettingsFromBackend = async () => {
+  const isCurrent = beginWorkspaceOperation('jiraConfig')
+  if (!isCurrent()) return
+  if (!await confirmDiscardJiraDraft('重新加载会丢弃当前未保存的连接设置与 JQL 映射。')) return
+  if (!isCurrent()) return
   jiraConfigLoading.value = true
+  jiraConfigReadState.value = 'loading'
   try {
-    applyJiraConfig(await loadJiraConfigFromPlatform())
+    const config = await loadJiraConfigFromPlatform()
+    if (isCurrent()) applyJiraConfig(config)
   } catch {
-    // 后端不可用时保留默认配置
+    // Preserve the form, but never present an unverified read as backend data.
+    if (isCurrent()) jiraConfigReadState.value = 'error'
   } finally {
-    jiraConfigLoading.value = false
+    if (isCurrent()) jiraConfigLoading.value = false
   }
 }
 
 const saveJiraSettings = async () => {
+  if (rejectJiraWrite()) return
+  const isCurrent = beginWorkspaceOperation('jiraConfig')
+  if (!isCurrent()) return
+  const validation = validateJiraDraft(jiraConfigForm, jiraProjectJqlRows.value)
+  if (validation) {
+    jiraConfigValidationError.value = validation
+    ElMessage.error(validation)
+    return
+  }
+  jiraConfigValidationError.value = ''
   jiraConfigLoading.value = true
   try {
-    syncJiraProjectJqlFormFromRows()
-    applyJiraConfig(await saveJiraConfigToPlatform(jiraConfigForm))
+    // 发起时固定提交内容:保存期间的新编辑既不能被服务端回显覆盖,也不能被算作已保存
+    const payload = currentJiraPayload()
+    const submittedSnapshot = jiraDraftSnapshotOf(payload, jiraProjectJqlRows.value)
+    const connectionBefore = jiraConnectionSnapshot(payload)
+    const config = await saveJiraConfigToPlatform(payload)
+    if (!isCurrent()) return
+    jiraConfigReadState.value = 'ready'
+    if (jiraDraftSnapshot.value === submittedSnapshot) {
+      applyJiraConfig(config, {
+        resetTestResult: jiraConnectionSnapshot(config) !== connectionBefore
+      })
+    } else {
+      // 保留更新的草稿,只合并服务端的凭据/时间元数据;已保存基线 = 本次真正提交的内容
+      jiraConfigSavedSnapshot.value = submittedSnapshot
+      jiraConfigForm.credentialConfigured = config.credentialConfigured
+      jiraConfigForm.maskedToken = config.maskedToken
+      jiraConfigForm.updatedAt = config.updatedAt
+    }
     ElMessage.success('已保存 Jira 配置')
   } catch (error) {
-    ElMessage.error(error instanceof Error ? error.message : '保存 Jira 配置失败')
+    if (isCurrent()) ElMessage.error(error instanceof Error ? error.message : '保存 Jira 配置失败')
   } finally {
-    jiraConfigLoading.value = false
+    if (isCurrent()) jiraConfigLoading.value = false
   }
 }
 
 const testJiraConnection = async () => {
+  if (rejectJiraWrite()) return
+  const isCurrent = beginWorkspaceOperation('jiraTest')
+  if (!isCurrent()) return
+  const validation = jiraTestTargetError(jiraConfigForm)
+  if (validation) {
+    jiraConfigValidationError.value = validation
+    ElMessage.error(validation)
+    return
+  }
+  jiraConfigValidationError.value = ''
+  const payload = currentJiraPayload()
+  const connection = jiraConnectionSnapshot(payload)
+  const target = payload.baseUrl
+  const generation = ++jiraTestGeneration
   jiraConfigTesting.value = true
+  jiraConfigTestResult.value = { state: 'idle', message: '正在请求 Jira;请稍候。', target }
   try {
-    syncJiraProjectJqlFormFromRows()
-    const result = await testJiraConfigConnection(jiraConfigForm)
+    const result = await testJiraConfigConnection(payload)
+    if (!isCurrent() || generation !== jiraTestGeneration) return
+    if (jiraConnectionSnapshot(jiraConfigForm) !== connection) {
+      // 参数已改:只在测试目标仍然成立时保留结论,否则就是新地址的假结论
+      jiraConfigTestResult.value = {
+        state: 'stale',
+        message: '连接参数已改变，原测试状态已失效；请按当前参数重新测试。',
+        target
+      }
+      return
+    }
+    jiraConfigTestResult.value = {
+      state: result.success ? 'success' : 'failed',
+      message: result.message || (result.success ? '连接测试通过' : '连接测试未通过'),
+      target
+    }
     if (result.success) {
       ElMessage.success(result.message || '连接测试通过')
     } else {
       ElMessage.warning(result.message || '连接测试未通过')
     }
   } catch (error) {
+    if (!isCurrent() || generation !== jiraTestGeneration) return
+    jiraConfigTestResult.value = {
+      state: 'failed',
+      message: error instanceof Error ? error.message : '连接测试失败',
+      target
+    }
     ElMessage.error(error instanceof Error ? error.message : '连接测试失败')
   } finally {
-    jiraConfigTesting.value = false
+    if (isCurrent() && generation === jiraTestGeneration) jiraConfigTesting.value = false
   }
 }
 
@@ -4312,21 +2413,6 @@ const transferFilteredDesignAutomationResultsToDefects = () => {
   }
   defects.createDefectsFromWebResults(results, filteredWebAutomationCases.value[0]?.project || jiraProjectName.value)
 }
-
-const transferDesignOriginResultToDefect = (result: WebAutomationRunReport['results'][number] | undefined) => {
-  if (!result || (result.status !== 'failed' && result.status !== 'error')) {
-    ElMessage.info('只有失败或错误的设计稿执行结果可以转缺陷')
-    return
-  }
-  defects.createDefectsFromWebResults([result], filteredWebAutomationCases.value[0]?.project || jiraProjectName.value)
-}
-
-const focusDesignOriginAutomationCase = (caseId: string) => {
-  focusedWebAutomationCaseId.value = caseId
-}
-
-const webAutomationRowClassName = ({ row }: { row: SavedWebAutomationRunCase }) =>
-  row.id === focusedWebAutomationCaseId.value ? 'is-design-focused-row' : ''
 
 const deleteWebAutomationCase = async (testCase: SavedWebAutomationRunCase) => {
   const confirmed = await confirmDangerAction('删除 Web 自动化用例', `确认删除 ${testCase.id} 吗？`)
@@ -4371,7 +2457,7 @@ const confirmDangerAction = async (
       confirmButtonText,
       cancelButtonText: '取消',
       type: 'warning',
-      customClass: 'theme-confirm-box'
+      customClass: title === '删除运行环境' ? 'theme-confirm-box environment-danger-confirm' : 'theme-confirm-box'
     })
     return true
   } catch {
@@ -4380,6 +2466,17 @@ const confirmDangerAction = async (
 }
 
 const defects = useDefects({
+  storage: localStorage,
+  captureMutation: (hookCurrent) => {
+    const epoch = getAuthSessionEpoch()
+    const owner = currentUser.value?.id
+    const isCurrent = () => hookCurrent() && epoch === getAuthSessionEpoch() && owner !== undefined
+      && currentUser.value?.id === owner && authStatus.value === 'authenticated'
+    return { storage: workspaceStorage.capture(isCurrent), isCurrent }
+  },
+  downloadTextFile,
+  canTriggerDownload: (isCurrent) => isCurrent() && authStatus.value === 'authenticated' && currentUser.value !== null,
+  beginOperation: () => beginWorkspaceOperation('jiraIssues'),
   candidateProjects: () => [
     ...importedProjects.value.map((project) => project.title),
     ...libraryProjects.value.map((project) => project.value),
@@ -4389,6 +2486,15 @@ const defects = useDefects({
   confirmDanger: confirmDangerAction,
   navigateToDefects: () => navigateToNav('defects'),
   isDefectsActive: () => activeNav.value === 'defects'
+})
+const handleDefectBeforeUnload = (event: BeforeUnloadEvent) => {
+  if (!defects.defectRecoveryDirty.value) return
+  event.preventDefault()
+  event.returnValue = ''
+}
+watch(defects.defectRecoveryDirty, dirty => {
+  if (dirty) window.addEventListener('beforeunload', handleDefectBeforeUnload)
+  else window.removeEventListener('beforeunload', handleDefectBeforeUnload)
 })
 const {
   defectFilter,
@@ -4402,6 +2508,7 @@ const {
 } = defects
 
 const reports = useReports({
+  storage: localStorage,
   confirmDanger: confirmDangerAction,
   navigateToReports: () => navigateToNav('reports'),
   downloadTextFile,
@@ -4420,6 +2527,95 @@ const {
   openReportsModule,
   openActiveWebRunReport
 } = reports
+
+const homeViewRef = ref<InstanceType<typeof HomeView>>()
+const homeProjects = computed<HomeProject[]>(() => {
+  const names = new Set<string>()
+  for (const item of savedCases.value) if (item.row.project) names.add(item.row.project)
+  for (const item of savedWebCases.value) if (item.row.project) names.add(item.row.project)
+  for (const item of automationCases.value) if (item.project) names.add(item.project)
+  for (const item of webAutomationCases.value) if (item.project) names.add(item.project)
+  for (const item of automationReports.value) if (item.project) names.add(item.project)
+  for (const item of defects.defectDrafts.value) if (item.projectName) names.add(item.projectName)
+  return [...names].sort((left, right) => left.localeCompare(right)).map((value) => ({ value, label: value }))
+})
+
+const homeRunState = (status: string): HomeRun['state'] => {
+  if (status === 'queued') return 'queued'
+  if (status === 'pause_requested') return 'pause_requested'
+  if (status === 'paused') return 'paused'
+  if (status === 'stop_requested') return 'stop_requested'
+  if (status === 'stopped') return 'stopped'
+  if (status === 'failed') return 'failed'
+  if (status === 'completed') return 'completed'
+  return 'running'
+}
+const homeRuns = computed<HomeRun[]>(() => {
+  const runs: HomeRun[] = []
+  if (apiRunMonitor.value && ['running', 'error'].includes(apiRunMonitor.value.status)) {
+    const monitor = apiRunMonitor.value
+    const counts = apiMonitorCounts(monitor)
+    runs.push({
+      id: `api-monitor-${monitor.startedAt}`,
+      name: monitor.snapshot.scopeLabel || 'API 自动化执行',
+      kind: 'api',
+      project: monitor.snapshot.cases[0]?.project || '',
+      environmentName: monitor.snapshot.environmentName,
+      state: monitor.status === 'error' ? 'failed' : 'running',
+      stage: monitor.status === 'error' ? (monitor.errorMessage || '执行异常结束') : (monitor.rows.find((row) => row.status === 'running')?.testCase.name || '执行测试用例'),
+      updatedAt: monitor.endedAt || monitor.startedAt,
+      completed: monitor.progress.completed,
+      total: monitor.progress.total,
+      passed: counts.passed,
+      failed: counts.failed,
+      error: counts.error,
+      target: { navKey: 'automation', automationKind: 'api', monitor: true }
+    })
+  }
+  const web = activeWebRunSnapshot.value
+  if (web && !['completed', 'failed', 'stopped'].includes(web.status)) {
+    runs.push({
+      id: `web-run-${web.runId}`,
+      name: web.currentCase?.name || 'Web 自动化执行',
+      kind: 'web',
+      project: activeWebRunCases.value[0]?.project || '',
+      environmentName: runnableWebRuntime.value?.baseUrl,
+      state: homeRunState(web.status),
+      stage: web.currentStep?.name || web.currentCase?.name || '执行测试用例',
+      updatedAt: web.updatedAt,
+      completed: web.progress.completedCases,
+      total: web.progress.totalCases,
+      passed: web.summary.passed,
+      failed: web.summary.failed,
+      error: web.summary.error,
+      target: { navKey: 'automation', automationKind: 'web', runId: web.runId }
+    })
+  }
+  return runs
+})
+
+const homeWorkItems = computed<HomeWorkItem[]>(() => {
+  const items: HomeWorkItem[] = []
+  for (const testCase of savedCases.value) {
+    items.push({ id: testCase.libraryId, name: testCase.row.title, project: testCase.row.project || '', kind: 'case', savedAt: testCase.savedAt, context: testCase.row.module, target: { navKey: 'cases', caseId: testCase.libraryId, project: testCase.row.project || '' } })
+  }
+  for (const testCase of savedWebCases.value) {
+    items.push({ id: testCase.libraryId, name: testCase.row.title, project: testCase.row.project || '', kind: 'case', savedAt: testCase.savedAt, context: testCase.row.module, target: { navKey: 'webCases', caseId: testCase.libraryId, project: testCase.row.project || '' } })
+  }
+  for (const testCase of automationCases.value) {
+    items.push({ id: testCase.automationLibraryId, name: testCase.name, project: testCase.project || '', kind: 'case', savedAt: testCase.savedAt, context: testCase.module, target: { navKey: 'automation', automationKind: 'api', caseId: testCase.automationLibraryId, project: testCase.project || '' } })
+  }
+  for (const testCase of webAutomationCases.value) {
+    items.push({ id: testCase.automationLibraryId, name: testCase.name, project: testCase.project || '', kind: 'case', savedAt: testCase.savedAt, context: testCase.module, target: { navKey: 'automation', automationKind: 'web', caseId: testCase.automationLibraryId, project: testCase.project || '' } })
+  }
+  for (const report of automationReports.value) {
+    items.push({ id: report.reportId, name: report.name, project: report.project || '', kind: 'report', savedAt: report.createdAt, context: report.environmentName, target: { navKey: 'reports', reportId: report.reportId, project: report.project || '' } })
+  }
+  for (const draft of defects.defectDrafts.value) {
+    items.push({ id: draft.defectId, name: draft.summary, project: draft.projectName || '', kind: 'defect', savedAt: draft.updatedAt || draft.createdAt, statusLabel: defects.defectStatusText(draft), tone: draft.status === 'pending_jira_export' ? 'warning' : draft.status === 'created_in_jira' ? 'success' : 'neutral', context: draft.issueType, pending: draft.status === 'pending_jira_export' ? { label: '待导出 Jira', actionLabel: '处理', reason: '草稿尚未导出' } : undefined, target: { navKey: 'defects', defectId: draft.defectId, project: draft.projectName || '' } })
+  }
+  return items
+})
 
 const deleteAutomationCase = async (testCase: SavedAutomationCase) => {
   const confirmed = await confirmDangerAction('删除自动化用例', `确认删除 ${testCase.id} 吗？`)
@@ -4470,363 +2666,9 @@ const deleteAutomationByScope = async (scope: { project?: string; module?: strin
   ElMessage.success(`已删除 ${deleted} 条自动化用例`)
 }
 
-const actionableReviewFindings = (findings: CaseReviewFinding[]) =>
-  findings.filter((finding) => finding.code !== 'review_passed')
-
-const clearGeneratedCaseWorkspace = () => {
-  generatedCases.value = []
-  generatedWebCases.value = []
-  selectedCase.value = undefined
-  resetCaseGenerationSelectionState()
-  reviewFindings.value = []
-  interfaceReviewAttempted.value = false
-  ignoredInterfaceReviewFindingIds.value = []
-  selectedInterfaceCaseIds.value = []
-  interfaceReviewStatusFilter.value = 'ALL'
-  activeInterfaceCaseStage.value = 'import'
-}
-
 const currentBackendProjectName = () =>
   activeProject.value?.title
-    || generatedCases.value[0]?.row.project
     || (libraryFilter.project !== 'ALL' ? libraryFilter.project : '默认项目')
-
-const persistGeneratedCasesToLibrary = async (showMessage = true) => {
-  if (generationKind.value === 'web_automation') {
-    if (generatedWebCases.value.length === 0) {
-      if (showMessage) ElMessage.warning('请先导入 Web 自动化用例')
-      return false
-    }
-    const result = saveGeneratedWebAutomationCases(localStorage, generatedWebCases.value)
-    refreshSavedCases()
-    if (showMessage) {
-      ElMessage.success(`已保存 ${result.inserted} 条，更新 ${result.updated} 条 Web 自动化用例`)
-    }
-    return result
-  }
-  if (generatedCases.value.length === 0) {
-    if (showMessage) ElMessage.warning('请先生成用例')
-    return false
-  }
-  const syncResult = await saveGeneratedCasesWithBackend(localStorage, currentBackendProjectName(), generatedCases.value)
-  const result = syncResult.result
-  refreshSavedCases()
-  if (showMessage) {
-    ElMessage.success(
-      syncResult.source === 'backend'
-        ? `已保存 ${result.inserted} 条，更新 ${result.updated} 条，并同步到后端`
-        : `已保存 ${result.inserted} 条，更新 ${result.updated} 条`
-    )
-  }
-  return result
-}
-
-const saveCases = async () => {
-  saveCasesLoading.value = true
-  try {
-    const result = await persistGeneratedCasesToLibrary(false)
-    if (!result) return
-    clearGeneratedCaseWorkspace()
-    ElMessage.success(
-      generationKind.value === 'web_automation'
-        ? `已保存 ${result.inserted} 条，更新 ${result.updated} 条 Web 自动化用例，请前往用例库查看`
-        : `已保存 ${result.inserted} 条，更新 ${result.updated} 条，请前往用例库查看`
-    )
-  } finally {
-    saveCasesLoading.value = false
-  }
-}
-
-const beginCaseDesignTask = () => {
-  caseDesignDraftPersistenceSuspended.value = false
-  caseDesignDraftSaveError.value = ''
-}
-
-const clearCompletedCaseDesignTask = () => {
-  caseDesignDraftPersistenceSuspended.value = true
-  if (caseDesignDraftTimer) clearTimeout(caseDesignDraftTimer)
-  clearGeneratedCaseWorkspace()
-  stagedRequirementFiles.value = []
-  stagedRequirementSourceFiles.value = []
-  requirementSourceErrors.value = {}
-  extractedRequirementPoints.value = []
-  resetAiRequirementAnalysis()
-  aiAnalysisError.value = ''
-  aiGenerationError.value = ''
-  caseReviewError.value = ''
-  caseReviewAttempted.value = false
-  caseReviewFindingDecisions.value = {}
-  selectedGeneratedWebCaseIds.value = []
-  generationScopePointIds.value = []
-  activeCaseDesignStage.value = 'requirement'
-  caseDesignLastSavedAt.value = ''
-  deliveryMode.value = 'library'
-  deliveryExecuteNow.value = false
-  clearCaseDesignDraft(localStorage)
-}
-
-const deliverGeneratedCases = async () => {
-  if (!caseDesignDeliveryView.value.canSubmit) return
-  saveCasesLoading.value = true
-  try {
-    if (deliveryMode.value === 'library') {
-      const saved = await persistGeneratedCasesToLibrary(false)
-      if (!saved) return
-      clearCompletedCaseDesignTask()
-      navigateToNav('cases')
-      ElMessage.success('已保存到用例库')
-      return
-    }
-
-    if (deliveryAutomationKind.value === 'web') {
-      generatedWebCases.value = finalizeDesignDraftCasesForLibrary(generatedWebCases.value)
-    }
-    const saved = await persistGeneratedCasesToLibrary(false)
-    if (!saved) return
-
-    if (deliveryAutomationKind.value === 'web') {
-      const selectedIds = new Set(selectedWebCasesForAutomation.value.map((testCase) => testCase.id))
-      const prepared = generateWebAutomationCasesFromGeneratedCases(
-        generatedWebCases.value.filter((testCase) => selectedIds.has(testCase.id))
-      )
-      const preparedIds = new Set(prepared.map((testCase) => testCase.id))
-      saveWebAutomationRunCases(localStorage, prepared)
-      refreshAutomationCases()
-      const exactCases = webAutomationCases.value.filter((testCase) => preparedIds.has(testCase.id))
-      clearCompletedCaseDesignTask()
-      automationKind.value = 'web'
-      if (deliveryExecuteNow.value) {
-        await startVisualWebAutomationRun(exactCases)
-      } else {
-        navigateToNav('automation')
-      }
-      return
-    }
-
-    const prepared = generateAutomationCasesFromInterfaceCases(generatedCases.value)
-    const preparedIds = new Set(prepared.map((testCase) => testCase.id))
-    saveAutomationCases(localStorage, prepared)
-    refreshAutomationCases()
-    const exactCases = automationCases.value.filter((testCase) => preparedIds.has(testCase.id))
-    clearCompletedCaseDesignTask()
-    automationKind.value = 'api'
-    if (deliveryExecuteNow.value) {
-      await executeApiAutomationCases(exactCases)
-    } else {
-      navigateToNav('automation')
-    }
-  } finally {
-    saveCasesLoading.value = false
-  }
-}
-
-const prepareCaseGenerationEntry = () => {
-  // A persisted COMPILE failure belongs to the later automation stage. Do not
-  // show it when opening a fresh natural-language generation stage.
-  const currentRun = webCaseAgentRun.value
-  const isPlanFailure = currentRun?.mode === 'PLAN'
-    && (currentRun.status === 'failed' || currentRun.status === 'blocked' || currentRun.status === 'cancelled')
-  if (generatedWebCases.value.length === 0 && !isPlanFailure) {
-    aiGenerationError.value = ''
-    generationRetryPointIds.value = []
-  }
-}
-
-const handleCaseDesignPrimaryAction = async () => {
-  const stage = caseDesignWorkflow.value.activeStage
-  if (stage === 'requirement') {
-    activeCaseDesignStage.value = 'requirement'
-    await analyzeRequirementPointsWithAi()
-    if (aiAnalysisCompleted.value) activeCaseDesignStage.value = 'test-parse'
-    return
-  }
-  if (stage === 'test-parse') {
-    if (aiAnalysisError.value) await retryCurrentAiAnalysisRun()
-    if (aiAnalysisCompleted.value && confirmedAiDraftPoints.value.length > 0) {
-      prepareCaseGenerationEntry()
-      activeCaseDesignStage.value = 'case-generate'
-    }
-    return
-  }
-  if (stage === 'case-generate') {
-    if (generatedWebCases.value.length > 0 && !aiCaseGenerationRunning.value) {
-      try {
-        if (naturalPlanRunId.value) await confirmAllWebCasePlanArtifacts(naturalPlanRunId.value)
-        aiGenerationError.value = ''
-        caseGenerationConfirmed.value = true
-        invalidateCaseReview()
-        activeCaseDesignStage.value = 'review'
-        await startCaseAiReview()
-      } catch (error) {
-        aiGenerationError.value = presentAiWorkflowError(error, '确认自然语言用例失败')
-        ElMessage.error(aiGenerationError.value)
-      }
-    }
-    return
-  }
-  if (stage === 'review') {
-    if (caseReviewStatus.value === 'failed' || !caseAiReviewRun.value) {
-      await startCaseAiReview()
-      return
-    }
-    caseReviewError.value = ''
-    caseReviewAttempted.value = true
-    activeCaseDesignStage.value = 'automation-compile'
-    return
-  }
-  if (stage === 'automation-compile') {
-    await compileWebAutomationCases()
-    return
-  }
-  await deliverGeneratedCases()
-}
-
-const caseDesignStageKeys: CaseDesignStage[] = ['requirement', 'test-parse', 'case-generate', 'review', 'automation-compile', 'deliver']
-const navigateCaseDesignStage = (stage: string) => {
-  if (caseDesignWorkflow.value.activeStage === 'automation-compile' && stage === 'case-generate') return
-  if (caseDesignStageKeys.includes(stage as CaseDesignStage)) {
-    if (stage === 'case-generate') prepareCaseGenerationEntry()
-    activeCaseDesignStage.value = stage as CaseDesignStage
-  }
-}
-
-const interfaceCaseStageKeys: InterfaceCaseStage[] = ['import', 'generate', 'review', 'deliver']
-const navigateInterfaceCaseStage = (stage: string) => {
-  if (interfaceCaseStageKeys.includes(stage as InterfaceCaseStage)) {
-    activeInterfaceCaseStage.value = stage as InterfaceCaseStage
-  }
-}
-
-const resetInterfaceCaseFilters = () => {
-  previewFilter.module = 'ALL'
-  previewFilter.caseType = 'ALL'
-  previewFilter.priority = 'ALL'
-  previewFilter.executionResult = 'ALL'
-  previewFilter.keyword = ''
-  interfaceReviewStatusFilter.value = 'ALL'
-}
-
-const resetInterfaceOperationFilters = () => {
-  importFilter.module = 'ALL'
-  importFilter.method = 'ALL'
-  importFilter.pathKeyword = ''
-  importFilter.summaryKeyword = ''
-}
-
-const handleInterfacePrimaryAction = async () => {
-  const stage = interfaceCaseWorkflow.value.activeStage
-  if (stage === 'import') {
-    if (importedProjects.value.length === 0) await pickOpenApiFiles()
-    else activeInterfaceCaseStage.value = 'generate'
-    return
-  }
-  if (stage === 'generate') {
-    generateCases()
-    if (generatedCases.value.length > 0) activeInterfaceCaseStage.value = 'review'
-    return
-  }
-  if (stage === 'review') {
-    if (!interfaceReviewAttempted.value) runAiReview()
-    else activeInterfaceCaseStage.value = 'deliver'
-    return
-  }
-  await saveCases()
-}
-
-const startNewInterfaceCaseTask = async () => {
-  const confirmed = await confirmDangerAction(
-    '新建接口用例任务',
-    '确认清空当前接口来源和生成结果并开始新任务吗？',
-    '新建任务'
-  )
-  if (!confirmed) return
-  clearGeneratedCaseWorkspace()
-  importedProjects.value = []
-  activeProjectId.value = ''
-  selectedOperationIds.value = []
-  importFilter.module = 'ALL'
-  importFilter.method = 'ALL'
-  importFilter.pathKeyword = ''
-  importFilter.summaryKeyword = ''
-  resetInterfaceCaseFilters()
-}
-
-const ignoreInterfaceReviewFinding = (findingId: string) => {
-  if (!ignoredInterfaceReviewFindingIds.value.includes(findingId)) {
-    ignoredInterfaceReviewFindingIds.value = [...ignoredInterfaceReviewFindingIds.value, findingId]
-  }
-}
-
-const locateInterfaceReviewFinding = (finding: CaseReviewFinding) => {
-  const testCase = generatedCases.value.find((item) => finding.id.startsWith(`${item.id}:`))
-  if (!testCase) return
-  selectedCase.value = testCase
-  openEdit(testCase)
-}
-
-const transferGeneratedCasesToAutomation = async () => {
-  if (generationKind.value === 'web_automation') {
-    if (generatedWebCases.value.length === 0) {
-      ElMessage.warning('请先生成 Web 用例')
-      return
-    }
-    saveCasesLoading.value = true
-    try {
-      const previousCases = generatedWebCases.value
-      generatedWebCases.value = finalizeDesignDraftCasesForLibrary(generatedWebCases.value)
-      const savedResult = await persistGeneratedCasesToLibrary(false)
-      if (!savedResult) return
-      const automationResult = saveWebAutomationRunCases(
-        localStorage,
-        generateWebAutomationCasesFromGeneratedCases(generatedWebCases.value)
-      )
-      refreshSavedCases()
-      refreshAutomationCases()
-      clearGeneratedCaseWorkspace()
-      clearAutomationExecutionState('web')
-      resetAutomationFilters()
-      automationKind.value = 'web'
-      navigateToNav('automation')
-      ElMessage.success(`已保存到用例库，并生成 ${automationResult.inserted} 条 Web 执行用例，更新 ${automationResult.updated} 条`)
-      generatedWebCases.value = previousCases
-    } finally {
-      saveCasesLoading.value = false
-    }
-    return
-  }
-  if (generatedCases.value.length === 0) {
-    ElMessage.warning('请先生成用例')
-    return
-  }
-
-  saveCasesLoading.value = true
-  try {
-    const savedResult = await persistGeneratedCasesToLibrary(false)
-    if (!savedResult) return
-    const automationResult = saveAutomationCases(localStorage, generateAutomationCasesFromInterfaceCases(generatedCases.value))
-    refreshSavedCases()
-    refreshAutomationCases()
-    clearGeneratedCaseWorkspace()
-    clearAutomationExecutionState('api')
-    resetAutomationFilters()
-    navigateToNav('automation')
-    ElMessage.success(`已保存到用例库，并生成 ${automationResult.inserted} 条自动化用例，更新 ${automationResult.updated} 条`)
-  } finally {
-    saveCasesLoading.value = false
-  }
-}
-
-const exportCsv = () => {
-  if (filteredCases.value.length === 0) {
-    ElMessage.warning('没有可导出的用例')
-    return
-  }
-  const csv = exportCasesToCsv(
-    interfaceFields.value,
-    filteredCases.value.map((testCase) => testCase.row as unknown as Record<string, unknown>)
-  )
-  downloadCsv(`${parsed.value?.title || activeProject.value?.title || '接口用例'}-接口测试用例.csv`, csv)
-}
 
 const openEdit = (testCase: GeneratedInterfaceCase | SavedInterfaceCase) => {
   selectedCase.value = testCase
@@ -4843,19 +2685,6 @@ const openWebEdit = (testCase: GeneratedWebAutomationCase | SavedWebAutomationCa
     steps: serializeWebAutomationSteps(testCase.metadata.steps)
   })
   editVisible.value = true
-}
-
-const openWebCasePreview = (testCase: GeneratedWebAutomationCase) => {
-  selectedCase.value = testCase
-  webCasePreviewVisible.value = true
-}
-
-const removeGeneratedWebCase = (testCase: GeneratedWebAutomationCase) => {
-  generatedWebCases.value = generatedWebCases.value.filter((item) => item.id !== testCase.id)
-  caseGenerationConfirmed.value = false
-  selectedGeneratedWebCaseIds.value = selectedGeneratedWebCaseIds.value.filter((id) => id !== testCase.id)
-  if (selectedCase.value?.id === testCase.id) selectedCase.value = generatedWebCases.value[0]
-  invalidateCaseReview()
 }
 
 const applySelectedWebEnvironmentToEditRow = () => {
@@ -4892,7 +2721,6 @@ const saveEdit = async () => {
       ElMessage.success('已更新 Web 自动化用例')
       return
     }
-    invalidateCaseReview()
     editVisible.value = false
     ElMessage.success('已更新当前 Web 用例')
     return
@@ -4925,46 +2753,57 @@ const isWebEditableCase = (
   testCase: GeneratedInterfaceCase | GeneratedWebAutomationCase | SavedInterfaceCase | SavedWebAutomationCase
 ): testCase is GeneratedWebAutomationCase | SavedWebAutomationCase => 'pageName' in testCase.row
 
-const deleteCase = async (testCase: GeneratedInterfaceCase) => {
-  const confirmed = await confirmDangerAction('删除生成用例', `确认删除 ${testCase.row.caseId} 吗？`)
-  if (!confirmed) return
-  generatedCases.value = generatedCases.value.filter((item) => item.id !== testCase.id)
-  normalizeGeneratedCaseRunOrder()
-  if (selectedCase.value?.id === testCase.id) {
-    selectedCase.value = generatedCases.value[0]
-  }
-}
-
-const moveGeneratedCase = (testCase: GeneratedInterfaceCase, offset: -1 | 1) => {
-  const index = generatedCases.value.findIndex((item) => item.id === testCase.id)
-  const targetIndex = index + offset
-  if (index < 0 || targetIndex < 0 || targetIndex >= generatedCases.value.length) return
-  generatedCases.value = moveArrayItem(generatedCases.value, index, targetIndex)
-  normalizeGeneratedCaseRunOrder()
-}
-
 const loadBackendBackedWorkspace = async (
   options: {
     conflictStrategy?: 'protectLocal' | 'preferBackend'
     projectName?: string
-  } = {}
+  } = {},
+  isCurrent = beginWorkspaceOperation('workspace')
 ) => {
-  const projectName = options.projectName || currentBackendProjectName()
-  const [templateResult, caseResult] = await Promise.all([
-    loadTemplateConfigWithBackend(localStorage, projectName, {
-      conflictStrategy: options.conflictStrategy
-    }),
-    loadSavedCasesWithBackend(localStorage, projectName, {
-      conflictStrategy: options.conflictStrategy
-    })
-  ])
-  templateConfig.value = templateResult.config
-  savedCases.value = caseResult.cases
-  syncSelectedCaseTypes()
-  workspaceSyncConflict.value =
-    options.conflictStrategy === 'preferBackend'
-      ? undefined
-      : buildWorkspaceSyncConflictNotice(projectName, templateResult.source === 'conflict', caseResult.source === 'conflict')
+  try {
+    if (!isCurrent()) return
+    homeWorkspaceStatus.value = 'loading'
+    homeWorkspaceError.value = ''
+    const storage = workspaceStorage.capture(isCurrent)
+    const fetchImpl = workspaceFetch(isCurrent)
+    const projectName = options.projectName || currentBackendProjectName()
+    const [templateResult, caseResult] = await Promise.all([
+      templateConfigModule.loadBackend({ fetch: fetchImpl, projectName, isCurrent }, { throwOnError: true }),
+      loadSavedCasesWithBackend(storage, projectName, {
+        fetchImpl,
+        conflictStrategy: options.conflictStrategy,
+        throwOnError: true
+      })
+    ])
+    if (!isCurrent()) return
+    savedCases.value = caseResult.cases
+    syncSelectedCaseTypes()
+    workspaceSyncConflict.value =
+      options.conflictStrategy === 'preferBackend'
+        ? undefined
+        : buildWorkspaceSyncConflictNotice(projectName, false, caseResult.source === 'conflict')
+    homeWorkspaceStatus.value = homeWorkItems.value.length || homeRuns.value.length ? 'ready' : 'empty'
+    return { templateResult, caseResult }
+  } catch (error) {
+    if (!isCurrent()) return
+    const failure = homeWorkspaceFailure(error)
+    homeWorkspaceStatus.value = failure.status
+    homeWorkspaceError.value = failure.message
+  }
+}
+
+const retryHomeWorkspace = () => {
+  void loadBackendBackedWorkspace()
+}
+
+const homeWorkspaceFailure = (error: unknown): { status: HomeWorkspaceStatus; message: string } => {
+  if (error instanceof PlatformBackendRequestError) {
+    if (error.status === 403) return { status: 'forbidden', message: '当前账号没有权限查看工作台数据。' }
+    if ([502, 503, 504].includes(error.status)) return { status: 'unavailable', message: '工作台服务暂时不可用，请稍后重试。' }
+    return { status: 'error', message: '工作台加载失败，请重试。' }
+  }
+  if (error instanceof PlatformBackendTransportError || error instanceof TypeError) return { status: 'unavailable', message: '工作台服务暂时不可用，请稍后重试。' }
+  return { status: 'error', message: '工作台加载失败，请重试。' }
 }
 
 const buildWorkspaceSyncConflictNotice = (
@@ -4979,6 +2818,10 @@ const dismissWorkspaceSyncConflict = () => {
 }
 
 const pushLocalWorkspaceToBackend = async () => {
+  const isCurrent = beginWorkspaceOperation('workspace')
+  if (!isCurrent()) return
+  const storage = workspaceStorage.capture(isCurrent)
+  const fetchImpl = workspaceFetch(isCurrent)
   const notice = workspaceSyncConflict.value
   if (!notice) return
 
@@ -4986,12 +2829,12 @@ const pushLocalWorkspaceToBackend = async () => {
   try {
     let synced = true
     if (notice.template) {
-      const result = await saveTemplateConfigWithBackend(localStorage, notice.projectName, templateConfig.value)
-      templateConfig.value = result.config
-      synced = synced && result.source === 'backend'
+      const result = await templateConfigModule.reconcile('push-local')
+      if (!result) synced = false
     }
     if (notice.cases) {
-      const result = await syncCaseOrderingWithBackend(localStorage, notice.projectName)
+      const result = await syncCaseOrderingWithBackend(storage, notice.projectName, { fetchImpl })
+      if (!isCurrent()) return
       synced = synced && result.source === 'backend'
     }
 
@@ -5002,11 +2845,13 @@ const pushLocalWorkspaceToBackend = async () => {
       ElMessage.warning('后端暂不可用，已继续保留本地版本')
     }
   } finally {
-    workspaceSyncLoading.value = false
+    if (isCurrent()) workspaceSyncLoading.value = false
   }
 }
 
 const reloadBackendWorkspace = async () => {
+  const isCurrent = beginWorkspaceOperation('workspace')
+  if (!isCurrent()) return
   const notice = workspaceSyncConflict.value
   if (!notice) return
 
@@ -5015,28 +2860,18 @@ const reloadBackendWorkspace = async () => {
     `确认用后端数据覆盖 ${notice.projectName} 当前较新的本地数据吗？`,
     '使用后端'
   )
-  if (!confirmed) return
+  if (!confirmed || !isCurrent()) return
 
   workspaceSyncLoading.value = true
   try {
     await loadBackendBackedWorkspace({
       conflictStrategy: 'preferBackend',
       projectName: notice.projectName
-    })
-    ElMessage.success('已加载后端版本')
+    }, isCurrent)
+    if (isCurrent()) ElMessage.success('已加载后端版本')
   } finally {
-    workspaceSyncLoading.value = false
+    if (isCurrent()) workspaceSyncLoading.value = false
   }
-}
-
-const normalizeGeneratedCaseRunOrder = () => {
-  generatedCases.value = generatedCases.value.map((testCase, index) => ({
-    ...testCase,
-    metadata: {
-      ...testCase.metadata,
-      runOrder: index + 1
-    }
-  }))
 }
 
 const openAutomationCurlPreview = (testCase: ApiAutomationCaseDraft) => {
@@ -5087,7 +2922,7 @@ watch(generationKind, () => {
 })
 
 const webAutomationResultStatus = (testCase: SavedWebAutomationRunCase): WebAutomationRunStatus | 'pending' =>
-  webAutomationResultMap.value.get(testCase.id)?.status || 'pending'
+  webAutomationResultStatusById.value[testCase.id] || 'pending'
 
 const copyCurl = async () => {
   if (!curlText.value) return
@@ -5179,14 +3014,41 @@ const openEnvironmentEditor = (
   const environment = library.environments.find((item) => item.id === targetEnvironmentId)
     || library.environments[0]
     || (kind === 'web' ? defaultWebExecutionEnvironmentLibrary() : defaultExecutionEnvironmentLibrary()).environments[0]
-  Object.assign(editingEnvironment, cloneEnvironment(environment))
-  if (kind === 'web') {
-    editingEnvironment.auth = editingEnvironment.auth || { type: 'none' }
-    editingEnvironment.web = normalizeWebExecutionRuntimeConfig(editingEnvironment.web)
-  }
+  bindEditingEnvironment(environment, kind)
   curlImportText.value = ''
   webEnvironmentVerification.value = undefined
   environmentVisible.value = true
+}
+
+/** 执行准备页 → 环境配置独立页：带上执行类别，并打开同一环境编辑器；返回时回到对应执行准备。 */
+const openEnvironmentManagement = (kind: 'api' | 'web') => {
+  environmentEditorTarget.value = kind
+  navigateToNav('environments')
+  openEnvironmentEditor(undefined, kind)
+}
+
+/** 环境页内切换 API / Web 类别:只切当前管理类别,不改另一个类别的数据;未保存先确认。 */
+const switchEnvironmentManagementKind = (kind: 'api' | 'web') => {
+  runWithEnvironmentDraftGuard('切换环境类别会丢弃当前未保存的环境修改。', () => {
+    environmentEditorTarget.value = kind
+    openEnvironmentEditor(undefined, kind)
+  })
+}
+
+const selectEnvironmentFromPage = (environmentId: string) => {
+  if (environmentId === editingEnvironment.id) return
+  runWithEnvironmentDraftGuard('切换到目录里的其他环境会丢弃当前未保存的环境修改。', () => {
+    openEnvironmentEditor(environmentId, environmentEditorKind.value)
+  })
+}
+
+/** 返回执行准备:保留筛选、选中与运行参数上下文;未保存先确认,取消则连页面状态都不动。 */
+const returnToPreparationFromEnvironments = (kind: 'api' | 'web') => {
+  runWithEnvironmentDraftGuard('返回执行准备会丢弃当前未保存的环境修改。', () => {
+    environmentVisible.value = false
+    automationKind.value = kind
+    navigateToNav('automation')
+  })
 }
 
 const selectExecutionEnvironment = (environmentId: string, kind: 'api' | 'web' = environmentEditorKind.value) => {
@@ -5660,35 +3522,10 @@ function buildWebLoginProbeCase(runtime: BuiltWebExecutionRuntime): WebAutomatio
   }
 }
 
-const applyConfiguredCaseTypeName = (testCase: GeneratedInterfaceCase): GeneratedInterfaceCase => {
-  const defaultDefinition = defaultCaseTypes.find((caseType) => caseType.name === testCase.row.caseType)
-  const configuredDefinition = defaultDefinition
-    ? templateConfig.value.caseTypes.find((caseType) => caseType.id === defaultDefinition.id)
-    : undefined
-  if (!configuredDefinition || configuredDefinition.name === testCase.row.caseType) return testCase
-
-  return {
-    ...testCase,
-    row: {
-      ...testCase.row,
-      caseType: configuredDefinition.name,
-      tags: testCase.row.tags.replace(testCase.row.caseType, configuredDefinition.name)
-    }
-  }
-}
-
 const collectWebAutomationProjects = (cases: SavedWebAutomationRunCase[]) => {
   const counts = new Map<string, number>()
   for (const testCase of cases) {
     counts.set(testCase.project, (counts.get(testCase.project) || 0) + 1)
-  }
-  return Array.from(counts.entries()).map(([value, count]) => ({ value, count }))
-}
-
-const collectWebAutomationModules = (cases: SavedWebAutomationRunCase[]) => {
-  const counts = new Map<string, number>()
-  for (const testCase of cases) {
-    counts.set(testCase.module, (counts.get(testCase.module) || 0) + 1)
   }
   return Array.from(counts.entries()).map(([value, count]) => ({ value, count }))
 }
@@ -5703,15 +3540,10 @@ function downloadTextFile(filename: string, content: string, type: string) {
   URL.revokeObjectURL(url)
 }
 
-function moveArrayItem<T>(items: T[], from: number, to: number): T[] {
-  const next = [...items]
-  const [item] = next.splice(from, 1)
-  next.splice(to, 0, item)
-  return next
-}
-
-async function executeBrowserRequest(request: ExecutableRequest) {
+async function executeBrowserRequest(request: ExecutableRequest, isCurrent: () => boolean = () => true) {
+  if (!isCurrent()) throw new Error('本次 API 执行上下文已失效')
   const proxiedResponse = await executeViaLocalProxy(request)
+  if (!isCurrent()) throw new Error('本次 API 执行上下文已失效')
   if (proxiedResponse) return proxiedResponse
 
   let response: Response
@@ -5851,8 +3683,186 @@ function handlePopState() {
 }
 
 type AuthStatus = 'checking' | 'authenticated' | 'unauthenticated'
+type HomeWorkspaceStatus = 'ready' | 'loading' | 'empty' | 'unavailable' | 'forbidden' | 'error'
 const authStatus = ref<AuthStatus>('checking')
 const currentUser = ref<AuthUser | null>(null)
+const homeWorkspaceStatus = ref<HomeWorkspaceStatus>('loading')
+const homeWorkspaceError = ref('')
+const overviewStatus = ref<OverviewStatus>('unavailable')
+const overviewError = ref('')
+const overviewAvailabilityChecked = ref(false)
+let authDisposed = false
+let passwordOperation = 0
+const isCurrentAuth = (epoch: number): boolean => !authDisposed && epoch === getAuthSessionEpoch()
+const workspaceOperations = new Map<string, number>()
+function beginWorkspaceOperation(resource: string, templateLease = false): () => boolean {
+  if (resource === 'workspace' && !templateLease) templateConfigModule.invalidateWorkspace()
+  const epoch = getAuthSessionEpoch()
+  const operation = (workspaceOperations.get(resource) || 0) + 1
+  workspaceOperations.set(resource, operation)
+  return () => isCurrentAuth(epoch) && authStatus.value === 'authenticated'
+    && workspaceOperations.get(resource) === operation
+}
+
+function workspaceFetch(isCurrent: () => boolean) {
+  return async (input: string, init?: RequestInit): Promise<Response> => {
+    // Check BEFORE every stage: the repository can dispatch multiple requests.
+    if (!isCurrent()) throw new Error('Workspace operation expired')
+    const response = await authedFetch(input, init)
+    if (!isCurrent()) throw new Error('Workspace operation expired')
+    return response
+  }
+}
+
+// Project discovery proves access only; it is not a team/quality aggregate.
+const checkOverviewAvailability = async () => {
+  if (authStatus.value !== 'authenticated' || activeNav.value !== 'overview') return
+  const isCurrentOperation = beginWorkspaceOperation('overview')
+  const current = () => isCurrentOperation() && activeNav.value === 'overview'
+  overviewStatus.value = 'loading'
+  overviewError.value = ''
+  overviewAvailabilityChecked.value = false
+  try {
+    await listBackendProjects({ fetchImpl: workspaceFetch(current), throwOnError: true })
+    if (!current()) return
+    overviewAvailabilityChecked.value = true
+    overviewStatus.value = 'unavailable'
+  } catch (error) {
+    if (!current()) return
+    overviewStatus.value = error instanceof PlatformBackendRequestError && error.status === 403 ? 'forbidden' : 'error'
+    overviewError.value = error instanceof PlatformBackendRequestError && [502, 503, 504].includes(error.status)
+      ? '项目服务暂时不可用；尚未接入团队与质量统计，请稍后重新检查。'
+      : '项目访问检查失败；尚未确认概览数据可用，请重试。'
+  }
+}
+
+watch([activeNav, authStatus], () => {
+  if (activeNav.value === 'overview' && authStatus.value === 'authenticated') void checkOverviewAvailability()
+  else {
+    // Keep sequence monotonic: leaving and returning must never reuse an old authority.
+    if (workspaceOperations.has('overview')) beginWorkspaceOperation('overview')
+    overviewStatus.value = 'unavailable'
+    overviewError.value = ''
+    overviewAvailabilityChecked.value = false
+  }
+}, { flush: 'post' })
+
+function resetWorkspaceState(): void {
+  // Only clear in-memory state. Never delete another account's persistent keys.
+  defects.resetDefectRecovery()
+  templateConfigModule.invalidateWorkspace()
+  workspaceStorage.invalidate()
+  workspaceSessionStorage.invalidate()
+  stopBackgroundActivity()
+  applyJiraConfig({ ...defaultJiraConfig(), maskedToken: undefined, updatedAt: undefined })
+  jiraConfigReadState.value = 'idle'
+  jiraConfigLoading.value = false
+  jiraConfigTesting.value = false
+  webRunCapabilities.value = undefined
+  activeWebRunId.value = ''
+  activeWebRunSnapshot.value = undefined
+  activeWebRunCases.value = []
+  finalizedWebRunId = ''
+  webAutomationRunning.value = false
+  apiAutomationRunning.value = false
+  apiRunGeneration += 1
+  apiRunConfirming.value = false
+  apiRunSnapshot.value = undefined
+  apiRunMonitor.value = undefined
+  apiAutomationWorkspaceMode.value = 'prepare'
+  Object.assign(apiAutomationProgress, { completed: 0, total: 0, runningCaseId: '' })
+  webRunConnectionState.value = 'idle'
+  webRunControlLoading.value = ''
+  webAutomationWorkspaceMode.value = 'workbench'
+  clearWebRunLocalMessages()
+  automationRunReport.value = undefined
+  webAutomationRunReport.value = undefined
+  selectedAutomationResult.value = undefined
+  selectedCase.value = undefined
+  selectedLibraryId.value = undefined
+  for (const row of [editRow, webEditRow]) {
+    for (const key of Object.keys(row)) delete (row as Record<string, unknown>)[key]
+  }
+  Object.assign(editRow, emptyEditRow())
+  Object.assign(webEditRow, emptyWebEditRow())
+  Object.assign(casesModule.bulkEditForm, { matchValue: '', targetValue: '' })
+  Object.assign(casesModule.fieldAssignmentForm, { path: '', value: '' })
+  defects.jiraCsvTemplate.value = loadJiraCsvTemplate(localStorage)
+  // 换账号/退出:草稿回到该类别自己的默认环境(不读上一个 owner 的内存库);真实库载入后再由 syncEnvironmentEditorToLibrary 对齐目录所选。
+  const resetKind = environmentEditorTarget.value
+  bindEditingEnvironment((resetKind === 'web' ? defaultWebExecutionEnvironmentLibrary() : defaultExecutionEnvironmentLibrary()).environments[0], resetKind)
+  curlImportText.value = ''
+  webEnvironmentVerification.value = undefined
+  webEnvironmentVerifying.value = false
+  webLoginVerificationSnapshot.value = undefined
+  webLoginVerificationVisible.value = false
+  webLoginVerificationRunning.value = false
+  webLoginSessionId.value = ''
+  webLoginVerificationRunId = ''
+  resetWebLoginDiscoverySelection()
+  globalSearch.value = ''
+  Object.assign(automationFilter, { project: 'ALL', module: 'ALL', method: 'ALL', source: 'ALL', keyword: '' })
+  Object.assign(libraryFilter, { project: 'ALL', module: 'ALL', keyword: '' })
+  Object.assign(defects.defectFilter, { project: 'ALL', status: 'ALL', issueType: 'ALL', priority: 'ALL', assignee: 'ALL', keyword: '' })
+  for (const key of Object.keys(defects.defectEditForm)) (defects.defectEditForm as Record<string, string>)[key] = ''
+  defects.recentlyTransferredDefectIds.value = []
+  defects.jiraTemplateVisible.value = false
+  reports.reportEnvironmentFilter.value = 'ALL'
+  executableRequest.value = undefined
+  curlText.value = ''
+  importedProjects.value = []
+  activeProjectId.value = ''
+  requirementAnalysisProjectName.value = '默认项目'
+  workspaceSyncConflict.value = undefined
+  workspaceSyncLoading.value = false
+  homeWorkspaceStatus.value = 'loading'
+  homeWorkspaceError.value = ''
+  automationSelection.value = []
+  overviewStatus.value = 'unavailable'
+  overviewError.value = ''
+  overviewAvailabilityChecked.value = false
+  webAutomationSelectedIds.value = []
+  casesModule.librarySelection.value = []
+  casesModule.bulkEditVisible.value = false
+  casesModule.fieldAssignmentVisible.value = false
+  refreshSavedCases()
+  refreshAutomationCases()
+  refreshAutomationReports()
+  templateConfigModule.bindWorkspace()
+  webRunSuites.value = []
+  executionEnvironmentLibrary.value = defaultExecutionEnvironmentLibrary()
+  webExecutionEnvironmentLibrary.value = defaultWebExecutionEnvironmentLibrary()
+  defects.defectDrafts.value = []
+  defects.jiraIssues.value = []
+  defects.defectSelection.value = []
+  defects.editingDefect.value = undefined
+  defects.defectEditVisible.value = false
+  reports.closeReportScreenshotPreview()
+  reports.expandedReportHtmlCaseIds.value = []
+  reports.reportKeyword.value = ''
+  editVisible.value = false
+  curlVisible.value = false
+  helpVisible.value = false
+  environmentVisible.value = false
+  automationConfigVisible.value = false
+  automationLogVisible.value = false
+  webLoginDiscoverySnapshot.value = undefined
+  webLoginDiscoveryDialogVisible.value = false
+  webLoginDiscoveryLoading.value = false
+  webLoginDiscoveryConfirming.value = false
+}
+
+function invalidateAuth(): void {
+  advanceAuthSessionEpoch()
+  casesModule.invalidateLibraryActions()
+  if (currentUser.value) writeWebMonitorQuery('workbench', '', 'replace')
+  resetWorkspaceState()
+  passwordOperation += 1
+  changePasswordDialogVisible.value = false
+  Object.assign(changePasswordForm, {
+    currentPassword: '', newPassword: '', confirmPassword: '', error: '', submitting: false
+  })
+}
 
 const currentUserInitials = computed(() => {
   const name = currentUser.value?.displayName || currentUser.value?.username
@@ -5875,6 +3885,9 @@ const changePasswordForm = reactive({
 })
 
 function openChangePasswordDialog(): void {
+  if (authDisposed || authStatus.value !== 'authenticated') return
+  passwordOperation += 1
+  changePasswordForm.submitting = false
   changePasswordForm.currentPassword = ''
   changePasswordForm.newPassword = ''
   changePasswordForm.confirmPassword = ''
@@ -5883,6 +3896,7 @@ function openChangePasswordDialog(): void {
 }
 
 async function submitChangePassword(): Promise<void> {
+  if (authDisposed || authStatus.value !== 'authenticated' || changePasswordForm.submitting) return
   changePasswordForm.error = ''
   if (!changePasswordForm.currentPassword || !changePasswordForm.newPassword) {
     changePasswordForm.error = '请输入当前密码和新密码'
@@ -5897,103 +3911,68 @@ async function submitChangePassword(): Promise<void> {
     return
   }
   changePasswordForm.submitting = true
+  const epoch = getAuthSessionEpoch()
+  const operation = ++passwordOperation
+  const isCurrent = () => isCurrentAuth(epoch) && operation === passwordOperation
   try {
     const updated = await changePassword(changePasswordForm.currentPassword, changePasswordForm.newPassword)
+    if (!isCurrent()) return
     currentUser.value = updated
     changePasswordDialogVisible.value = false
     ElMessage.success('密码已更新')
   } catch (error) {
+    if (!isCurrent()) return
     changePasswordForm.error = error instanceof Error
       ? error.message.replace(/^Auth request failed: \d+\s*/, '')
       : '修改失败，请重试'
   } finally {
-    changePasswordForm.submitting = false
+    if (isCurrent()) changePasswordForm.submitting = false
   }
 }
 
 function loadWorkspaceData(): void {
-  if (restoredCaseDesignDraft) {
-    generationKind.value = restoredCaseDesignDraft.generationKind
-    requirementAnalysisProjectName.value = restoredCaseDesignDraft.projectName
-    stagedRequirementFiles.value = restoredCaseDesignDraft.sources.map(({ name, kind, text, needsReattach }) => ({
-      name,
-      kind,
-      text,
-      needsReattach
-    }))
-    extractedRequirementPoints.value = restoredCaseDesignDraft.extractedRequirementPoints
-    aiDraftPoints.value = restoredCaseDesignDraft.aiDraftPoints
-    generatedCases.value = restoredCaseDesignDraft.generatedCases
-    generatedWebCases.value = restoredCaseDesignDraft.generatedWebCases
-    aiAnalysisRun.value = restoredCaseDesignDraft.analysisRun || undefined
-    aiAnalysisRunning.value = restoredCaseDesignDraft.analysisRun?.status === 'running'
-    if (restoredCaseDesignDraft.analysisRun) {
-      const run = restoredCaseDesignDraft.analysisRun
-      aiAnalysisProgress.percentage = run.totalChunks > 0
-        ? Math.round((run.completedChunks / run.totalChunks) * 100)
-        : run.status === 'succeeded' ? 100 : 0
-      aiAnalysisProgress.text = run.status === 'running'
-        ? `正在恢复内容解析 · ${run.completedChunks}/${run.totalChunks} 分片`
-        : run.status === 'succeeded'
-          ? '内容解析已完成'
-          : run.errorSummary || '内容解析未完成'
-    }
-    requirementAiReviewRun.value = restoredCaseDesignDraft.requirementReviewRun || undefined
-    caseAiReviewRun.value = restoredCaseDesignDraft.caseReviewRun || undefined
-    activeAiReviewStage.value = restoredCaseDesignDraft.activeReviewStage
-    aiMultiAgentQualityScores.value = restoredCaseDesignDraft.review.qualityScores
-    aiMultiAgentConflicts.value = restoredCaseDesignDraft.review.conflicts
-    selectedCase.value = restoredCaseDesignDraft.generatedWebCases.find(
-      (testCase) => testCase.id === restoredCaseDesignDraft.selectedCaseId
-    ) || restoredCaseDesignDraft.generatedWebCases[0]
-  }
-
+  // 旧设计草稿仅保留在浏览器存储中，不恢复任务、不轮询已下线的 AI API。
   syncNavWithLocation('replace')
+  refreshSavedCases()
+  refreshAutomationCases()
+  defects.refreshDefectDrafts()
+  defects.jiraCsvTemplate.value = loadJiraCsvTemplate(localStorage)
+  webRunSuites.value = listWebRunSuites(localStorage)
+  executionEnvironmentLibrary.value = loadExecutionEnvironmentLibrary(localStorage)
+  webExecutionEnvironmentLibrary.value = loadExecutionEnvironmentLibrary(localStorage, WEB_EXECUTION_ENV_LIBRARY_STORAGE_KEY)
+  // 冷启动/换账号后:环境编辑器绑定目录当前所选环境(而不是默认环境)。
+  syncEnvironmentEditorToLibrary()
   refreshAutomationReports()
   void loadBackendBackedWorkspace()
-  void refreshAiPlatformConfig()
   void loadJiraSettingsFromBackend()
   void loadWebRunCapabilities()
   void recoverWebRunSession('replace')
-  const restoredReviewRun = restoredCaseDesignDraft?.activeReviewStage === 'case'
-    ? restoredCaseDesignDraft.caseReviewRun
-    : restoredCaseDesignDraft?.requirementReviewRun
-  void Promise.allSettled([
-    restoredCaseDesignDraft?.analysisRunId
-      ? refreshAiAnalysisRunData(restoredCaseDesignDraft.analysisRunId)
-      : Promise.resolve(),
-    restoredReviewRun?.runId
-      ? loadMultiAgentReviewDetails(restoredReviewRun.runId)
-      : Promise.resolve()
-  ]).then((results) => {
-    if (results[0].status === 'rejected') {
-      aiAnalysisError.value = results[0].reason instanceof Error
-        ? results[0].reason.message
-        : '后端暂不可用，已恢复本地 AI 分析草稿'
-    }
-    if (results[1].status === 'rejected') {
-      caseReviewError.value = results[1].reason instanceof Error
-        ? results[1].reason.message
-        : '后端暂不可用，已恢复本地评审结果'
-    }
-  })
 }
 
 function stopBackgroundActivity(): void {
   webRunPollCoordinator.stop()
-  aiAnalysisPollCoordinator.stop()
   webLoginDiscoveryAbortController?.abort()
 }
 
 function handleSessionExpired(): void {
+  // A failed login must keep its own error/finally path current.
+  if (authDisposed || authStatus.value === 'unauthenticated') return
+  invalidateAuth()
   stopBackgroundActivity()
   currentUser.value = null
   authStatus.value = 'unauthenticated'
 }
 
 function onLoginSuccess(user: AuthUser): void {
+  if (authDisposed) return
+  invalidateAuth()
   currentUser.value = user
+  // No stable identity => fail closed for persistence (do not adopt legacy keys).
+  const owner = typeof user.id === 'number' && Number.isSafeInteger(user.id) && user.id > 0 ? `user:${user.id}` : undefined
+  workspaceStorage.activate(owner)
+  workspaceSessionStorage.activate(owner)
   authStatus.value = 'authenticated'
+  templateConfigModule.bindWorkspace()
   loadWorkspaceData()
   if (user.mustChangePassword) {
     openChangePasswordDialog()
@@ -6001,32 +3980,33 @@ function onLoginSuccess(user: AuthUser): void {
 }
 
 async function bootstrapAuth(): Promise<void> {
+  const epoch = getAuthSessionEpoch()
   try {
     const user = await fetchCurrentUser()
+    if (!isCurrentAuth(epoch)) return
     if (user) {
-      currentUser.value = user
-      authStatus.value = 'authenticated'
-      loadWorkspaceData()
-      if (user.mustChangePassword) {
-        openChangePasswordDialog()
-      }
+      onLoginSuccess(user)
     } else {
       authStatus.value = 'unauthenticated'
     }
   } catch {
-    authStatus.value = 'unauthenticated'
+    if (isCurrentAuth(epoch)) authStatus.value = 'unauthenticated'
   }
 }
 
 async function handleLogout(): Promise<void> {
+  if (authDisposed) return
+  invalidateAuth()
   stopBackgroundActivity()
+  // logout() advances the shared epoch synchronously before its first await.
+  const pending = logout()
+  const epoch = getAuthSessionEpoch()
   try {
-    await logout()
+    await pending
   } catch {
-    // Ignore logout failures — always clear the local session so the user can leave.
+    // Ignore logout failures — clear only the session that initiated this logout.
   }
-  currentUser.value = null
-  authStatus.value = 'unauthenticated'
+  if (isCurrentAuth(epoch)) handleSessionExpired()
 }
 
 onMounted(() => {
@@ -6036,9 +4016,13 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
-  if (caseDesignDraftTimer) clearTimeout(caseDesignDraftTimer)
+  authDisposed = true
+  invalidateAuth()
   stopBackgroundActivity()
   window.removeEventListener('popstate', handlePopState)
+  window.removeEventListener('beforeunload', handleJiraBeforeUnload)
+  window.removeEventListener('beforeunload', handleDefectBeforeUnload)
+  window.removeEventListener('beforeunload', handleEnvironmentBeforeUnload)
 })
 </script>
 
@@ -6051,7 +4035,7 @@ onBeforeUnmount(() => {
     v-else-if="authStatus === 'authenticated'"
     :sidebar-collapsed="isNarrowViewport ? !narrowNavigationVisible : railCollapsed"
     :sidebar-visible="!isNarrowViewport"
-    :inspector-visible="inlineInspectorVisible"
+    :inspector-visible="false"
   >
     <template #sidebar>
       <PrimarySidebar
@@ -6060,8 +4044,10 @@ onBeforeUnmount(() => {
         :active-item-id="activeSidebarItemId"
         :collapsed="railCollapsed"
         :badges="sidebarBadges"
+        :settings-entry="!isSettingsCenterNav"
         @select="selectSidebarItem"
         @request-expand="expandStudioNavigation"
+        @help="helpVisible = true"
       />
     </template>
 
@@ -6075,43 +4061,17 @@ onBeforeUnmount(() => {
         :task-status-label="globalLongTaskLabel"
         :user-initials="currentUserInitials"
         :user-display-name="currentUser?.displayName || currentUser?.username || ''"
+        :primary-areas="primaryAreas"
+        :active-primary-id="activePrimaryId"
         @toggle-sidebar="toggleStudioNavigation"
         @open-task="openActiveLongTask"
+        @select-primary="selectPrimaryArea"
+        @open-assistant="openAssistantPage"
         @logout="handleLogout"
         @change-password="openChangePasswordDialog"
       />
     </template>
 
-    <template #inspector>
-      <InterfaceReviewInspector
-        v-if="interfaceInspectorVisible"
-        :findings="visibleInterfaceReviewFindings"
-        :summary="visibleInterfaceReviewSummary"
-        :reviewing="false"
-        :review-attempted="interfaceReviewAttempted"
-        @review="runAiReview"
-        @supplement-missing="supplementMissingCases"
-        @locate-finding="locateInterfaceReviewFinding"
-        @ignore-finding="ignoreInterfaceReviewFinding"
-      />
-      <AiReviewInspector
-        v-else
-        :selected-count="selectedReviewCaseCount"
-        :high-risk-count="caseDesignReviewView.highRiskCount"
-        :pending-finding-count="caseDesignReviewView.pendingFindingCount"
-        :average-score="caseDesignReviewView.averageScore"
-        :summary="activeAiReviewInsight.summary"
-        :findings="caseDesignReviewView.findings"
-        :conflicts="caseDesignRelevantConflicts"
-        :can-merge="canMergeMultiAgentReview"
-        :loading="aiMultiAgentLoading"
-        @ignore-conflicts="ignoreUnresolvedMultiAgentConflicts"
-        @ignore-conflict="ignoreSingleReviewConflict"
-        @merge="mergeMultiAgentReview"
-        @decide="decideSelectedReviewFinding"
-        @bulk-decide="bulkDecideReviewCases"
-      />
-    </template>
 
     <main
       class="workspace"
@@ -6120,20 +4080,40 @@ onBeforeUnmount(() => {
         'is-studio-case-design': activeNav === 'api' && generationKind === 'web_automation',
         'is-studio-interface-case': activeNav === 'api' && generationKind === 'interface',
         'is-web-automation': activeNav === 'automation' && automationKind === 'web',
+        'is-environment-management': activeNav === 'environments',
         'is-workbench': isWorkbenchNav
       }"
     >
-      <div v-if="workspaceSyncConflict" class="studio-sync-notice" role="status">
+      <section v-if="templateConfigModule.recovery?.reason" data-template-recovery class="studio-sync-notice template-recovery-notice" data-message-level="warning" role="alert" aria-live="assertive">
+        <div class="sync-conflict-copy"><strong>模板配置未确认</strong><span>{{ templateConfigModule.recovery.reason }} · {{ templateConfigModule.recovery.owner }} · {{ templateConfigModule.recovery.project }}</span></div>
+        <div class="sync-conflict-actions">
+          <div class="template-recovery-action-group" data-recovery-group="recover" role="group" aria-label="恢复与重试">
+            <span class="template-recovery-action-group__label">恢复与重试</span>
+            <button :disabled="templateConfigModule.recovery.phase !== 'idle' || !templateConfigModule.recovery.identityUsable" @click="templateConfigModule.reloadBaseline()">重新读取本地</button>
+            <button :disabled="templateConfigModule.recovery.phase !== 'idle' || !templateConfigModule.recovery.identityUsable" @click="templateConfigModule.retryMirror()">重试本地镜像</button>
+            <button :disabled="templateConfigModule.recovery.phase !== 'idle' || !templateConfigModule.recovery.identityUsable" @click="templateConfigModule.retrySave()">保留本地并重试保存</button>
+          </div>
+          <div class="template-recovery-action-group" data-recovery-group="decision" data-risk="destructive" role="group" aria-label="覆盖或丢弃本地修改">
+            <span class="template-recovery-action-group__label">覆盖或丢弃本地修改</span>
+            <button class="is-destructive" :disabled="templateConfigModule.recovery.phase !== 'idle' || !templateConfigModule.recovery.identityUsable" @click="templateConfigModule.reconcile('push-local')">本地覆盖后端</button>
+            <button class="is-destructive" :disabled="templateConfigModule.recovery.phase !== 'idle' || !templateConfigModule.recovery.identityUsable" @click="templateConfigModule.reconcile('take-backend')">采用后端（丢弃本地）</button>
+          </div>
+        </div>
+      </section>
+      <DefectFailureBanner v-if="activeNav === 'automation'" />
+      <div v-if="workspaceSyncConflict" class="studio-sync-notice" data-message-level="warning" role="status" aria-live="polite">
+        <span class="sync-conflict-icon" aria-hidden="true">!</span>
         <div class="sync-conflict-copy">
           <strong>本地数据较新</strong>
           <span>{{ workspaceSyncConflictText }}</span>
+          <span>推送本地会更新后端；使用后端会替换本地数据。</span>
         </div>
         <div class="sync-conflict-actions">
-          <el-button size="small" :loading="workspaceSyncLoading" @click="pushLocalWorkspaceToBackend">
+          <el-button size="small" data-sync-action="push-local" :loading="workspaceSyncLoading" @click="pushLocalWorkspaceToBackend">
             <Upload :size="14" />
             推送本地
           </el-button>
-          <el-button size="small" plain :loading="workspaceSyncLoading" @click="reloadBackendWorkspace">
+          <el-button size="small" plain data-sync-action="take-backend" data-risk="destructive" :loading="workspaceSyncLoading" @click="reloadBackendWorkspace">
             <Download :size="14" />
             使用后端
           </el-button>
@@ -6149,280 +4129,52 @@ onBeforeUnmount(() => {
           </el-button>
         </div>
       </div>
-      <WorkflowStateView
-        v-if="!isOnline"
-        class="studio-offline-notice"
-        variant="offline"
-        title="当前离线"
-        description="草稿仍会保存在本机，联网后可继续同步和恢复长任务"
-      />
+      <div v-if="!isOnline" class="studio-offline-notice" data-notice-level="info" data-message-level="info" role="status" aria-live="polite">
+        <span class="studio-offline-notice__icon" aria-hidden="true">i</span>
+        <strong>离线模式</strong>
+        <span>当前离线；用例库本地数据保留，联网后可继续同步。</span>
+      </div>
       <template v-if="isCaseWorkbenchNav">
-        <CaseWorkbenchView
-          :active-nav="activeNav"
-        >
-        <template #library>
-          <CasesView />
-        </template>
-        <template #canvas>
-        <section v-if="generationKind === 'interface'" class="studio-interface-case-canvas">
-          <WorkflowHeader
-            :title="interfaceCaseTaskTitle"
-            :save-label="interfaceCaseSaveLabel"
-            :stages="interfaceCaseWorkflow.stages"
-            :primary-action="interfaceCaseWorkflowHeaderPrimaryAction"
-            :secondary-action="interfaceCaseSecondaryAction"
-            @navigate-stage="navigateInterfaceCaseStage"
-            @primary="handleInterfacePrimaryAction"
-            @secondary="startNewInterfaceCaseTask"
-          />
-          <div class="studio-interface-case-canvas__stage">
-            <div v-if="isCompactDesktop" class="studio-interface-case-canvas__drawer-actions">
-              <el-button data-testid="interface-context-pane-drawer-button" @click="compactContextVisible = true">
-                接口与配置
-              </el-button>
-              <el-button
-                v-if="interfaceCaseWorkflow.activeStage === 'review'"
-                data-testid="interface-inspector-drawer-button"
-                @click="compactInspectorVisible = true"
-              >
-                AI 评审
-              </el-button>
-            </div>
-            <WorkflowStateView
-              v-if="interfaceCaseWorkflow.activeStage === 'import' && importedProjects.length === 0"
-              variant="empty"
-              title="导入 OpenAPI 开始接口用例设计"
-              description="导入后可筛选接口并配置生成策略"
-              action-label="导入 OpenAPI"
-              @action="pickOpenApiFiles"
-            />
-            <WorkflowStateView
-              v-else-if="interfaceOperationSelectionEmpty"
-              variant="filtered-empty"
-              title="没有符合条件的接口"
-              description="当前筛选条件没有匹配结果"
-              action-label="清除筛选"
-              @action="resetInterfaceOperationFilters"
-            />
-            <InterfaceOperationTable
-              v-else-if="interfaceOperationSelectionVisible"
-              :operations="filteredOperations"
-              :selected-ids="selectedOperationIds"
-              @toggle-operation="toggleOperation"
-              @select-filtered="selectFilteredOperations"
-              @clear-selected="clearSelectedOperations"
-            />
-            <InterfaceCaseTable
-              v-else-if="['import', 'generate', 'review'].includes(interfaceCaseWorkflow.activeStage) && filteredCases.length > 0"
-              :cases="filteredCases"
-              :visible-fields="visibleInterfaceFields"
-              :selected-ids="selectedInterfaceCaseIds"
-              :keyword="previewFilter.keyword"
-              :module="previewFilter.module === 'ALL' ? '' : previewFilter.module"
-              :case-type="previewFilter.caseType === 'ALL' ? '' : previewFilter.caseType"
-              :priority="previewFilter.priority === 'ALL' ? '' : previewFilter.priority"
-              :review-status="interfaceReviewStatusFilter === 'ALL' ? '' : interfaceReviewStatusFilter"
-              :module-options="previewModules"
-              :case-type-options="previewCaseTypes"
-              :priority-options="previewPriorities"
-              :review-status-options="previewReviewStatuses"
-              @selection-change="selectedInterfaceCaseIds = $event"
-              @update-keyword="previewFilter.keyword = $event"
-              @update-module="previewFilter.module = $event || 'ALL'"
-              @update-case-type="previewFilter.caseType = $event || 'ALL'"
-              @update-priority="previewFilter.priority = $event || 'ALL'"
-              @update-review-status="interfaceReviewStatusFilter = $event || 'ALL'"
-              @clear-filters="resetInterfaceCaseFilters"
-              @activate="selectedCase = $event"
-              @move="moveGeneratedCase"
-              @edit="openEdit"
-              @remove="deleteCase"
-              @bulk-review="runAiReview"
-            />
-            <WorkflowStateView
-              v-else-if="['import', 'generate', 'review'].includes(interfaceCaseWorkflow.activeStage) && generatedCases.length > 0"
-              variant="filtered-empty"
-              title="没有符合条件的用例"
-              description="当前筛选条件没有匹配结果"
-              action-label="清除筛选"
-              @action="resetInterfaceCaseFilters"
-            />
-            <WorkflowStateView
-              v-else-if="interfaceCaseWorkflow.activeStage === 'generate'"
-              variant="empty"
-              title="选择接口并生成用例"
-              description="使用左侧接口与生成配置选择范围"
-            />
-            <InterfaceCaseDeliveryStage
-              v-else-if="interfaceCaseWorkflow.activeStage === 'deliver'"
-              :generated-count="generatedCases.length"
-              :review-attempted="interfaceReviewAttempted"
-              :review-finding-count="visibleInterfaceReviewFindings.length"
-              :saving="saveCasesLoading"
-              @save="saveCases"
-              @transfer="transferGeneratedCasesToAutomation"
-              @export="exportCsv"
-            />
-          </div>
-        </section>
-
-        <section v-else class="studio-case-design-canvas">
-          <WorkflowHeader
-            :title="caseDesignStageTitle"
-            :save-label="caseDesignSaveLabel"
-            :stages="caseDesignWorkflow.stages"
-            :primary-action="caseDesignHeaderPrimaryAction"
-            @navigate-stage="navigateCaseDesignStage"
-            @primary="handleCaseDesignPrimaryAction"
-          />
-          <div class="studio-case-design-canvas__stage">
-          <AiPolicyDisclosure
-            v-if="showAiPolicyDisclosure && !aiPolicyDisclosureDismissed"
-            :policy="aiRequirementPolicy"
-            :ready="aiConfigReady"
-            :error="aiRunPoliciesError"
-            @view-details="activeNav = 'aiConfig'"
-            @dismiss="aiPolicyDisclosureDismissed = true"
-          />
-          <template v-if="caseDesignWorkflow.activeStage === 'requirement'">
-            <RequirementImportStage
-              :sources="caseDesignSourceView"
-              :analysis-status="aiAnalysisRunning ? 'running' : aiAnalysisError ? 'failed' : aiAnalysisCompleted ? 'succeeded' : 'idle'"
-              :progress-percentage="aiAnalysisProgress.percentage"
-              :progress-text="aiAnalysisProgress.text"
-              :error-message="aiAnalysisError"
-              :parsed-items="caseDesignParsedItems"
-              :completed-source-count="aiAnalysisCompleted ? readyRequirementSourceCount : 0"
-              :total-source-count="readyRequirementSourceCount"
-              :analysis-log="aiAnalysisLog"
-              :compact="isCompactDesktop"
-              @pick-files="pickWebCaseFiles"
-              @import-figma="promptFigmaDesignImport"
-              @retry-source="retryRequirementSource"
-              @replace-source="replaceRequirementSource"
-              @remove-source="removeRequirementSource"
-              @cancel-analysis="cancelCurrentAiAnalysisRun"
-            />
-            <AiRunSummaryView
-              v-if="showAiRunSummary"
-              :summary="aiAnalysisRun?.outputSummary"
-              :status="aiAnalysisRun?.status"
-            />
-          </template>
-          <TestPointParseStage
-            v-else-if="caseDesignWorkflow.activeStage === 'test-parse'"
-            :points="aiDraftPoints"
-            :selected-ids="generationScopePointIds"
-            :pending-count="pendingAiDraftPoints.length"
-            :confirming="aiDraftBulkConfirming"
-            @update-selection="generationScopePointIds = $event"
-            @confirm-all="confirmAiDraftPoints(pendingAiDraftPoints, '确认测试点')"
-            @confirm-one="confirmAiDraftPoint"
-            @edit-point="editAiDraftPointFromDetails"
-            @delete-point="deleteAiDraftPoint"
-          />
-          <NaturalLanguageCaseGenerationStage
-            v-else-if="caseDesignWorkflow.activeStage === 'case-generate'"
-            :status="aiCaseGenerationRunning ? 'running' : aiGenerationError ? 'failed' : aiCaseGenerationCompleted ? 'succeeded' : 'idle'"
-            :progress-percentage="aiCaseGenerationProgress.percentage"
-            :progress-text="aiCaseGenerationProgress.text"
-            :error-message="aiGenerationError"
-            :cases="generatedWebCases"
-            :selected-ids="selectedGeneratedWebCaseIds"
-            :project-id="webCaseAgentRun?.projectId"
-            :retryable-point-count="generationRetryPointIds.length"
-            :generatable-point-count="scopedAiDraftPoints.length"
-            @generate="generateNaturalLanguageCasesWithAi()"
-            @retry="generateNaturalLanguageCasesWithAi(true)"
-            @cancel="cancelAiCaseGeneration"
-            @selection-change="selectedGeneratedWebCaseIds = $event"
-            @activate="selectedCase = $event"
-            @preview="openWebCasePreview"
-            @edit="openWebEdit($event)"
-            @remove="removeGeneratedWebCase"
-          />
-          <AutomationCompileStage
-            v-else-if="caseDesignWorkflow.activeStage === 'automation-compile'"
-            :status="caseDesignWorkflow.automationCompileStatus"
-            :progress-text="aiCaseGenerationProgress.text"
-            :cases="generatedWebCases"
-            :selected-ids="selectedGeneratedWebCaseIds"
-            :run="webCaseAgentRun"
-            :events="webCaseAgentEvents"
-            :natural-plan-count="webCaseAgentNaturalPlanCount"
-            @compile="compileWebAutomationCases()"
-            @cancel="cancelAiCaseGeneration"
-            @retry="compileWebAutomationCases(true)"
-            @resume="compileWebAutomationCases(true)"
-            @selection-change="selectedGeneratedWebCaseIds = $event"
-            @activate="selectedCase = $event"
-            @preview="openWebCasePreview"
-            @edit="openWebEdit($event)"
-            @remove="removeGeneratedWebCase"
-            @configure-environment="openEnvironmentEditor(undefined, 'web')"
-          />
-          <section v-else-if="caseDesignWorkflow.activeStage === 'review'" class="studio-review-stage">
-            <el-button v-if="isCompactDesktop && caseDesignContextVisible" data-testid="context-pane-drawer-button" @click="compactContextVisible = true">查看需求与模块</el-button>
-            <el-button v-if="isCompactDesktop && caseDesignWorkflow.activeStage === 'review'" data-testid="inspector-drawer-button" @click="compactInspectorVisible = true">查看 AI 评审</el-button>
-            <header class="studio-review-stage__toolbar">
-              <div class="studio-review-stage__filters">
-                <el-select v-model="webPreviewFilter.module" aria-label="评审模块">
-                  <el-option label="全部模块" value="ALL" />
-                  <el-option v-for="module in webPreviewModules" :key="module.value" :label="module.value" :value="module.value" />
-                </el-select>
-                <el-select v-model="webPreviewFilter.caseType" aria-label="评审用例类型">
-                  <el-option label="全部类型" value="ALL" />
-                  <el-option v-for="caseType in webPreviewCaseTypes" :key="caseType.value" :label="caseType.value" :value="caseType.value" />
-                </el-select>
-                <el-input v-model="webPreviewFilter.keyword" clearable placeholder="搜索 Web 用例" />
-              </div>
-              <el-button class="studio-review-stage__review-button" type="primary" :loading="aiMultiAgentLoading && activeAiReviewStage === 'case'" @click="startCaseAiReview">
-                <Sparkles :size="15" />{{ caseAiReviewRun ? '重新评审' : '启动 AI 评审' }}
-              </el-button>
-            </header>
-            <div v-if="caseReviewError" class="studio-generation-status is-failed" role="status"><span>{{ caseReviewError }}</span></div>
-            <GeneratedWebCaseTable
-              v-if="filteredWebCases.length"
-              :cases="filteredWebCases"
-              :selected-ids="selectedGeneratedWebCaseIds"
-              :project-id="caseAiReviewRun?.projectId"
-              table-height="100%"
-              selectable
-              @selection-change="selectedGeneratedWebCaseIds = $event"
-              @activate="selectedCase = $event"
-              @preview="openWebCasePreview"
-              @edit="openWebEdit($event)"
-              @remove="removeGeneratedWebCase"
-            />
-            <WorkflowStateView v-else variant="filtered-empty" title="没有符合条件的用例" description="当前筛选条件没有匹配结果" action-label="清除筛选" @action="Object.assign(webPreviewFilter, { module: 'ALL', caseType: 'ALL', keyword: '' })" />
-          </section>
-          <CaseDeliveryStage
-            v-else-if="caseDesignWorkflow.activeStage === 'deliver'"
-            v-model:mode="deliveryMode"
-            v-model:execute-now="deliveryExecuteNow"
-            :automation-kind="deliveryAutomationKind"
-            :generated-count="generatedWebCases.length"
-            :selected-automation-count="selectedWebCasesForAutomation.length"
-            :environment-name="activeDeliveryEnvironment?.name || ''"
-            :preflight="caseDesignDeliveryView"
-            @configure-environment="openEnvironmentEditor(undefined, deliveryAutomationKind)"
-          />
-          </div>
-        </section>
-        </template>
-        </CaseWorkbenchView>
+        <!-- A3-B2：五段式用例设计流程已下线（旧 AI 接口一并拆除），用例库保留只读/维护能力。 -->
+        <CasesView :key="activeNav" />
       </template>
 
       <template v-else-if="activeNav === 'home'">
-        <HomeView @navigate="handleHomeNavigate" />
+        <HomeView
+          ref="homeViewRef"
+          :runs="homeRuns"
+          :items="homeWorkItems"
+          :projects="homeProjects"
+          :status="homeWorkspaceStatus"
+          :error-message="homeWorkspaceError"
+          @navigate="handleHomeNavigate"
+          @retry="retryHomeWorkspace"
+        />
+      </template>
+
+      <template v-else-if="activeNav === 'assistant'">
+        <AssistantChainView
+          :user="currentUser"
+        />
+      </template>
+
+      <template v-else-if="activeNav === 'overview'">
+        <OverviewView
+          :status="overviewStatus"
+          :error-message="overviewError"
+          :availability-checked="overviewAvailabilityChecked"
+          @retry="checkOverviewAvailability"
+        />
       </template>
 
       <template v-else-if="isSettingsCenterNav">
         <SettingsCenterView
           :active-nav="activeNav"
           :role="currentUser?.role"
+          :can-edit="canEdit"
           :form="jiraConfigForm"
           :loading="jiraConfigLoading"
+          :read-state="jiraConfigReadState"
           :testing="jiraConfigTesting"
           :project-jql-rows="jiraProjectJqlRows"
           :load="loadJiraSettingsFromBackend"
@@ -6431,7 +4183,11 @@ onBeforeUnmount(() => {
           :add-jql-row="addJiraProjectJqlRow"
           :remove-jql-row="removeJiraProjectJqlRow"
           :sync-jql-form="syncJiraProjectJqlFormFromRows"
+          :test-result="jiraConfigTestResult"
+          :saved-snapshot="jiraConfigSavedSnapshot"
+          :validation-error="jiraConfigValidationError"
           :current-username="currentUser?.username || ''"
+          @open-section="(section: 'fields' | 'types') => navigateToNav(section === 'types' ? 'caseTypes' : 'settings')"
         />
       </template>
       <template v-else-if="isQualityWorkbenchNav">
@@ -6446,50 +4202,40 @@ onBeforeUnmount(() => {
           :automation-kind="automationKind"
         >
         <template #api>
-        <header v-if="automationKind === 'api'" class="topbar automation-topbar">
+        <ApiRunMonitorView
+          v-if="automationKind === 'api' && apiRunMonitor"
+          v-show="apiAutomationWorkspaceMode === 'monitor'"
+          ref="apiRunMonitorRef"
+          :monitor="apiRunMonitor"
+          @return-preparation="returnApiRunPreparation"
+          @open-report="openReportsModule"
+        />
+        <header v-if="automationKind === 'api'" v-show="apiAutomationWorkspaceMode === 'prepare'" class="topbar automation-topbar">
           <div class="automation-topbar__title">
             <h1>自动化</h1>
-            <div class="automation-topbar__runtime" aria-label="API 运行状态">
-              <span class="automation-topbar__runtime-item">
-                <small>运行环境</small>
-                <strong>{{ activeApiExecutionEnvironment?.name || '未选择' }}</strong>
-              </span>
-              <span class="automation-topbar__runtime-item">
-                <small>执行方式</small>
-                <strong>{{ automationRunMode === 'sequential' ? '顺序' : automationRunMode === 'concurrent' ? '并发' : '按模块' }}</strong>
-              </span>
-              <span class="automation-topbar__runtime-item">
-                <small>循环次数</small>
-                <strong>{{ apiAutomationLoopCount }} 次</strong>
-              </span>
-              <span class="automation-topbar__runtime-item">
-                <small>并发数</small>
-                <strong>{{ automationConcurrencyLimit }}</strong>
-              </span>
-              <span class="automation-topbar__runtime-item">
-                <small>返回体一致度</small>
-                <strong>{{ responseBodyMatchThreshold }}%</strong>
-              </span>
-            </div>
+            <p class="automation-topbar__subtitle">
+              准备 {{ filteredAutomationCases.length }} 条可用例；运行环境与参数在「运行配置」中维护。
+            </p>
           </div>
           <div class="toolbar">
-            <el-button type="primary" plain @click="automationConfigVisible = true">
+            <el-button :disabled="!canEdit" @click="openEnvironmentManagement('api')">
+              <Settings :size="16" />
+              环境配置
+            </el-button>
+            <el-button @click="automationConfigVisible = true">
               <Settings :size="16" />
               运行配置
             </el-button>
-            <el-button :disabled="!canEdit" @click="openAutomationGenerateDialog">
-              <Archive :size="16" />
-              从用例库生成
-            </el-button>
-            <el-button v-if="automationKind === 'api'" type="success" :loading="apiAutomationRunning" :disabled="!canEdit" @click="executeAllAutomationCases">
+            <button v-if="apiRunMonitor" ref="apiMonitorEntry" type="button" class="api-preparation-monitor-entry" data-testid="api-monitor-entry" @click="enterApiRunMonitor">返回运行监控 ↗</button>
+            <el-button v-if="automationKind === 'api'" type="primary" :loading="apiAutomationRunning || apiRunConfirming" :disabled="!canEdit || apiAutomationRunning || apiRunConfirming || filteredAutomationCases.length === 0" @click="executeAllAutomationCases">
               <Play :size="16" />
-              执行全部
+              {{ apiExecutionScopeLabel }}
             </el-button>
             <el-button @click="openReportsModule">
               <FileText :size="16" />
               查看报告
             </el-button>
-            <el-button type="primary" @click="exportAutomationJson">
+            <el-button @click="exportAutomationJson">
               <Download :size="16" />
               导出用例
             </el-button>
@@ -6498,8 +4244,9 @@ onBeforeUnmount(() => {
 
         <section
           v-if="automationKind === 'api'"
+          v-show="apiAutomationWorkspaceMode === 'prepare'"
+          ref="apiPreparationElement"
           class="automation-workspace"
-          :class="{ 'automation-workspace--with-progress': apiAutomationRunning || apiAutomationProgress.total > 0 }"
         >
           <div class="library-metrics automation-metrics">
             <div class="metric-card">
@@ -6518,19 +4265,6 @@ onBeforeUnmount(() => {
               <span>当前筛选</span>
               <strong>{{ filteredAutomationCases.length }}</strong>
             </div>
-          </div>
-
-          <div v-if="apiAutomationRunning || apiAutomationProgress.total > 0" class="automation-progress-strip">
-            <div class="automation-progress-meta">
-              <strong>执行进度</strong>
-              <span>{{ apiAutomationProgress.completed }} / {{ apiAutomationProgress.total }}</span>
-              <code v-if="apiAutomationProgress.runningCaseId">{{ apiAutomationProgress.runningCaseId }}</code>
-            </div>
-            <el-progress
-              :percentage="apiAutomationProgress.total ? Math.round((apiAutomationProgress.completed / apiAutomationProgress.total) * 100) : 0"
-              :stroke-width="8"
-              :show-text="false"
-            />
           </div>
 
             <div class="case-panel automation-panel">
@@ -6620,6 +4354,7 @@ onBeforeUnmount(() => {
             <ApiAutomationCaseTable
               v-if="automationKind === 'api'"
               :cases="filteredAutomationCases"
+              :selection="automationSelection"
               :result-map="automationResultMap"
               :defect-draft-by-report-case-id="defectDraftByReportCaseId"
               :defect-status-label="defectStatusLabel"
@@ -6693,14 +4428,35 @@ onBeforeUnmount(() => {
                   />
                 </div>
               </div>
-              <div class="execution-control-group execution-control-group-count execution-control-group-count-select">
+              <div class="execution-control-group execution-control-group-count">
                 <span>{{ automationRunMode === 'concurrent' ? '并发数' : '循环次数' }}</span>
                 <div class="execution-control-row">
-                  <el-segmented
-                    v-model="apiRunCountSelection"
-                    class="automation-config-count-segmented"
-                    :options="automationRunMode === 'concurrent' ? apiConcurrencyOptions : apiLoopCountOptions"
-                  />
+                  <div class="api-run-count-stepper" data-testid="api-run-count-stepper">
+                    <button
+                      type="button"
+                      class="api-run-count-stepper__button"
+                      aria-label="减少"
+                      :disabled="apiRunCountValue <= apiRunCountMin"
+                      @click="stepApiRunCount(-1)"
+                    >−</button>
+                    <input
+                      :value="apiRunCountInput"
+                      class="api-run-count-stepper__input"
+                      type="text"
+                      inputmode="numeric"
+                      aria-label="循环次数"
+                      data-testid="api-run-count-input"
+                      @input="onApiRunCountInput"
+                      @blur="commitApiRunCount()"
+                    />
+                    <button
+                      type="button"
+                      class="api-run-count-stepper__button"
+                      aria-label="增加"
+                      @click="stepApiRunCount(1)"
+                    >+</button>
+                  </div>
+                  <small v-if="apiRunCountError" class="api-run-count-error" role="alert">{{ apiRunCountError }}</small>
                 </div>
               </div>
             </div>
@@ -6728,7 +4484,7 @@ onBeforeUnmount(() => {
           @update-browser="updateWebAutomationBrowser"
           @update-loop-count="updateWebAutomationLoopCount"
           @edit-environment="openEnvironmentEditor(undefined, 'web')"
-          @execute="startVisualWebAutomationRun"
+          @execute="(request) => startVisualWebAutomationRun(undefined, request)"
           @update-project="switchAutomationProject"
           @update-module="switchWebAutomationModule"
           @toggle-case="toggleWebAutomationCase"
@@ -6748,7 +4504,7 @@ onBeforeUnmount(() => {
           @pause="pauseActiveWebRun"
           @resume="resumeActiveWebRun"
           @stop="stopActiveWebRun"
-          @rerun="startVisualWebAutomationRun"
+          @rerun="() => startVisualWebAutomationRun()"
           @open-report="openActiveWebRunReport"
           @save-suite="saveCurrentWebRunSuite"
           @apply-suite="applyWebRunSuite"
@@ -6759,6 +4515,30 @@ onBeforeUnmount(() => {
         </ExecutionWorkbenchView>
       </template>
 
+      <template v-else-if="activeNav === 'environments'">
+        <EnvironmentManagementView
+          :kind="environmentEditorKind"
+          :environments="currentEnvironmentLibrary.environments"
+          :active-environment-id="editingEnvironment.id"
+          @update:kind="switchEnvironmentManagementKind"
+          @select="selectEnvironmentFromPage"
+          @back="returnToPreparationFromEnvironments"
+        >
+          <template #directory-actions>
+            <div class="environment-page__directory-actions">
+              <el-button type="primary" :disabled="!canEdit" @click="addExecutionEnvironment()">
+                <Plus :size="14" />
+                新增环境
+              </el-button>
+              <el-button :disabled="!canEdit" @click="openEnvironmentEditor(undefined, environmentEditorKind)">
+                打开环境编辑器
+              </el-button>
+            </div>
+          </template>
+          <div id="environment-inline-editor-host" class="environment-inline-editor-host"></div>
+        </EnvironmentManagementView>
+      </template>
+
       <section v-else class="future-workspace">
         <component :is="currentNav.icon" :size="48" />
         <h1>{{ currentNav.label }}</h1>
@@ -6767,129 +4547,21 @@ onBeforeUnmount(() => {
     </main>
   </AppShell>
 
-  <input
-    ref="openApiFileInput"
-    class="file-input-proxy"
-    type="file"
-    multiple
-    accept=".json,application/json"
-    aria-label="导入 OpenAPI"
-    @change="onFileSelected"
-  />
-  <input
-    ref="webCaseFileInput"
-    class="file-input-proxy"
-    type="file"
-    :multiple="!pendingRequirementSourcePick?.replaceName"
-    :accept="requirementSourceInputAccept"
-    aria-label="选择需求文件"
-    @change="onWebCaseFileSelected"
-  />
-
-  <ResponsiveDrawer v-model="narrowNavigationVisible" title="主导航" size="168px" direction="ltr">
+  <ResponsiveDrawer v-model="narrowNavigationVisible" class="studio-navigation-drawer" title="主导航" size="168px" direction="ltr">
     <PrimarySidebar
       :groups="sidebarGroups"
       :active-item-id="activeSidebarItemId"
       :collapsed="false"
       :badges="sidebarBadges"
+      :settings-entry="!isSettingsCenterNav"
       @select="selectSidebarItem($event); narrowNavigationVisible = false"
+      @help="narrowNavigationVisible = false; helpVisible = true"
     />
   </ResponsiveDrawer>
 
-  <ResponsiveDrawer
-    v-model="compactInspectorVisible"
-    :title="interfaceInspectorVisible ? 'AI 评审' : 'AI 质量评审'"
-    size="min(88vw, 360px)"
-  >
-    <InterfaceReviewInspector
-      v-if="interfaceInspectorVisible"
-      :findings="visibleInterfaceReviewFindings"
-      :summary="visibleInterfaceReviewSummary"
-      :reviewing="false"
-      :review-attempted="interfaceReviewAttempted"
-      @review="runAiReview"
-      @supplement-missing="supplementMissingCases"
-      @locate-finding="locateInterfaceReviewFinding"
-      @ignore-finding="ignoreInterfaceReviewFinding"
-    />
-    <AiReviewInspector
-      v-else
-      :selected-count="selectedReviewCaseCount"
-      :high-risk-count="caseDesignReviewView.highRiskCount"
-      :pending-finding-count="caseDesignReviewView.pendingFindingCount"
-      :average-score="caseDesignReviewView.averageScore"
-      :summary="activeAiReviewInsight.summary"
-      :findings="caseDesignReviewView.findings"
-      :conflicts="caseDesignRelevantConflicts"
-      :can-merge="canMergeMultiAgentReview"
-      :loading="aiMultiAgentLoading"
-      @ignore-conflicts="ignoreUnresolvedMultiAgentConflicts"
-      @ignore-conflict="ignoreSingleReviewConflict"
-      @merge="mergeMultiAgentReview"
-      @decide="decideSelectedReviewFinding"
-      @bulk-decide="bulkDecideReviewCases"
-    />
-  </ResponsiveDrawer>
+  <HelpDrawer v-if="authStatus === 'authenticated'" v-model="helpVisible" />
 
-  <ResponsiveDrawer
-    v-model="compactContextVisible"
-    :title="interfaceContextVisible ? '接口与配置' : '需求与模块'"
-    size="min(82vw, 320px)"
-    direction="ltr"
-  >
-    <InterfaceCaseContextPane
-      v-if="interfaceContextVisible"
-      :module="importFilter.module"
-      :module-options="interfaceModuleOptions"
-      :path-keyword="importFilter.pathKeyword"
-      :summary-keyword="importFilter.summaryKeyword"
-      :method="importFilter.method"
-      :template-id="generationTemplateId"
-      :template-options="generationTemplateOptions"
-      :granularity="generation.granularity"
-      @update-module="importFilter.module = $event"
-      @update-path-keyword="importFilter.pathKeyword = $event"
-      @update-summary-keyword="importFilter.summaryKeyword = $event"
-      @update-method="importFilter.method = $event"
-      @update-template-id="generationTemplateId = $event"
-      @update-granularity="generation.granularity = $event"
-    />
-    <CaseDesignContextPane
-      v-else
-      :sources="caseDesignSourceView"
-      :modules="aiDraftPointView.moduleOptions"
-      :active-module="caseDesignActiveModule"
-      :active-source="activeCaseDesignSource"
-      @select-source="selectCaseDesignSource"
-      @select-module="selectCaseDesignModule"
-    />
-  </ResponsiveDrawer>
-
-    <ResponsiveDrawer v-model="webCasePreviewVisible" size="560px" title="用例预览">
-      <article v-if="previewedWebCase" class="studio-web-case-preview" data-testid="web-case-preview">
-        <header>
-          <span>{{ previewedWebCase.row.caseId }}</span>
-          <strong>{{ previewedWebCase.row.title }}</strong>
-          <small>{{ previewedWebCase.row.module }} · {{ previewedWebCase.row.pageName }} · {{ previewedWebCase.row.priority }}</small>
-        </header>
-        <dl>
-          <div><dt>访问地址</dt><dd>{{ previewedWebCase.row.startUrl || '-' }}</dd></div>
-          <div><dt>浏览器</dt><dd>{{ previewedWebCase.row.browser || '-' }} · {{ previewedWebCase.row.viewport || '-' }}</dd></div>
-          <div><dt>前置条件</dt><dd>{{ previewedWebCase.row.precondition || '-' }}</dd></div>
-          <div><dt>自然语言步骤</dt><dd class="studio-web-case-preview__multiline">{{ formatNaturalLanguageText(previewedWebCase.row.naturalSteps) || '未生成自然语言步骤，请重新生成该用例' }}</dd></div>
-          <div><dt>自然语言预期</dt><dd class="studio-web-case-preview__multiline">{{ formatNaturalLanguageText(previewedWebCase.row.naturalExpectedResult) || '未生成自然语言预期，请重新生成该用例' }}</dd></div>
-          <div><dt>自动化断言</dt><dd class="studio-web-case-preview__multiline">{{ previewedWebCase.row.assertions || '-' }}</dd></div>
-        </dl>
-        <section>
-          <header><strong>执行步骤</strong><span>{{ previewedWebCase.metadata.steps.length }} 步</span></header>
-          <ol>
-            <li v-for="step in previewedWebCase.metadata.steps" :key="step.id"><code>{{ step.action }}</code><span>{{ step.target }}</span></li>
-          </ol>
-        </section>
-      </article>
-    </ResponsiveDrawer>
-
-    <ResponsiveDrawer v-model="editVisible" :size="selectedCase && 'pageName' in selectedCase.row ? '820px' : '520px'" title="编辑用例">
+    <ResponsiveDrawer v-model="editVisible" class="case-editor-drawer" :size="selectedCase && 'pageName' in selectedCase.row ? '820px' : '520px'" title="编辑用例">
       <div class="edit-form" v-if="selectedCase && !('pageName' in selectedCase.row)">
         <el-form label-position="top">
           <el-form-item v-for="field in visibleEditableFields" :key="field.key" :label="field.label">
@@ -7028,7 +4700,7 @@ onBeforeUnmount(() => {
       </div>
     </ResponsiveDrawer>
 
-    <el-drawer v-model="curlVisible" size="620px" title="可执行请求">
+    <el-drawer v-model="curlVisible" class="curl-preview-drawer" size="min(620px, 100vw)" title="可执行请求">
       <div class="curl-preview">
         <div class="curl-preview-head">
           <span>请求预览</span>
@@ -7049,11 +4721,11 @@ onBeforeUnmount(() => {
       </div>
     </el-drawer>
 
-    <el-drawer
+    <EnvironmentEditorSurface
+      v-if="authStatus === 'authenticated'"
       v-model="environmentVisible"
-      class="web-automation-drawer"
-      :class="{ 'is-web-environment': environmentEditorKind === 'web' }"
-      size="860px"
+      :inline="activeNav === 'environments'"
+      :web="environmentEditorKind === 'web'"
       :title="environmentEditorKind === 'web' ? 'Web 运行环境配置' : 'API 运行环境配置'"
     >
       <div class="environment-drawer">
@@ -7443,12 +5115,12 @@ onBeforeUnmount(() => {
 
           <div class="drawer-actions environment-drawer-actions">
             <el-button type="danger" plain @click="deleteExecutionEnvironment(editingEnvironment.id)">删除环境</el-button>
-            <el-button @click="environmentVisible = false">取消</el-button>
+            <el-button @click="cancelEnvironmentEditing">取消</el-button>
             <el-button type="primary" @click="saveEditingEnvironment()">保存环境</el-button>
           </div>
         </section>
       </div>
-    </el-drawer>
+    </EnvironmentEditorSurface>
 
     <el-dialog
       v-model="webLoginDiscoveryDialogVisible"
@@ -7789,7 +5461,7 @@ onBeforeUnmount(() => {
       </div>
     </el-drawer>
 
-    <el-dialog v-model="automationGenerateVisible" class="web-automation-dialog" title="从用例库生成自动化用例" width="520px">
+    <el-dialog v-model="automationGenerateVisible" class="web-automation-dialog case-conversion-dialog" title="从用例库生成自动化用例" width="520px">
       <div class="edit-form">
         <label>
           <span>项目</span>
@@ -7832,6 +5504,7 @@ onBeforeUnmount(() => {
 
     <el-dialog
       v-model="changePasswordDialogVisible"
+      class="account-password-dialog"
       title="修改密码"
       width="min(92vw, 420px)"
       :close-on-click-modal="false"
@@ -7893,5 +5566,89 @@ onBeforeUnmount(() => {
   font-size: 13px;
   color: var(--status-warning-text);
   background: var(--color-warning-soft);
+}
+
+/* API 执行准备：页头副标题 + 循环次数步进（仅本页/本抽屉使用，不改全局样式） */
+.automation-topbar__subtitle {
+  margin: 4px 0 0;
+  font-size: 11px;
+  color: var(--ink-muted, #6b707a);
+}
+
+.api-run-count-stepper {
+  display: inline-flex;
+  align-items: stretch;
+  min-height: 34px;
+  border: 1px solid #e8ebee;
+  border-radius: 20px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.api-run-count-stepper__button {
+  width: 34px;
+  border: 0;
+  background: transparent;
+  color: #3f5a50;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.api-run-count-stepper__button:disabled {
+  color: #b7bfc6;
+  cursor: not-allowed;
+}
+
+.api-run-count-stepper__button:focus-visible {
+  background: #edf2f0;
+}
+
+.api-run-count-stepper__input {
+  width: 56px;
+  border: 0;
+  border-inline: 1px solid #eef1f4;
+  text-align: center;
+  font-size: 12px;
+  color: #303740;
+  background: #fff;
+}
+
+.api-run-count-stepper__input:focus {
+  outline: 0;
+  background: #fafcfb;
+}
+
+.api-run-count-error {
+  margin-left: 8px;
+  font-size: 11px;
+  color: var(--color-danger, #b4423f);
+}
+
+@media (max-width: 640px) {
+  .automation-config-drawer .execution-control-group-count .execution-control-row {
+    flex-wrap: wrap;
+  }
+
+  .automation-config-drawer .execution-control-group-count .api-run-count-stepper {
+    flex: none;
+  }
+
+  .automation-config-drawer .execution-control-group-count .api-run-count-error {
+    flex-basis: 100%;
+    margin-left: 0;
+  }
+}
+
+:global(.el-message.web-run-terminal-feedback) {
+  z-index: 1999 !important;
+  pointer-events: none;
+}
+
+/* 环境配置独立页：目录动作（slot 内容在父作用域内提供） */
+.environment-page__directory-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 </style>

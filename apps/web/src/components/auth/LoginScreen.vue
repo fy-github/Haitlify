@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onBeforeUnmount, ref } from 'vue'
 import { KeyRound, LogIn, User } from '@lucide/vue'
 import { login, type AuthUser } from '../../domain/authRepository'
+import { getAuthSessionEpoch } from '../../domain/http'
 
 const emit = defineEmits<{
   authenticated: [user: AuthUser]
@@ -11,8 +12,11 @@ const username = ref('')
 const password = ref('')
 const errorMessage = ref('')
 const submitting = ref(false)
+let disposed = false
+onBeforeUnmount(() => { disposed = true })
 
 const submit = async (): Promise<void> => {
+  if (disposed || submitting.value) return
   const trimmedUsername = username.value.trim()
   if (!trimmedUsername || !password.value) {
     errorMessage.value = '请输入用户名和密码'
@@ -21,13 +25,19 @@ const submit = async (): Promise<void> => {
 
   submitting.value = true
   errorMessage.value = ''
+  // login() advances the session before dispatch; capture that request's epoch.
+  const pending = login(trimmedUsername, password.value)
+  const epoch = getAuthSessionEpoch()
+  const isCurrent = () => !disposed && epoch === getAuthSessionEpoch()
   try {
-    const user = await login(trimmedUsername, password.value)
+    const user = await pending
+    if (!isCurrent()) return
     emit('authenticated', user)
   } catch (error) {
+    if (!isCurrent()) return
     errorMessage.value = describeLoginError(error)
   } finally {
-    submitting.value = false
+    if (isCurrent()) submitting.value = false
   }
 }
 
