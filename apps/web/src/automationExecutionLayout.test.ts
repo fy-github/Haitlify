@@ -3,13 +3,17 @@ import appSource from './App.vue?raw'
 
 describe('Automation execution layout', () => {
   it('keeps the API topbar focused on the automation task without duplicate API labels', () => {
-    const topbarStart = appSource.indexOf('<header v-if="automationKind === \'api\'" class="topbar automation-topbar">')
+    const topbarStart = appSource.indexOf('class="topbar automation-topbar"')
     const topbarEnd = appSource.indexOf('</header>', topbarStart)
     const topbar = appSource.slice(topbarStart, topbarEnd)
     expect(topbar).not.toContain('API Automation')
     expect(topbar).not.toContain('<el-tag type="info" effect="plain">API</el-tag>')
-    expect(topbar).toContain('<small>循环次数</small>')
-    expect(topbar).toContain('<small>并发数</small>')
+    // 定稿：内联运行参数 chip 已移除，参数只留在运行配置抽屉；页级保留 环境配置 / 运行配置
+    expect(topbar).not.toContain('automation-topbar__runtime')
+    expect(topbar).toContain('\n              环境配置')
+    expect(topbar).toContain('\n              运行配置')
+    expect(topbar).not.toContain('从用例库生成')
+    expect(topbar).toContain('{{ apiExecutionScopeLabel }}')
   })
 
   it('uses the shared automation config drawer structure', () => {
@@ -40,7 +44,9 @@ describe('Automation execution layout', () => {
   it('uses the shared execution-mode control only for api automation', () => {
     expect(appSource).not.toContain('v-model="webAutomationRunMode"')
     expect(appSource).toContain('class="execution-control-group execution-control-group-mode"')
-    expect(appSource).toContain('class="automation-config-count-segmented"')
+    expect(appSource).toContain('class="api-run-count-stepper"')
+    expect(appSource).toContain('@click="stepApiRunCount(-1)"')
+    expect(appSource).toContain('@click="stepApiRunCount(1)"')
   })
 
   it('binds API and Web environment selection to independent libraries', () => {
@@ -61,8 +67,9 @@ describe('Automation execution layout', () => {
   })
 
   it('keeps API and Web loop counts independent', () => {
-    expect(appSource).toContain('v-model="apiRunCountSelection"')
-    expect(appSource).toContain("automationRunMode === 'concurrent' ? apiConcurrencyOptions : apiLoopCountOptions")
+    expect(appSource).toContain(':value="apiRunCountInput"')
+    expect(appSource).toContain('@input="onApiRunCountInput"')
+    expect(appSource).toContain('automationRunMode.value === \'concurrent\' ? automationConcurrencyLimit.value : apiAutomationLoopCount.value')
     expect(appSource).toContain('loopCount: webAutomationLoopCount.value')
     expect(appSource).toContain('@update-loop-count="updateWebAutomationLoopCount"')
   })

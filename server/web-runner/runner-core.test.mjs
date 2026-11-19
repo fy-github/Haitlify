@@ -1081,3 +1081,9 @@ test('login exit only counts when the route changed, not when the query changed'
   const hashRouted = { url: () => 'http://127.0.0.1:9/#/project', waitForTimeout: async () => {} }
   await executeStep(hashRouted, { ...step }, { loginPageUrl: 'http://127.0.0.1:9/#/login' })
 })
+
+test('waitForText without expected text is rejected before touching the page', async () => {
+  const { executeStep } = await import('./runner-core.mjs')
+  const step = { id: 's1', action: 'waitForText', target: '#list', value: '   ' }
+  await assert.rejects(() => executeStep({}, step, {}), /waitForText 需要一个非空期望文本/)
+})

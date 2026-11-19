@@ -1,0 +1,8 @@
+# Template only. Base must be a reviewed digest-pinned stdlib Python image.
+ARG PYTHON_BASE_IMAGE
+FROM ${PYTHON_BASE_IMAGE}
+USER 0
+COPY gate.py protocol.py edge.py /opt/pool/
+USER 10001:10001
+ENV PYTHONDONTWRITEBYTECODE=1 HOME=/tmp
+ENTRYPOINT ["python3", "/opt/pool/edge.py"]

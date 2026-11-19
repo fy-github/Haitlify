@@ -5,7 +5,21 @@ import PrimarySidebar from './PrimarySidebar.vue'
 import { studioSidebarGroups } from '../../ui/navigation/appSidebar'
 
 describe('PrimarySidebar', () => {
-  it('shows labels, badges, and the current page when expanded', () => {
+  it('opens local help through an enabled control without selecting a business page', async () => {
+    const wrapper = mount(PrimarySidebar, {
+      props: { groups: studioSidebarGroups, activeItemId: 'case-library', collapsed: false }
+    })
+    try {
+      const help = wrapper.get('button[aria-label="帮助文档"]')
+      expect(help.attributes('disabled')).toBeUndefined()
+      expect(help.attributes('title')).toBe('帮助文档')
+      await help.trigger('click')
+      expect(wrapper.emitted('help')).toEqual([[]])
+      expect(wrapper.emitted('select')).toBeUndefined()
+    } finally { wrapper.unmount() }
+  })
+
+  it('shows the active workbench group, badges, and the current page', () => {
     const wrapper = mount(PrimarySidebar, {
       props: {
         groups: studioSidebarGroups,
@@ -15,13 +29,13 @@ describe('PrimarySidebar', () => {
       }
     })
 
-    expect(wrapper.get('.studio-sidebar__group-label').text()).toBe('首页')
-    expect(wrapper.get('button[aria-label="用例库"]').attributes('aria-current')).toBe('page')
-    expect(wrapper.get('button[aria-label="用例库"] .studio-sidebar__badge').text()).toBe('12')
-    expect(wrapper.find('[aria-label="Web 用例"]').exists()).toBe(false)
+    expect(wrapper.get('.studio-sidebar__group-label').text()).toBe('用例工作台')
+    expect(wrapper.get('button[aria-label="接口用例"]').attributes('aria-current')).toBe('page')
+    expect(wrapper.get('button[aria-label="接口用例"] .studio-sidebar__badge').text()).toBe('12')
+    expect(wrapper.get('button[aria-label="Web 用例"]').attributes('aria-current')).toBeUndefined()
   })
 
-  it('expands case-design children and emits the selected subpage', async () => {
+  it('renders only the sub-functions of the active workbench', () => {
     const wrapper = mount(PrimarySidebar, {
       props: {
         groups: studioSidebarGroups,
@@ -30,35 +44,44 @@ describe('PrimarySidebar', () => {
       }
     })
 
-    const parent = wrapper.get('button[aria-label="智能用例设计"]')
-    expect(parent.attributes('aria-expanded')).toBe('false')
+    expect(wrapper.find('button[aria-label="执行报告"]').exists()).toBe(false)
+    expect(wrapper.find('button[aria-label="Jira 配置"]').exists()).toBe(false)
 
-    await parent.trigger('click')
-    expect(parent.attributes('aria-expanded')).toBe('true')
-    expect(wrapper.get('[role="group"][aria-label="智能用例设计子菜单"]')).toBeTruthy()
-
-    await wrapper.get('button[aria-label="接口用例"]').trigger('click')
-    expect(wrapper.emitted('select')?.[0]).toEqual([
-      expect.objectContaining({ id: 'case-design-interface', navKey: 'api', caseDesignKind: 'interface' })
-    ])
-  })
-
-  it('keeps collapsed navigation accessible and requests the full rail before revealing children', async () => {
-    const wrapper = mount(PrimarySidebar, {
+    const settingsWrapper = mount(PrimarySidebar, {
       props: {
         groups: studioSidebarGroups,
-        activeItemId: 'case-design-web',
-        collapsed: true
+        activeItemId: 'jira-config',
+        collapsed: false
       }
     })
 
-    const button = wrapper.get('button[aria-label="智能用例设计"]')
-    expect(button.attributes('title')).toBe('智能用例设计')
-    expect(wrapper.find('.studio-sidebar__label').exists()).toBe(false)
-    expect(wrapper.find('[aria-label="Web 用例"]').exists()).toBe(false)
+    expect(settingsWrapper.get('.studio-sidebar__group-label').text()).toBe('设置中心')
+    expect(settingsWrapper.get('button[aria-label="Jira 配置"]').attributes('aria-current')).toBe('page')
+    expect(settingsWrapper.find('button[aria-label="接口用例"]').exists()).toBe(false)
+    expect(settingsWrapper.find('button[aria-label="Web 用例"]').exists()).toBe(false)
+  })
 
-    await button.trigger('click')
-    expect(wrapper.emitted('requestExpand')).toEqual([[]])
+  it('keeps a docked settings shortcut in every workbench', () => {
+    const wrapper = mount(PrimarySidebar, {
+      props: {
+        groups: studioSidebarGroups,
+        activeItemId: 'api-automation',
+        collapsed: false
+      }
+    })
+
+    const tool = wrapper.get('.studio-sidebar__tools button[aria-label="设置中心"]')
+    expect(tool.text()).toBe('设置中心')
+
+    const settingsWrapper = mount(PrimarySidebar, {
+      props: {
+        groups: studioSidebarGroups,
+        activeItemId: 'templates',
+        collapsed: false
+      }
+    })
+
+    expect(settingsWrapper.get('.studio-sidebar__tools button[aria-label="设置中心"]').text()).toBe('设置中心')
   })
 
   it('emits the selected Web automation item', async () => {
@@ -77,7 +100,7 @@ describe('PrimarySidebar', () => {
     ])
   })
 
-  it('applies accent metadata to item and subitem icons', async () => {
+  it('applies accent metadata to item icons', () => {
     const wrapper = mount(PrimarySidebar, {
       props: {
         groups: studioSidebarGroups,
@@ -87,11 +110,16 @@ describe('PrimarySidebar', () => {
     })
 
     expect(wrapper.get('button[aria-label="API 自动化"] .studio-sidebar__icon').classes()).toContain('studio-sidebar__icon--cyan')
-    expect(wrapper.get('button[aria-label="执行报告"] .studio-sidebar__icon').classes()).toContain('studio-sidebar__icon--amber')
-    expect(wrapper.get('button[aria-label="AI 设置"] .studio-sidebar__icon').classes()).toContain('studio-sidebar__icon--info')
 
-    await wrapper.get('button[aria-label="智能用例设计"]').trigger('click')
-    expect(wrapper.get('button[aria-label="接口用例"] .studio-sidebar__subitem-icon').classes()).toContain('studio-sidebar__subitem-icon--teal')
+    const qualityWrapper = mount(PrimarySidebar, {
+      props: {
+        groups: studioSidebarGroups,
+        activeItemId: 'reports',
+        collapsed: false
+      }
+    })
+
+    expect(qualityWrapper.get('button[aria-label="执行报告"] .studio-sidebar__icon').classes()).toContain('studio-sidebar__icon--amber')
   })
 
   it('does not render stage numbers in the menu labels', () => {
@@ -103,10 +131,8 @@ describe('PrimarySidebar', () => {
       }
     })
 
-    for (const label of ['用例库', '执行报告', 'AI 设置']) {
-      expect(wrapper.get(`button[aria-label="${label}"]`).text()).toBe(label)
-      expect(wrapper.find(`button[aria-label="${label}"] .studio-sidebar__stage-mark`).exists()).toBe(false)
-    }
+    expect(wrapper.get('button[aria-label="接口用例"]').text()).toBe('接口用例')
+    expect(wrapper.get('button[aria-label="Web 用例"]').text()).toBe('Web 用例')
     expect(wrapper.find('.studio-sidebar__stage-mark').exists()).toBe(false)
   })
 })

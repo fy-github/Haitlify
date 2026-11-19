@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 import AppShell from './AppShell.vue'
 
 describe('AppShell', () => {
-  it('renders the shell slots in a stable sidebar, topbar, canvas, inspector order', () => {
+  it('renders the shell slots in a stable topbar, sidebar, canvas, inspector order', () => {
     const wrapper = mount(AppShell, {
       props: {
         sidebarCollapsed: true,
@@ -23,9 +23,10 @@ describe('AppShell', () => {
       'is-sidebar-collapsed',
       'has-inspector'
     ]))
+    // 设计稿把顶栏放在左侧工具栏之上横跨整个外壳,因此 topbar 是外壳首个子区域
     expect(wrapper.findAll('[data-slot]').map((node) => node.attributes('data-slot'))).toEqual([
-      'sidebar',
       'topbar',
+      'sidebar',
       'canvas',
       'inspector'
     ])

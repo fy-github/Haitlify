@@ -12,6 +12,71 @@ import {
 
 export const TEMPLATE_CONFIG_STORAGE_KEY = 'ai-test-platform.template-config.v1'
 export const TEMPLATE_CONFIG_META_STORAGE_KEY = 'ai-test-platform.template-config-meta.v1'
+export const TEMPLATE_CONFIG_PENDING_STORAGE_KEY = 'ai-test-platform.template-config-pending.v1'
+export type TemplateConfigRawPair = Readonly<{ config: string | null; meta: string | null; pending: string | null }>
+export type TemplateRawKey = keyof TemplateConfigRawPair
+export type TemplateWriteReport =
+  | { ok: true; completed: TemplateRawKey[]; rawPair: TemplateConfigRawPair }
+  | { ok: false; failedAt: TemplateRawKey | 'readback' | 'ownership'; completed: TemplateRawKey[]; remaining: TemplateRawKey[]; cause: unknown }
+const rawKeys = { config: TEMPLATE_CONFIG_STORAGE_KEY, meta: TEMPLATE_CONFIG_META_STORAGE_KEY, pending: TEMPLATE_CONFIG_PENDING_STORAGE_KEY }
+export const readTemplateConfigRawPair = (storage: Storage): TemplateConfigRawPair => Object.freeze({
+  config: storage.getItem(rawKeys.config), meta: storage.getItem(rawKeys.meta), pending: storage.getItem(rawKeys.pending)
+})
+export const equalTemplateRaw = (a: TemplateConfigRawPair, b: TemplateConfigRawPair): boolean =>
+  a.config === b.config && a.meta === b.meta && a.pending === b.pending
+export const removeTemplateConfigKeys = (storage: Storage, assertOwned: () => void = () => {}, expected?: TemplateConfigRawPair): TemplateWriteReport =>
+  writeTemplateRaw(storage, { config: null, meta: null, pending: null }, ['config', 'meta', 'pending'], assertOwned, expected)
+export const restoreTemplateConfigRawPair = (storage: Storage, raw: TemplateConfigRawPair,
+  assertOwned: () => void = () => {}, expected?: TemplateConfigRawPair): TemplateWriteReport =>
+  writeTemplateRaw(storage, raw, ['meta', 'config', 'pending'], assertOwned, expected)
+
+function writeTemplateRaw(storage: Storage, target: TemplateConfigRawPair, order: TemplateRawKey[],
+  assertOwned: () => void, expected?: TemplateConfigRawPair): TemplateWriteReport {
+  const completed: TemplateRawKey[] = []
+  let failedAt: TemplateRawKey | 'readback' | 'ownership' = 'ownership'
+  try {
+    assertOwned()
+    let observed = readTemplateConfigRawPair(storage)
+    if (expected && !equalTemplateRaw(observed, expected)) throw new Error('Template storage ownership changed')
+    for (const key of order) {
+      failedAt = 'ownership'; assertOwned()
+      if (!equalTemplateRaw(readTemplateConfigRawPair(storage), observed)) throw new Error('Template storage ownership changed')
+      failedAt = key
+      const value = target[key]
+      if (value === null) storage.removeItem(rawKeys[key]); else storage.setItem(rawKeys[key], value)
+      completed.push(key)
+      observed = { ...observed, [key]: value }
+    }
+    failedAt = 'readback'; assertOwned()
+    const rawPair = readTemplateConfigRawPair(storage)
+    if (!equalTemplateRaw(rawPair, target)) throw new Error('Template storage readback mismatch')
+    return { ok: true, completed, rawPair }
+  } catch (cause) {
+    return { ok: false, failedAt, completed, remaining: order.filter(k => !completed.includes(k)), cause }
+  }
+}
+
+export interface TemplatePendingV1 {
+  markerVersion: 1
+  operationId: string
+  writerSeq: number
+  confirmedBaselineRaw: TemplateConfigRawPair | null
+  confirmedFingerprint: string | null
+  targetConfigRaw: string
+  targetRawHash: string
+}
+export const serializeTemplateTarget = (config: TemplateConfig): string => JSON.stringify(normalizeTemplateConfig(config))
+export const markTemplateConfigPending = (storage: Storage, marker: TemplatePendingV1,
+  assertOwned: () => void, expected: TemplateConfigRawPair): TemplateWriteReport =>
+  writeTemplateRaw(storage, { ...expected, config: marker.targetConfigRaw, pending: JSON.stringify(marker) }, ['pending', 'config'], assertOwned, expected)
+export const mirrorConfirmedTemplateConfig = (storage: Storage, targetRaw: string, updatedAt: string,
+  assertOwned: () => void, expected: TemplateConfigRawPair): TemplateWriteReport => {
+  if (typeof updatedAt !== 'string' || !updatedAt.trim() || Number.isNaN(Date.parse(updatedAt))) {
+    return { ok: false, failedAt: 'meta', completed: [], remaining: ['config', 'meta', 'pending'], cause: new Error('Invalid backend timestamp') }
+  }
+  return writeTemplateRaw(storage, { config: targetRaw, meta: JSON.stringify({ updatedAt }), pending: null }, ['config', 'meta', 'pending'], assertOwned, expected)
+}
+
 const TEMPLATE_CONFIG_SCHEMA_VERSION = 3
 
 export interface TemplateFieldsByKind {

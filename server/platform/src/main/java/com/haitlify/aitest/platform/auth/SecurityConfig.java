@@ -83,6 +83,8 @@ class SecurityConfig {
                 .requestMatchers(PUBLIC_PATHS).permitAll()
                 // 用户管理仅管理员可见;状态变更统一要求 EDITOR/ADMIN(VIEWER 只读)
                 .requestMatchers("/api/users/**").hasRole("ADMIN")
+                // 租户/成员运维面同样只给 ADMIN：普通成员不能给自己加租户或改成员关系
+                .requestMatchers("/api/tenants/**").hasRole("ADMIN")
                 // 登出与修改本人密码对任意角色开放,须先于 /api/** 的写规则匹配
                 .requestMatchers(HttpMethod.POST, "/api/auth/**").authenticated()
                 .requestMatchers(HttpMethod.PUT, "/api/auth/**").authenticated()

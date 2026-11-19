@@ -100,6 +100,7 @@ export interface WebAutomationRunResult {
   startUrl: string
   status: WebAutomationRunStatus
   durationMs: number
+  steps?: import('./webAutomationCase').WebAutomationStep[]
   stepLogs?: Array<{
     stepId: string
     phase?: 'setup' | 'test' | 'teardown'

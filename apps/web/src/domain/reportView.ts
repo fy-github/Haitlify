@@ -1,4 +1,29 @@
 import type { SavedAutomationReport } from './automationReportRepository'
+import type { AutomationRunResult, AutomationRunStatus } from './apiAutomation'
+
+export type ReportResultFilter = 'ALL' | 'ABNORMAL' | AutomationRunStatus
+
+/** 整份报告的精确计数：只读 report.results，与当前结果筛选无关。 */
+export const countReportResults = (report: SavedAutomationReport): { total: number; passed: number; failed: number; error: number } =>
+  report.results.reduce(
+    (totals, result) => {
+      totals.total += 1
+      totals[result.status] += 1
+      return totals
+    },
+    { total: 0, passed: 0, failed: 0, error: 0 }
+  )
+
+export const filterReportResults = (
+  report: SavedAutomationReport,
+  filter: ReportResultFilter
+): AutomationRunResult[] => {
+  if (filter === 'ALL') return report.results
+  if (filter === 'ABNORMAL') {
+    return report.results.filter((result) => result.status === 'failed' || result.status === 'error')
+  }
+  return report.results.filter((result) => result.status === filter)
+}
 
 export interface ReportProjectOption {
   value: string
@@ -36,6 +61,7 @@ export const filterReportsForProject = (
     if (filters.environment !== 'ALL' && report.environmentName !== filters.environment) return false
     if (!keyword) return true
     return [
+      report.reportId,
       report.name,
       report.project,
       report.environmentName,

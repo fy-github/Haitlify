@@ -25,6 +25,9 @@ const STEP_ACTION_ALIASES = {
   scroll_into_view: 'scrollIntoView',
   wait_for_visible: 'waitForVisible',
   wait_for_url: 'waitForUrl',
+  wait_for_text: 'waitForText',
+  wait_for_hidden: 'waitForHidden',
+  wait_for_network_idle: 'waitForNetworkIdle',
   assert_visible: 'assertVisible',
   assert_hidden: 'assertHidden',
   assert_text: 'assertText',
@@ -34,7 +37,8 @@ const STEP_ACTION_ALIASES = {
 }
 const SUPPORTED_STEP_ACTIONS = new Set([
   'manual', 'goto', 'navigate', 'click', 'input', 'fill', 'select', 'hover', 'paginate', 'screenshot',
-  'scrollIntoView', 'waitForVisible', 'waitForUrl', 'assertVisible', 'assertHidden', 'assertText', 'assertUrl',
+  'scrollIntoView', 'waitForVisible', 'waitForUrl', 'waitForText', 'waitForHidden', 'waitForNetworkIdle',
+  'assertVisible', 'assertHidden', 'assertText', 'assertUrl',
   'assertEnabled', 'assertDisabled'
 ])
 
@@ -283,6 +287,25 @@ export const executeStep = async (page, step, runtime = {}) => {
       if (canTolerateLoginSuccessTimeout(step, runtime, page)) return
       throw error
     }
+    return
+  }
+  if (step.action === 'waitForText') {
+    // 动态页：等目标元素自己出现指定文本，而不是「元素在就算过」。
+    const expected = String(resolveStepValue(step.value, runtime) ?? '').trim()
+    if (!expected) {
+      throw Object.assign(new Error('waitForText 需要一个非空期望文本'), { failureType: 'invalid_step' })
+    }
+    await resolveLocator(page, step.target).filter({ hasText: expected }).first()
+      .waitFor({ state: 'visible', ...buildStepTimeout(step) })
+    return
+  }
+  if (step.action === 'waitForHidden') {
+    await resolveLocator(page, step.target).waitFor({ state: 'hidden', ...buildStepTimeout(step) })
+    return
+  }
+  if (step.action === 'waitForNetworkIdle') {
+    // 只在明确需要时用：网络空闲是「无请求 500ms」，对长轮询页面会一直不空闲。
+    await page.waitForLoadState('networkidle', buildStepTimeout(step))
     return
   }
   if (step.action === 'assertVisible') {

@@ -43,7 +43,7 @@ node server.mjs
 
 Default address:
 
-- `http://127.0.0.1:19323` (non-common port to avoid host conflicts; Docker compose overrides to container-internal `9323`)
+- `http://127.0.0.1:19324` (non-common port to avoid host conflicts; Docker compose overrides to container-internal `9323`)
 
 You can override the port:
 
@@ -101,7 +101,7 @@ Example:
 
 ```bash
 export APP_WEB_AUTOMATION_RUNNER_ENABLED=true
-export APP_WEB_AUTOMATION_RUNNER_BASE_URL=http://127.0.0.1:19323
+export APP_WEB_AUTOMATION_RUNNER_BASE_URL=http://127.0.0.1:19324
 export APP_WEB_AUTOMATION_RUNNER_TIMEOUT_MS=5000
 ```
 
@@ -110,8 +110,8 @@ export APP_WEB_AUTOMATION_RUNNER_TIMEOUT_MS=5000
 ## Health check
 
 ```bash
-curl http://127.0.0.1:19323/health
-curl http://127.0.0.1:19323/capabilities
+curl http://127.0.0.1:19324/health
+curl http://127.0.0.1:19324/capabilities
 ```
 
 Expected healthy response:
@@ -148,13 +148,6 @@ APP_WEB_AUTOMATION_RUNNER_BROWSER_CHANNEL=chromium node server.mjs
 - `/health` performs a startup environment check and exposes recommendations when browser launch is not ready.
 - Runs are in memory. Restarting the Runner interrupts active jobs and clears retained snapshots.
 
-## Docker startup
+## Container deployment status
 
-If the local macOS browser environment is restricted, prefer the containerized runner:
-
-```bash
-docker compose up -d web-runner
-curl http://127.0.0.1:19323/health
-```
-
-This container uses the official Playwright image and isolates browser startup from the host desktop process rules.
+The legacy root Compose configuration has been removed. A new isolated Hermes/Runner deployment is not yet available. See [deployment status](../../DEPLOYMENT.md) before starting any runtime; do not use the old Compose project, ports or volumes as a new environment.

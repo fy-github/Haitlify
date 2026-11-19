@@ -30,7 +30,9 @@ describe('ApiAutomationCaseTable', () => {
   })
 
   it('routes selection and row actions through emits', () => {
-    expect(componentSource).toMatch(/@selection-change="emit\('update:selection', \$event\)"/)
+    expect(componentSource).toContain('selection?: SavedAutomationCase[]')
+    expect(componentSource).toContain('@selection-change="handleSelectionChange"')
+    expect(componentSource).toContain('if (syncingSelection) return')
     expect(componentSource).toMatch(/@click\.stop="emit\('openCurl', row\)"/)
     expect(componentSource).toMatch(/@click\.stop="emit\('openLog', row\)"/)
     expect(componentSource).toMatch(/emit\('transferDefect', row\)/)

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { authedFetch, setUnauthorizedHandler } from './http'
+import { advanceAuthSessionEpoch, authedFetch, setUnauthorizedHandler } from './http'
 
 const setCookie = (value: string): void => {
   Object.defineProperty(document, 'cookie', {
@@ -69,6 +69,39 @@ describe('authedFetch', () => {
     const response = await authedFetch('/api/foo')
 
     expect(response.status).toBe(401)
+    expect(handler).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not expire a session when an aborted transport still resolves with 401', async () => {
+    let resolve!: (response: Response) => void
+    const fetchMock = vi.fn(() => new Promise<Response>(yes => { resolve = yes }))
+    vi.stubGlobal('fetch', fetchMock)
+    const handler = vi.fn()
+    setUnauthorizedHandler(handler)
+    const controller = new AbortController()
+    const request = authedFetch('/api/old', { signal: controller.signal })
+    controller.abort()
+    resolve(new Response('{}', { status: 401 }))
+    expect((await request).status).toBe(401)
+    expect(handler).not.toHaveBeenCalled()
+    fetchMock.mockImplementation(async () => new Response('{}', { status: 401 }))
+    await authedFetch('/api/current')
+    expect(handler).toHaveBeenCalledTimes(1)
+  })
+
+  it('suppresses only old-epoch 401 callbacks even when the same handler remains registered', async () => {
+    let resolve!: (response: Response) => void
+    const fetchMock = vi.fn(() => new Promise<Response>(yes => { resolve = yes }))
+    vi.stubGlobal('fetch', fetchMock)
+    const handler = vi.fn()
+    setUnauthorizedHandler(handler)
+    const request = authedFetch('/api/old')
+    advanceAuthSessionEpoch()
+    resolve(new Response('{}', { status: 401 }))
+    expect((await request).status).toBe(401)
+    expect(handler).not.toHaveBeenCalled()
+    fetchMock.mockImplementation(async () => new Response('{}', { status: 401 }))
+    await authedFetch('/api/current')
     expect(handler).toHaveBeenCalledTimes(1)
   })
 

@@ -65,17 +65,16 @@ docker tag <previous-image> haitlify-platform:current && docker compose up -d pl
 
 **迁移纪律**：Flyway 只前进不回退；回滚演练 = 用旧镜像对**迁移前备份**的独立库启动（V44–V47 均为纯新增表，旧镜像不读它们）。
 
-## 6. 冒烟
+## 6. 冒烟（已退役）
 
-```bash
-SMOKE_USERNAME=<你本人账号> SMOKE_PASSWORD=*** SMOKE_PROJECT_ID=1 node scripts/ai-runtime-smoke.mjs http://localhost:38081
-```
+> **A3 退役（2026-10-21）**：旧自研 AI 运行时的 `/api/ai/*` 端点与 `scripts/ai-runtime-smoke.mjs` 已删除，本节命令不再可执行，仅作历史记录保留。当前冒烟对象是 `assistant/*` 助手链路（Hermes 主助手）：入口为 `AssistantRunnerE2ETest#executesFixtureCaseThroughRealRunner`，需设置 `A1_RUNNER_E2E=true` 才会执行，否则按环境变量门控 skip。
 
-覆盖：健康与 SHA → 正式登录（凭据只来自环境变量）→ 创建合成 bug_analysis 任务 → 产物必须 `PENDING_HUMAN_CONFIRMATION`
+历史覆盖范围：健康与 SHA → 正式登录（凭据只来自环境变量）→ 创建合成 bug_analysis 任务 → 产物必须 `PENDING_HUMAN_CONFIRMATION`
 （模型成功≠接受；真实失败如实 `BLOCKED` 并在报告中显示）→ 事件流 → 人工驳回 → 猜测 runId 统一 404。
-退出码：0=pass，1=fail，2=缺凭据，3=诚实阻塞（按阻塞报告，不算通过）。
 
-## 6.1 发布开关（灰度）
+## 6.1 发布开关（灰度，已退役）
+
+> **A3 退役（2026-10-21）**：`app.ai.runtime.*` 配置键已随旧运行时一起从 `application.yml` 移除，下表仅作历史记录。
 
 | 配置 | 语义 |
 |---|---|

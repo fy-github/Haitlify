@@ -28,7 +28,7 @@ describe('Web login discovery UI', () => {
 
   it('does not duplicate the automatic-login success assertion in the probe case', () => {
     const probeCaseSource = appSource.match(
-      /function buildWebLoginProbeCase[\s\S]*?\n}\n\nconst applyConfiguredCaseTypeName/
+      /function buildWebLoginProbeCase[\s\S]*?\n}\n/
     )?.[0]
 
     expect(probeCaseSource).toBeDefined()

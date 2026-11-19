@@ -5,7 +5,7 @@
 适用：`server/platform` 的 Gold Set 评测（`AiGoldSetService` / `AiEvaluationService`）。
 原则：**所有指标由确定性代码从执行事实计算**——报告中不得出现固定 0.8/0.9 之类的写死分数；规则评分、模型输出事实、人工评审三者分列存储，不得混写。
 
-## 一、Gold Set 包（`gold-set.jsonl`）
+## 一、Gold Set 包（`gold-set.jsonl`）—— 已随 A3 退役删除（2026-10-21）
 
 - 位置：`server/platform/src/test/resources/ai/evaluation/gold-set.jsonl`（发布套件同格式）。
 - 首行可为包头部：`{"kind":"package","version":"...","rubric":"docs/ai-test-platform/ai-quality-rubric.md"}`。

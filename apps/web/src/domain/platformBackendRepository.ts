@@ -12,6 +12,7 @@ import {
   loadTemplateConfigMeta,
   loadTemplateConfig,
   saveTemplateConfig,
+  serializeTemplateTarget,
   type TemplateConfig
 } from './templateConfigRepository'
 import { joinBackendPath } from './backendBaseUrl'
@@ -23,12 +24,40 @@ export interface PlatformBackendOptions {
   baseUrl?: string
   fetchImpl?: FetchLike
   conflictStrategy?: 'protectLocal' | 'preferBackend'
+  throwOnError?: boolean
+}
+
+export class PlatformBackendRequestError extends Error {
+  constructor(public readonly status: number, path: string) {
+    super(`Backend request failed: ${status} (${path})`)
+    this.name = 'PlatformBackendRequestError'
+  }
+}
+
+export class PlatformBackendTransportError extends Error {
+  public readonly originalError: unknown
+
+  constructor(path: string, originalError: unknown) {
+    super(`Backend transport failed (${path})`)
+    this.name = 'PlatformBackendTransportError'
+    this.originalError = originalError
+  }
 }
 
 export interface BackendProject {
   id: number
+  tenantId?: number | null
   code: string
   name: string
+}
+
+/** Read-only context discovery; unlike ensureBackendProject this never creates a project. */
+export const listBackendProjects = async (options: PlatformBackendOptions = {}): Promise<BackendProject[]> => {
+  const response = await requestJson<{ items: BackendProject[] }>(options, '/api/projects')
+  if (!response || !Array.isArray(response.items) || response.items.some(item => !item || typeof item !== 'object')) {
+    throw new Error('项目列表响应无效')
+  }
+  return response.items
 }
 
 export interface BackendSyncResult<T> {
@@ -108,7 +137,8 @@ const ensureBackendProjectInternal = async (
         description: `${projectName} API test workspace`
       })
     })
-  } catch {
+  } catch (error) {
+    if (options.throwOnError && (error instanceof PlatformBackendRequestError || error instanceof PlatformBackendTransportError)) throw error
     const created = await findBackendProject(projectName, code, options)
     if (created) return created
     throw new Error(`Backend project ensure failed: ${projectName}`)
@@ -137,7 +167,8 @@ export const loadTemplateConfigWithBackend = async (
     }
     saveTemplateConfig(storage, config, { updatedAt: response.updatedAt })
     return { source: 'backend', config }
-  } catch {
+  } catch (error) {
+    if (options.throwOnError && (error instanceof PlatformBackendRequestError || error instanceof PlatformBackendTransportError)) throw error
     return { source: 'local', config: loadTemplateConfig(storage) }
   }
 }
@@ -218,7 +249,8 @@ export const loadSavedCasesWithBackend = async (
 
     replaceSavedCasesForProject(storage, projectName, response.items)
     return { source: 'backend', cases: listSavedCases(storage) }
-  } catch {
+  } catch (error) {
+    if (options.throwOnError && (error instanceof PlatformBackendRequestError || error instanceof PlatformBackendTransportError)) throw error
     return { source: 'local', cases: listSavedCases(storage) }
   }
 }
@@ -393,9 +425,14 @@ const requestJson = async <T>(
   path: string,
   init?: RequestInit
 ): Promise<T> => {
-  const response = await fetcher(options)(joinBackendPath(path, options.baseUrl), init)
+  let response: Response
+  try {
+    response = await fetcher(options)(joinBackendPath(path, options.baseUrl), init)
+  } catch (error) {
+    throw new PlatformBackendTransportError(path, error)
+  }
   if (!response.ok) {
-    throw new Error(`Backend request failed: ${response.status}`)
+    throw new PlatformBackendRequestError(response.status, path)
   }
   return await response.json() as T
 }
@@ -418,4 +455,71 @@ interface BackendTemplateConfig extends TemplateConfig {
 interface BackendInterfaceCaseList {
   items: SavedInterfaceCase[]
   total: number
+}
+
+// Template-only transport: no storage, fallback, or synthetic confirmation time.
+export class TemplateBackendContractError extends Error {
+  constructor(message = '模板后端缺少有效 updatedAt，本地修改尚未确认') { super(message); this.name = 'TemplateBackendContractError' }
+}
+export const validTemplateTimestamp = (value: unknown): value is string =>
+  typeof value === 'string' && value.trim() !== '' && !Number.isNaN(Date.parse(value))
+export interface TemplateNetworkTransport {
+  projectName: string
+  fetch: FetchLike
+  isCurrent: () => boolean
+}
+const templateRequestJson = async <T>(transport: TemplateNetworkTransport, assertWriter: () => void,
+  path: string, init?: RequestInit): Promise<T> => {
+  const gate = () => { assertWriter(); if (!transport.isCurrent()) throw new Error('Template workspace operation expired') }
+  gate()
+  let response: Response
+  try {
+    response = await transport.fetch(joinBackendPath(path), init)
+  } catch (error) {
+    throw new PlatformBackendTransportError(path, error)
+  }
+  gate()
+  if (!response.ok) throw new PlatformBackendRequestError(response.status, path)
+  gate()
+  const value = await response.json() as T
+  gate()
+  return value
+}
+const templateProject = async (transport: TemplateNetworkTransport, gate: () => void): Promise<BackendProject> => {
+  const projects = await templateRequestJson<{ items: BackendProject[] }>(transport, gate, '/api/projects')
+  gate()
+  if (!Array.isArray(projects?.items)) throw new TemplateBackendContractError('模板项目列表响应无效')
+  const code = projectCodeFromName(transport.projectName)
+  const existing = projects.items.find(p => p.name === transport.projectName || p.code === code)
+  if (existing) return existing
+  return templateRequestJson<BackendProject>(transport, gate, '/api/projects', {
+    method: 'POST', headers: jsonHeaders(), body: JSON.stringify({ code, name: transport.projectName, description: `${transport.projectName} API test workspace` })
+  })
+}
+export const fetchTemplateConfigFromBackend = async (transport: TemplateNetworkTransport, gate: () => void): Promise<{ config: TemplateConfig; updatedAt: string }> => {
+  const project = await templateProject(transport, gate); gate()
+  const value = await templateRequestJson<BackendTemplateConfig>(transport, gate, `/api/projects/${project.id}/case-template/interface`)
+  gate()
+  if (!validTemplateTimestamp(value?.updatedAt)) throw new TemplateBackendContractError()
+  if (!Array.isArray(value.interfaceFields) || !Array.isArray(value.caseTypes)) throw new TemplateBackendContractError('模板配置响应无效')
+  return { config: toTemplateConfig(value), updatedAt: value.updatedAt }
+}
+export const putTemplateConfigToBackend = async (transport: TemplateNetworkTransport, target: TemplateConfig,
+  gate: () => void): Promise<{ updatedAt: string }> => {
+  const project = await templateProject(transport, gate); gate()
+  const value = await templateRequestJson<Partial<BackendTemplateConfig>>(transport, gate, `/api/projects/${project.id}/case-template/interface`, {
+    method: 'PUT', headers: jsonHeaders(), body: JSON.stringify(target)
+  })
+  gate()
+  if (!validTemplateTimestamp(value?.updatedAt)) throw new TemplateBackendContractError()
+  if ('interfaceFields' in value || 'caseTypes' in value) {
+    const canonical = (v: unknown): string => v !== null && typeof v === 'object'
+      ? Array.isArray(v) ? `[${v.map(canonical).join(',')}]` : `{${Object.keys(v).sort().map(k=>`${JSON.stringify(k)}:${canonical((v as Record<string,unknown>)[k])}`).join(',')}}`
+      : JSON.stringify(v)
+    if (!Array.isArray(value.interfaceFields) || !Array.isArray(value.caseTypes)
+      || canonical(JSON.parse(serializeTemplateTarget(toTemplateConfig(value as BackendTemplateConfig)))) !== canonical(JSON.parse(serializeTemplateTarget(target)))) {
+      throw new TemplateBackendContractError('模板后端返回了不同配置，未确认本地镜像')
+    }
+  }
+  return { updatedAt: value.updatedAt }
 }

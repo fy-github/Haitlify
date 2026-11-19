@@ -1,7 +1,11 @@
 import type { Component } from 'vue'
 import {
   BookOpenCheck,
+  BookOpen,
+  LayoutGrid,
+  Monitor,
   Bot,
+  Sparkles,
   Braces,
   Bug,
   ChartNoAxesCombined,
@@ -10,6 +14,8 @@ import {
   MessageSquareText,
   MonitorCheck,
   MonitorCog,
+  Play,
+  Clock3,
   SlidersHorizontal,
   Users
 } from '@lucide/vue'
@@ -17,18 +23,22 @@ import type { NavKey } from '../../domain/appNavigation'
 
 export type SidebarItemId =
   | 'home'
-  | 'case-design'
-  | 'case-design-web'
-  | 'case-design-interface'
+  | 'home-pending'
+  | 'home-recent'
   | 'case-library'
+  | 'web-case-library'
   | 'api-automation'
   | 'web-automation'
+  | 'environments'
   | 'reports'
   | 'defects'
-  | 'ai-settings'
   | 'templates'
   | 'jira-config'
   | 'user-management'
+  | 'assistant-chain'
+  | 'overview'
+  | 'case-types'
+  | 'help'
 
 export type SidebarAccent = 'teal' | 'cyan' | 'amber' | 'info'
 
@@ -60,6 +70,7 @@ export interface SidebarItem {
   children?: readonly SidebarItem[]
   caseDesignKind?: 'interface' | 'web_automation'
   automationKind?: 'api' | 'web'
+  homeSection?: 'runs' | 'pending' | 'recent'
   /** 图标强调色(语义 token 键名),替代旧 nth-child 位置染色 */
   accent?: SidebarAccent
   /** 仅 ADMIN 可见(用户管理等管理功能) */
@@ -88,8 +99,8 @@ export const navKeyForStage = (stage: WorkflowStageId): NavKey => {
 }
 
 export interface SidebarGroup {
-  id: 'home' | 'case-workbench' | 'execution-workbench' | 'quality-workbench' | 'settings-center'
-  label: '首页' | '用例工作台' | '执行工作台' | '质量工作台' | '设置中心'
+  id: 'home' | 'case-workbench' | 'execution-workbench' | 'quality-workbench' | 'settings-center' | 'overview'
+  label: '首页' | '用例工作台' | '执行工作台' | '质量工作台' | '设置中心' | '团队概览'
   items: readonly SidebarItem[]
   /** 整组顶层项图标强调色 */
   accent?: SidebarAccent
@@ -97,13 +108,58 @@ export interface SidebarGroup {
 
 export type SidebarBadges = Partial<Record<SidebarItemId, number | string>>
 
+/** 顶部一级工作区导航(白色胶囊)。一个工作区对应一个侧边栏分组,点击落到该分组的第一项。 */
+export type PrimaryAreaId = 'home' | 'cases' | 'execution' | 'quality' | 'overview' | 'settings'
+
+export interface PrimaryArea {
+  id: PrimaryAreaId
+  label: string
+  groupId: SidebarGroup['id']
+  navKey: NavKey
+  automationKind?: 'api' | 'web'
+  caseDesignKind?: 'interface' | 'web_automation'
+}
+
+/** 顺序即顶部胶囊顺序。 */
+export const primaryAreas: readonly PrimaryArea[] = [
+  { id: 'home', label: '我的工作台', groupId: 'home', navKey: 'home' },
+  { id: 'cases', label: '用例库', groupId: 'case-workbench', navKey: 'cases' },
+  { id: 'execution', label: '测试执行', groupId: 'execution-workbench', navKey: 'automation', automationKind: 'api' },
+  { id: 'quality', label: '质量交付', groupId: 'quality-workbench', navKey: 'reports' },
+  { id: 'overview', label: '团队 / 项目概览', groupId: 'overview', navKey: 'overview' },
+  { id: 'settings', label: '设置中心', groupId: 'settings-center', navKey: 'settings' }
+]
+
+const primaryAreaByNavKey: Record<NavKey, PrimaryAreaId> = {
+  home: 'home',
+  assistant: 'home',
+  cases: 'cases',
+  webCases: 'cases',
+  api: 'cases',
+  automation: 'execution',
+  environments: 'execution',
+  reports: 'quality',
+  defects: 'quality',
+  settings: 'settings',
+  jiraConfig: 'settings',
+  users: 'settings',
+  overview: 'overview',
+  caseTypes: 'settings'
+}
+
+/** 任一 navKey → 所属一级工作区;顶部胶囊据此高亮。 */
+export const primaryAreaForNavKey = (navKey: NavKey): PrimaryAreaId => primaryAreaByNavKey[navKey]
+
 export const studioSidebarGroups: readonly SidebarGroup[] = [
   {
     id: 'home',
     label: '首页',
     accent: 'teal',
     items: [
-      { id: 'home', label: 'AI 助手', navKey: 'home', icon: MessageSquareText }
+      { id: 'home', label: '运行进度', navKey: 'home', icon: Play, homeSection: 'runs' },
+      { id: 'home-pending', label: '待我处理', navKey: 'home', icon: FilePenLine, homeSection: 'pending' },
+      { id: 'home-recent', label: '最近工作', navKey: 'home', icon: Clock3, homeSection: 'recent' },
+      { id: 'assistant-chain', label: 'AI 助手', navKey: 'assistant', icon: Sparkles }
     ]
   },
   {
@@ -111,16 +167,8 @@ export const studioSidebarGroups: readonly SidebarGroup[] = [
     label: '用例工作台',
     accent: 'teal',
     items: [
-      { id: 'case-library', label: '用例库', navKey: 'cases', icon: BookOpenCheck },
-      {
-        id: 'case-design',
-        label: '智能用例设计',
-        icon: FilePenLine,
-        children: [
-          { id: 'case-design-web', label: 'Web 用例', navKey: 'api', icon: MonitorCheck, caseDesignKind: 'web_automation' },
-          { id: 'case-design-interface', label: '接口用例', navKey: 'api', icon: Braces, caseDesignKind: 'interface', accent: 'teal' }
-        ]
-      }
+      { id: 'case-library', label: '接口用例', navKey: 'cases', icon: BookOpenCheck },
+      { id: 'web-case-library', label: 'Web 用例', navKey: 'webCases', icon: Monitor },
     ]
   },
   {
@@ -129,7 +177,8 @@ export const studioSidebarGroups: readonly SidebarGroup[] = [
     accent: 'cyan',
     items: [
       { id: 'api-automation', label: 'API 自动化', navKey: 'automation', icon: Braces, automationKind: 'api' },
-      { id: 'web-automation', label: 'Web 自动化', navKey: 'automation', icon: MonitorCog, automationKind: 'web' }
+      { id: 'web-automation', label: 'Web 自动化', navKey: 'automation', icon: MonitorCog, automationKind: 'web' },
+      { id: 'environments', label: '环境配置', navKey: 'environments', icon: SlidersHorizontal }
     ]
   },
   {
@@ -142,14 +191,22 @@ export const studioSidebarGroups: readonly SidebarGroup[] = [
     ]
   },
   {
+    id: 'overview',
+    label: '团队概览',
+    accent: 'info',
+    items: [
+      { id: 'overview', label: '项目概览', navKey: 'overview', icon: MonitorCheck }
+    ]
+  },
+  {
     id: 'settings-center',
     label: '设置中心',
     accent: 'info',
     items: [
-      { id: 'ai-settings', label: 'AI 设置', navKey: 'aiConfig', icon: Bot },
-      { id: 'templates', label: '模板与字段', navKey: 'settings', icon: SlidersHorizontal },
-      { id: 'jira-config', label: 'Jira 配置', navKey: 'jiraConfig', icon: Database },
-      { id: 'user-management', label: '用户管理', navKey: 'users', icon: Users, adminOnly: true }
+      { id: 'templates', label: '模板字段', navKey: 'settings', icon: BookOpen },
+      { id: 'case-types', label: '用例类型', navKey: 'caseTypes', icon: LayoutGrid },
+      { id: 'jira-config', label: 'Jira 配置', navKey: 'jiraConfig', icon: SlidersHorizontal },
+      { id: 'user-management', label: '用户管理', navKey: 'users', icon: Monitor, adminOnly: true }
     ]
   }
 ]
@@ -171,7 +228,7 @@ export const resolveSidebarActiveItemId = (
   caseDesignKind: 'interface' | 'web_automation' = 'web_automation'
 ): SidebarItemId | undefined => {
   if (activeNav === 'api') {
-    return caseDesignKind === 'interface' ? 'case-design-interface' : 'case-design-web'
+    return 'case-library'
   }
 
   if (activeNav === 'automation') {
@@ -201,8 +258,9 @@ export const resolveNavDisplay = (
   automationKind: 'api' | 'web',
   caseDesignKind: 'interface' | 'web_automation' = 'web_automation'
 ): NavDisplay => {
+  if (navKey === 'home') return { label: '我的工作台', icon: Play }
   const item =
     resolveSidebarItemById(resolveSidebarActiveItemId(navKey, automationKind, caseDesignKind)) ??
-    resolveSidebarItemById('case-design')
-  return { label: item?.label ?? '智能用例设计', icon: item?.icon ?? FilePenLine }
+    resolveSidebarItemById('case-library')
+  return { label: item?.label ?? '用例库', icon: item?.icon ?? FilePenLine }
 }

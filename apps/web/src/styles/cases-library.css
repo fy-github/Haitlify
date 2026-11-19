@@ -1,0 +1,885 @@
+/*
+ * 用例库(按设计稿 .library-workspace / .directory / .list-panel / .case-table / .pagination 结构重建)
+ * 左侧 196px 项目目录树 + 右侧列表面板;顶栏卡头 17×20,筛选条 0 20 15,
+ * 选择条 #edf6f1,表头 40px、行 52px,操作列 sticky 右贴。
+ */
+
+.workspace.is-workbench:has(> .cases-head) {
+  /* CasesView renders header/list as direct siblings, not in the retired pane.
+   * Keep the wide table in its own scrollport instead of an implicit auto grid column. */
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.cv-workspace {
+  display: grid;
+  grid-template-columns: 196px minmax(0, 1fr);
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  margin: 0 24px 18px;
+  background: #fff;
+  border: 1px solid #e6eaee;
+  border-radius: 18px;
+  overflow: clip;
+}
+
+/* ---------- 左侧目录 ---------- */
+.cv-directory {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 18px 12px;
+  background: #f8f9fb;
+  border-right: 1px solid #e8ecf0;
+  overflow: auto;
+  scrollbar-width: thin;
+}
+
+.cv-dir-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 0 6px 15px;
+}
+
+.cv-dir-head h2 {
+  margin: 0;
+  color: #5d6670;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.cv-dir-head button {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  padding: 0;
+  color: #7b858e;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.cv-dir-note {
+  padding: 0 6px 12px;
+  color: #7b858e;
+  font-size: 10px;
+  line-height: 1.8;
+}
+
+.cv-tree-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 36px;
+  margin: 3px 0;
+  padding: 8px 9px;
+  color: #5d6670;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-radius: 9px;
+  font-size: 11px;
+  line-height: 1.5;
+  cursor: pointer;
+}
+
+.cv-tree-row:hover {
+  background: #edf1f3;
+}
+
+.cv-tree-row.active {
+  color: #2f6350;
+  background: #e6f2ec;
+}
+
+.cv-tree-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cv-tree-count {
+  flex: none;
+  color: #7d8b84;
+  font-size: 10px;
+}
+
+.cv-tree-project {
+  margin-top: 15px;
+  font-weight: 500;
+}
+
+.cv-tree-project:first-of-type {
+  margin-top: 0;
+}
+
+.cv-tree-module {
+  padding-left: 28px;
+}
+
+.cv-dir-divider {
+  height: 1px;
+  margin: 16px 5px;
+  background: #e6eaee;
+}
+
+/* ---------- 右侧列表 ---------- */
+.cv-list {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.cv-list-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex: none;
+  padding: 17px 20px 12px;
+  flex-wrap: wrap;
+}
+
+.cv-list-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.cv-list-heading h2 {
+  margin: 0;
+  color: #272a30;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.cv-scope-parent {
+  overflow: hidden;
+  color: #8a949d;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cv-scope-parent::after {
+  content: ' /';
+  color: #c3cad0;
+}
+
+.cv-scope-label {
+  overflow: hidden;
+  color: #727e89;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cv-list-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  /* 批量操作与「显示列」同一行:窄屏横向滚动,不允许换行把表格高度吃掉 */
+  flex-wrap: nowrap;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  padding-bottom: 2px;
+}
+
+.cv-list-tools > * {
+  flex: none;
+}
+
+.cv-batch-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+}
+
+.cv-selected-count {
+  color: #3e6953;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.cv-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 7px 11px;
+  color: #333b40;
+  background: #fff;
+  border: 1px solid #e8ebee;
+  border-radius: 20px;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.cv-btn:hover {
+  color: #3f5a50;
+  background: #f7f9f8;
+  border-color: #dfe6e2;
+}
+
+.cv-btn.is-danger {
+  color: #a34150;
+}
+
+.cv-btn.cv-clear {
+  color: #5c6d65;
+  background: transparent;
+  border-color: transparent;
+}
+
+.cv-btn.is-primary {
+  color: #163f34;
+  background: #4cd8b4;
+  border-color: #42c5a3;
+}
+
+.cv-btn.is-primary:hover {
+  background: #45d0ac;
+}
+
+/* 筛选条 */
+.cv-filter-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  flex-wrap: wrap;
+  padding: 0 20px 15px;
+}
+
+.cv-search {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 7px;
+  min-width: 170px;
+  min-height: 34px;
+  padding: 6px 11px;
+  background: #fff;
+  border: 1px solid #e5e9ed;
+  border-radius: 18px;
+}
+
+.cv-search svg {
+  flex: none;
+  color: #7b858e;
+}
+
+.cv-search input {
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  color: #37434e;
+  background: transparent;
+  border: 0;
+  outline: 0;
+  font: inherit;
+  font-size: 11px;
+}
+
+.cv-chip {
+  width: auto;
+  /* 三个筛选下拉曾被压到 44px,只剩箭头、看不到「全部项目」等当前值 */
+  min-width: 104px;
+  flex: none;
+}
+
+.cv-chip .el-select {
+  width: 100%;
+}
+
+.cv-chip .el-select__wrapper {
+  min-height: 34px;
+  padding: 7px 12px;
+  background: #f8f9fb;
+  border-radius: 18px;
+  box-shadow: 0 0 0 1px #e5e9ed inset;
+  font-size: 11px;
+  color: #626d78;
+}
+
+.cv-filter-reset {
+  min-height: 32px;
+  padding: 6px;
+  color: #5c6d65;
+  background: transparent;
+  border: 0;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+/* 设计稿来源提示条(与选中无关,不随批量操作搬进工具条) */
+.cv-notice-strip {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex: none;
+  flex-wrap: wrap;
+  min-height: 45px;
+  padding: 8px 20px;
+  background: #edf6f1;
+  border-top: 1px solid #e2eee7;
+  border-bottom: 1px solid #e2eee7;
+}
+
+.cv-notice-strip strong {
+  color: #3e6953;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.cv-notice-strip button {
+  min-height: 29px;
+  padding: 5px 9px;
+  color: #4c6557;
+  background: #fff;
+  border: 1px solid #e2eee7;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.cv-notice-strip button.is-danger {
+  color: #a34150;
+}
+
+.cv-notice-strip .cv-clear {
+  margin-left: auto;
+  color: #5c6d65;
+  background: transparent;
+  border: 0;
+}
+
+/* 表格 */
+.cv-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #c8d1d0 #f7f9f8;
+}
+
+.cv-table {
+  width: 100%;
+  /* 用例标题需要可读宽度:1080px 时标题列被压到 91px,只剩「成员管理...」 */
+  min-width: 1280px;
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: fixed;
+  font-size: 11px;
+}
+
+.cv-table th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  height: 40px;
+  padding: 10px 12px;
+  color: #6d7782;
+  text-align: left;
+  background: #f8f9fb;
+  border-bottom: 1px solid #e8ecf0;
+  font-weight: 400;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.cv-table td {
+  height: 52px;
+  padding: 10px 12px;
+  color: #55616d;
+  text-align: left;
+  vertical-align: middle;
+  border-bottom: 1px solid #eef0f3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cv-table tbody tr:hover td {
+  background: #f8fbf9;
+}
+
+.cv-table tbody tr.is-selected td {
+  background: #f0f8f4;
+}
+
+.cv-check-col {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  width: 40px;
+  padding: 8px 6px 8px 10px !important;
+  text-align: center !important;
+  background: #fff;
+}
+
+.cv-table th.cv-check-col {
+  z-index: 4;
+  background: #f8f9fb;
+}
+
+.cv-id-col {
+  position: sticky;
+  left: 40px;
+  z-index: 1;
+  width: 110px;
+  background: #fff;
+  color: #7b8590 !important;
+  font-family: ui-monospace, "SFMono-Regular", monospace;
+  font-size: 10px !important;
+}
+
+.cv-table th.cv-id-col {
+  z-index: 3;
+  background: #f8f9fb;
+  font-family: inherit;
+}
+
+.cv-title {
+  display: block;
+  max-width: 100%;
+  min-height: 28px;
+  padding: 0;
+  overflow: hidden;
+  color: #35413e;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: transparent;
+  border: 0;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.cv-title:hover {
+  color: #1a8065;
+}
+
+.cv-actions-col {
+  position: sticky;
+  right: 0;
+  z-index: 2;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  background: #fff;
+  border-left: 1px solid #f0f2f5;
+}
+
+.cv-table th.cv-actions-col {
+  z-index: 4;
+  background: #f8f9fb;
+}
+
+.cv-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.cv-row-action {
+  min-height: 30px;
+  padding: 5px;
+  color: #5e6d68;
+  background: transparent;
+  border: 0;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.cv-row-action:hover {
+  color: #14785e;
+}
+
+.cv-row-action.is-danger {
+  color: #b38b7d;
+}
+
+.cv-row-icon {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  padding: 0;
+  color: #8aa392;
+  background: transparent;
+  border: 0;
+  border-radius: 7px;
+  cursor: pointer;
+}
+
+.cv-row-icon:hover {
+  background: #f1f5f2;
+}
+
+.cv-row-icon:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.cv-checkbox {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  background: #fff;
+  border: 1px solid #ccd5d2;
+  border-radius: 4px;
+  cursor: pointer;
+  vertical-align: middle;
+  position: relative;
+}
+
+.cv-checkbox:checked {
+  background: #4dbb96;
+  border-color: #4dbb96;
+}
+
+.cv-checkbox:checked::after {
+  content: '✓';
+  position: absolute;
+  inset: -3px 0 0;
+  color: #fff;
+  text-align: center;
+  font-size: 12px;
+}
+
+.cv-empty {
+  padding: 60px 20px !important;
+  color: #7b8791;
+  text-align: center !important;
+  white-space: normal !important;
+}
+
+.cv-empty strong {
+  display: block;
+  margin-bottom: 6px;
+  color: #52616a;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* 显示列偏好(按个人 × 类别) */
+.cv-columns-dialog {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px 16px;
+  max-height: 420px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.cv-columns-note {
+  grid-column: 1 / -1;
+  margin: 0 0 6px;
+  color: #7b858e;
+  font-size: 10px;
+  line-height: 1.7;
+}
+
+.cv-columns-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  color: #4b5862;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.cv-columns-row small {
+  color: #8d9aa3;
+  font-size: 9px;
+}
+
+.cv-columns-row input:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+/* 底部说明 */
+.cv-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex: none;
+  flex-wrap: wrap;
+  padding: 0 20px 14px;
+  color: #7b858f;
+  font-size: 10px;
+}
+
+.cv-foot button {
+  padding: 0;
+  color: #5e7568;
+  background: transparent;
+  border: 0;
+  font: inherit;
+  font-size: 10px;
+  cursor: pointer;
+}
+
+@media (max-width: 1100px) {
+  .cv-workspace {
+    grid-template-columns: 174px minmax(0, 1fr);
+    margin: 0 14px 14px;
+  }
+
+  .cv-directory {
+    padding: 15px 9px;
+  }
+
+  .cv-list-top {
+    padding: 15px 15px 11px;
+  }
+
+  .cv-filter-strip {
+    padding: 0 15px 13px;
+  }
+
+  .cv-notice-strip {
+    padding: 8px 15px;
+  }
+
+  .cv-foot {
+    padding: 0 15px 12px;
+  }
+}
+
+@media (max-width: 900px) {
+  .workbench__pane:has(> .cases-head) {
+    grid-template-rows: auto auto auto;
+    overflow: auto;
+  }
+
+  .cv-workspace {
+    display: flex;
+    flex-direction: column;
+    flex: none;
+    min-height: 520px;
+    border-radius: 14px;
+  }
+
+  .cv-directory {
+    max-height: 148px;
+    flex: none;
+    padding: 8px 9px;
+    border-right: 0;
+    border-bottom: 1px solid #e8ecf0;
+  }
+
+  .cv-dir-head {
+    padding-bottom: 4px;
+  }
+
+  .cv-dir-note {
+    display: none;
+  }
+
+  .cv-tree-row {
+    min-height: 34px;
+    padding: 5px 9px;
+    margin: 0;
+  }
+
+  .cv-tree-project {
+    margin-top: 4px;
+  }
+
+  .cv-scroll {
+    max-height: 430px;
+  }
+}
+
+@media (max-width: 640px) {
+  .cv-list-top {
+    padding: 9px 10px 5px;
+    gap: 6px;
+  }
+
+  .cv-list-heading h2 {
+    font-size: 12px;
+    max-width: 145px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .cv-scope-parent {
+  overflow: hidden;
+  color: #8a949d;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cv-scope-parent::after {
+  content: ' /';
+  color: #c3cad0;
+}
+
+.cv-scope-label {
+    display: none;
+  }
+
+  .cv-list-tools .cv-btn {
+    min-height: 36px;
+    padding: 5px 8px;
+    font-size: 10px;
+  }
+
+  .cv-filter-strip {
+    padding: 0 10px 7px;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .cv-search {
+    flex-basis: 100%;
+    min-height: 36px;
+    padding: 6px 9px;
+  }
+
+  .cv-search input {
+    font-size: 10px;
+  }
+
+  .cv-chip .el-select__wrapper {
+    min-height: 36px;
+    font-size: 10px;
+  }
+
+  .cv-filter-reset {
+    font-size: 10px;
+  }
+
+  .cv-table td {
+    height: 54px;
+  }
+
+  .cv-title {
+    min-height: 40px;
+  }
+
+  /* Keep the wide table's existing horizontal-scroll strategy on phones.
+   * Only the right-edge pin is removed: the title column must not share a
+   * hit-test surface with row actions after the user scrolls to the title. */
+  .cv-table th.cv-actions-col,
+  .cv-table td.cv-actions-col {
+    position: static;
+    right: auto;
+    z-index: auto;
+  }
+
+  .cv-row-action,
+  .cv-row-icon {
+    min-height: 40px;
+  }
+
+  .cv-checkbox {
+    width: 18px;
+    height: 18px;
+  }
+
+  .cv-foot {
+    padding: 0 10px 10px;
+    font-size: 9px;
+  }
+
+  .cv-foot > span {
+    display: none;
+  }
+}
+
+
+/* ---------- 页头(原 settings-library 迁移) ---------- */
+.workbench__pane:has(> .cases-head) {
+  grid-template-rows: auto auto minmax(0, 1fr);
+  background: #fff;
+}
+
+.cases-head {
+  flex: none;
+  margin: 0;
+  padding: 24px 26px 14px;
+}
+
+.cases-head h1 {
+  margin: 0;
+  color: #22292f;
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.6px;
+  line-height: 1.4;
+}
+
+.cases-head p {
+  margin: 6px 0 0;
+  max-width: 660px;
+  color: #767b85;
+  font-size: 11px;
+  line-height: 1.8;
+}
+
+.cases-head .toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 0;
+}
+
+/* 「恢复数据」是 label 包 file input,外观与页头次级按钮同款 */
+.cases-upload {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 8px 14px;
+  color: #3f5a50;
+  background: #f4f7f6;
+  border: 1px solid #e5ece8;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 500;
+  /* 必填:.native-file-input 是 inset:-1px 的绝对定位输入框,没有定位上下文会盖住整页并吞掉点击 */
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+}
+

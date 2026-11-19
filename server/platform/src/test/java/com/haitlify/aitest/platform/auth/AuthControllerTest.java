@@ -55,7 +55,7 @@ class AuthControllerTest {
 
     @Test
     void rejectsUnauthenticatedAccessToProtectedEndpoint() throws Exception {
-        mockMvc.perform(get("/api/ai/config"))
+        mockMvc.perform(get("/api/projects"))
             .andExpect(status().isUnauthorized());
     }
 
@@ -82,8 +82,29 @@ class AuthControllerTest {
     }
 
     @Test
+    void authenticationResponsesExposePersistedActorIdWithoutSecrets() throws Exception {
+        Long actorId = jdbcTemplate.queryForObject(
+            "select id from platform_users where username = ?", Long.class, USERNAME);
+        mockMvc.perform(post("/api/auth/login").with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"username\":\"admin\",\"password\":\"" + PASSWORD + "\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(org.hamcrest.Matchers.equalTo(actorId), Long.class))
+            .andExpect(jsonPath("$.passwordHash").doesNotExist());
+        mockMvc.perform(get("/api/auth/me").with(user(USERNAME).roles("ADMIN")))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(org.hamcrest.Matchers.equalTo(actorId), Long.class));
+        mockMvc.perform(put("/api/auth/password").with(user(USERNAME).roles("ADMIN")).with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"currentPassword\":\"" + PASSWORD + "\",\"newPassword\":\"changed-password-456\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(org.hamcrest.Matchers.equalTo(actorId), Long.class))
+            .andExpect(jsonPath("$.passwordHash").doesNotExist());
+    }
+
+    @Test
     void rejectsStateChangingRequestWithoutCsrfToken() throws Exception {
-        mockMvc.perform(put("/api/ai/config")
+        mockMvc.perform(put("/api/projects")
                 .with(user("admin").roles("ADMIN"))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{}"))
@@ -92,7 +113,7 @@ class AuthControllerTest {
 
     @Test
     void allowsAuthenticatedGetWithoutCsrfToken() throws Exception {
-        mockMvc.perform(get("/api/ai/config")
+        mockMvc.perform(get("/api/projects")
                 .with(user("admin").roles("ADMIN")))
             .andExpect(status().isOk());
     }

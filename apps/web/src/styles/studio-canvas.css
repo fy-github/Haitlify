@@ -327,10 +327,74 @@
 }
 
 .studio-sync-notice .sync-conflict-copy span {
-  overflow: hidden;
   font-size: var(--font-size-xs);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.5;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.studio-sync-notice .sync-conflict-icon {
+  display: inline-grid;
+  flex: 0 0 18px;
+  width: 18px;
+  height: 18px;
+  place-items: center;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.studio-sync-notice:not(.template-recovery-notice) [data-sync-action='take-backend'] {
+  color: var(--status-danger-text);
+}
+
+.studio-sync-notice:not(.template-recovery-notice) .sync-conflict-actions [data-sync-action]:not(:disabled):not(.is-disabled):not(.is-loading) {
+  border-color: var(--border-strong);
+}
+
+.studio-sync-notice:not(.template-recovery-notice) .sync-conflict-actions [data-sync-action]:not(:disabled):not(.is-disabled):not(.is-loading):hover {
+  border-color: var(--border-strong);
+  filter: brightness(0.96);
+}
+
+.studio-sync-notice:not(.template-recovery-notice) .sync-conflict-actions [data-sync-action]:not(:disabled):not(.is-disabled):not(.is-loading):focus-visible,
+.studio-sync-notice:not(.template-recovery-notice) .sync-conflict-actions [data-sync-action]:not(:disabled):not(.is-disabled):not(.is-loading):focus-visible:hover {
+  outline: none;
+  box-shadow: none;
+  border-color: var(--border-strong);
+  filter: brightness(0.9);
+}
+
+.studio-sync-notice:not(.template-recovery-notice) .sync-conflict-actions [data-sync-action='take-backend']:not(:disabled):not(.is-disabled):not(.is-loading) {
+  color: var(--status-danger-text);
+}
+
+.studio-sync-notice:not(.template-recovery-notice) .sync-conflict-actions .icon-button:not(:disabled):not(.is-disabled):not(.is-loading):hover {
+  filter: brightness(0.96);
+}
+
+.studio-sync-notice:not(.template-recovery-notice) .sync-conflict-actions .icon-button:not(:disabled):not(.is-disabled):not(.is-loading):focus-visible,
+.studio-sync-notice:not(.template-recovery-notice) .sync-conflict-actions .icon-button:not(:disabled):not(.is-disabled):not(.is-loading):focus-visible:hover {
+  outline: none;
+  box-shadow: none;
+  filter: brightness(0.9);
+}
+
+@media (max-width: 640px) {
+  .studio-sync-notice:not(.template-recovery-notice) {
+    display: grid;
+    grid-template-columns: 18px minmax(0, 1fr);
+    align-items: start;
+    gap: 8px;
+  }
+
+  .studio-sync-notice:not(.template-recovery-notice) .sync-conflict-actions {
+    grid-column: 1 / -1;
+    flex-wrap: wrap;
+    min-width: 0;
+    margin-left: 0;
+  }
 }
 
 .studio-sync-notice .sync-conflict-actions {
@@ -1120,16 +1184,41 @@
 .studio-workflow-state.is-error { color: var(--status-danger-text); }
 .studio-workflow-state.is-partial { color: var(--status-warning-text); }
 .studio-offline-notice {
+  display: grid;
   min-height: 0;
+  grid-template-columns: 20px auto minmax(0, 1fr);
+  align-items: center;
+  gap: 7px;
   margin: 10px 14px 0;
   padding: 9px 12px;
-  grid-template-columns: auto auto minmax(0, 1fr);
   justify-content: start;
   border: 1px solid var(--status-info);
   border-radius: var(--radius-control);
   color: var(--status-info-text);
   background: var(--status-info-soft);
   text-align: left;
+}
+.studio-offline-notice__icon {
+  display: inline-grid;
+  width: 18px;
+  height: 18px;
+  place-items: center;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+}
+.studio-offline-notice strong {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  white-space: nowrap;
+}
+.studio-offline-notice > span:last-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: var(--font-size-xs);
+  line-height: 1.45;
 }
 .studio-global-task-status {
   max-width: 240px;
@@ -2520,7 +2609,31 @@
 }
 
 .web-automation-workspace__grid.is-compact {
-  grid-template-columns: minmax(0, 1fr);
+  display: block;
+  min-height: max-content;
+}
+
+/* Compact preparation can contain both the case table and a mounted run summary.
+   Keep the workspace itself as the wheel owner instead of clipping the summary at
+   the fixed workbench height. */
+.web-automation-workspace.is-compact {
+  height: 100%;
+  min-height: 0;
+  grid-template-rows: auto auto auto auto;
+  align-content: start;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+/* Durable notices reduce the available workspace height. Keep the monitor's
+   panel usable and let the compact workspace scroll the complete surface. */
+.web-automation-workspace.is-compact > .web-run-monitor-view {
+  height: auto;
+  min-height: 100%;
+}
+
+.web-automation-workspace.is-compact .web-ed-monitor__grid {
+  min-height: 280px;
 }
 
 .web-automation-workspace__grid > .web-automation-case-table {
@@ -2594,6 +2707,70 @@
   gap: 14px;
   padding-top: 10px;
   padding-bottom: 10px;
+}
+
+/*
+ * 定稿 api-v3:页级工具条统一 20px 灰底胶囊(#f4f7f6 / #3f5a50 / 1px #e5ece8 / 11px 500),
+ * 只有「执行筛选 N 条」用薄荷主按钮(#54d9b5 / #153d32 / #42c5a3),hover 与聚焦只压亮度。
+ * 旧 .toolbar 基础样式(半透明白底、11px 圆角、12px 字和深青渐变主按钮)不得回流到本页。
+ */
+.automation-topbar .toolbar .el-button:not(.is-link):not(.is-text) {
+  min-height: 34.5px;
+  padding: 8px 14px;
+  border: 1px solid #e5ece8;
+  border-radius: 20px;
+  background: #f4f7f6;
+  color: #3f5a50;
+  box-shadow: none;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.automation-topbar .toolbar .el-button:not(.is-link):not(.is-text):hover,
+.automation-topbar .toolbar .el-button:not(.is-link):not(.is-text):focus-visible {
+  border-color: #e5ece8;
+  background: #f4f7f6;
+  color: #3f5a50;
+  box-shadow: none;
+  filter: brightness(0.96);
+}
+
+.automation-topbar .toolbar .el-button--primary:not(.is-plain):not(.is-link):not(.is-text) {
+  border-color: #42c5a3;
+  background: #54d9b5;
+  color: #153d32;
+  box-shadow: none;
+}
+
+.automation-topbar .toolbar .el-button--primary:not(.is-plain):not(.is-link):not(.is-text):hover,
+.automation-topbar .toolbar .el-button--primary:not(.is-plain):not(.is-link):not(.is-text):focus-visible {
+  border-color: #42c5a3;
+  background: #54d9b5;
+  color: #153d32;
+  box-shadow: none;
+  filter: brightness(0.96);
+}
+
+.automation-topbar .toolbar .el-button.is-disabled,
+.automation-topbar .toolbar .el-button.is-disabled:hover {
+  border-color: #edf2f0;
+  background: #f7faf9;
+  color: #a9b6b1;
+  box-shadow: none;
+  filter: none;
+}
+
+/* 定稿 ≤640px 的同类按钮:36px 高、10px 字、7px 10px 内边距、6px 间距。 */
+@media (max-width: 640px) {
+  .automation-topbar .toolbar {
+    gap: 6px;
+  }
+
+  .automation-topbar .toolbar .el-button:not(.is-link):not(.is-text) {
+    min-height: 36px;
+    padding: 7px 10px;
+    font-size: 10px;
+  }
 }
 
 .automation-topbar__title {

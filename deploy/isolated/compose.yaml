@@ -1,0 +1,213 @@
+# Haitlify 隔离环境定义（计划 §7.1，A0-E 交付物）。
+#
+# 唯一受支持的启动入口：scripts/preflight/start-isolated-stack.sh
+# 直接 `docker compose up` 不是受支持路径：平台会拒绝启动，除非预检结果文件与注入的
+# APP_ENV_PREFLIGHT_HASH 同时存在且互相一致（这是防误启动/防配置漂移的一致性检查，
+# 不是真实性绑定：能写 deploy/isolated/.preflight/ 并能运行 compose 的主体仍可自造结果）。
+#
+# 平台侧另有一道数据源 bean 层校验：数据源实际生效的池配置（jdbcUrl /
+# dataSourceClassName / dataSourceProperties）被间接改写时，会在建立连接之前拒绝启动。
+#
+# 隔离要求：
+#   - 独立 project / container / network / volume / database / 产物路径，不复用任何旧资源；
+#   - 不挂载个人目录或 Hermes home；不连接旧数据库；
+#   - 必需凭据只从 deploy/isolated/.env 读取（该文件不入库），没有默认口令。
+#   - 本文件里的服务身份是被校验对象：mysql 只允许官方镜像、禁止 entrypoint/command 覆盖、
+#     禁止 extra_hosts / 网络别名抢占，详见预检的 service-identity-and-topology 检查。
+#
+# Hermes 执行单元（Agent 运行时）：一租户一容器（计划 §5.3 拓扑结论：session id 不是沙箱）。
+# 状态目录只用命名卷，不挂载任何宿主 .hermes 路径；平台通过 TCP 上的 JSON-RPC 桥访问它，
+# 两个容器都不需要 docker socket。
+#
+# 暂不包含 redis / minio：当前后端与 Runner 都未引用它们（旧栈同样标注为预留），
+# 首个引用它们的模块落地时再按同一隔离规则加入。
+name: haitlify-isolated
+
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: haitlify-isolated-mysql
+    restart: "no"
+    # 运行时护栏（A0-E 验收口径，见 DEPLOYMENT.md「A0-E 验收口径」）：
+    # 去掉全部 capabilities、禁止提权；mysql 以镜像自带的 mysql 用户运行（uid/gid 999），
+    # 因此不依赖 setuid/setgid；数据卷可写，故不设 read_only（实测：root 入口 + cap_drop ALL 会因 setgid 被拒）。
+    user: "999:999"
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      MYSQL_ROOT_PASSWORD: ${HAITLIFY_ISOLATED_MYSQL_ROOT_PASSWORD:?deploy/isolated/.env 缺少 HAITLIFY_ISOLATED_MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: haitlify_isolated
+      MYSQL_USER: haitlify_app
+      MYSQL_PASSWORD: ${HAITLIFY_ISOLATED_DB_PASSWORD:?deploy/isolated/.env 缺少 HAITLIFY_ISOLATED_DB_PASSWORD}
+    command: >
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+    ports:
+      # 只绑回环：默认的 0.0.0.0 会把隔离库暴露到局域网（预检的 ports 检查强制 127.0.0.1）。
+      - "127.0.0.1:13306:3306"
+    volumes:
+      - type: volume
+        source: mysql-data
+        target: /var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  platform:
+    build:
+      context: ../../server/platform
+    container_name: haitlify-isolated-platform
+    restart: "no"
+    # 运行时护栏：只读根文件系统 + 最小 capabilities + 禁止提权；JVM 只写 /tmp。
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    user: "10001:10001"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      hermes:
+        condition: service_started
+    environment:
+      APP_PORT: 8080
+      APP_ENV_ID: haitlify-isolated
+      # 由启动入口在预检通过后注入；平台启动保护还要求它与下面只读挂载的预检结果文件一致。
+      APP_ENV_PREFLIGHT_HASH: ${HAITLIFY_ISOLATED_PREFLIGHT_HASH:-}
+      APP_ENV_PREFLIGHT_RESULT: /app/preflight/isolated-preflight.json
+      APP_DB_URL: jdbc:mysql://mysql:3306/haitlify_isolated?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+      APP_DB_USERNAME: haitlify_app
+      APP_DB_PASSWORD: ${HAITLIFY_ISOLATED_DB_PASSWORD:?deploy/isolated/.env 缺少 HAITLIFY_ISOLATED_DB_PASSWORD}
+      # 32 字节 Base64 密钥；没有则密钥明文存储，因此这里按必需凭据处理。
+      APP_SECRET_KEY: ${HAITLIFY_ISOLATED_SECRET_KEY:?deploy/isolated/.env 缺少 HAITLIFY_ISOLATED_SECRET_KEY}
+      APP_ASSISTANT_HERMES_ENABLED: "true"
+      APP_ASSISTANT_HERMES_TRANSPORT: tcp
+      APP_ASSISTANT_HERMES_HOST: hermes
+      APP_ASSISTANT_HERMES_PORT: "9420"
+      APP_WEB_AUTOMATION_RUNNER_ENABLED: "true"
+      APP_WEB_AUTOMATION_RUNNER_BASE_URL: http://web-runner:9323
+    volumes:
+      # 预检结果是本栈唯一允许的宿主绑定挂载：精确路径 + 精确目标 + 只读。
+      # 平台启动保护会读取它，核对 verdict=PASS 且 resolvedConfigHash 等于注入的哈希。
+      # 文件不存在时 docker 会创建同名目录，读取失败 ⇒ 启动保护拒绝启动（fail closed）。
+      - type: bind
+        source: ./.preflight/isolated-preflight.json
+        target: /app/preflight/isolated-preflight.json
+        read_only: true
+    ports:
+      # 宿主侧非常用端口；容器内仍绑 8080（nginx 与健康检查不变）。
+      - "127.0.0.1:38082:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/8080'"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  web-runner:
+    build:
+      context: ../../server/web-runner
+    container_name: haitlify-isolated-web-runner
+    restart: "no"
+    # 运行时护栏：只读根 + 最小 capabilities + 禁止提权；Chromium 需要写 /tmp 与 /dev/shm。
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /dev/shm
+      # runner 启动时创建产物目录；只读根下必须给它一个可写挂点（实测 ENOENT /app/artifacts）。
+      # tmpfs 默认归 root，非 root 进程无法在里面建子目录 ⇒ 显式给 uid/gid（实测 nginx 同类失败）。
+      - /app/artifacts:uid=10001,gid=10001,mode=0755
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    user: "10001:10001"
+    environment:
+      APP_WEB_AUTOMATION_RUNNER_PORT: 9323
+      # 容器内必须绑 0.0.0.0，否则 platform / nginx 无法访问。
+      APP_WEB_AUTOMATION_RUNNER_HOST: "0.0.0.0"
+      APP_WEB_AUTOMATION_RUNNER_BROWSER_CHANNEL: chromium
+      APP_WEB_AUTOMATION_RUNNER_HEADLESS: "true"
+      APP_WEB_AUTOMATION_RUNNER_STRICT_STARTUP: "false"
+      # 内网目标站需要 Chromium 访问私网认证 API 时，必须显式改为 "true" 并记录理由。
+      # 注意 Runner 侧的解析是 `env[KEY] !== 'false'` ⇒ **未设置即开启**；只有恰为小写 "false" 才关闭。
+      # 因此这一行必须存在且取值恰为 "false"：预检的 runner-egress-policy 检查会强制这一点
+      # （删行或写 "FALSE"/"0" 都会 FAIL；未加引号的 YAML false 经 compose 归一成字符串 "false"，等价）。
+      APP_WEB_AUTOMATION_RUNNER_ALLOW_LOCAL_NETWORK_ACCESS: "false"
+      # 同族的第二个出站开关：登录发现阶段的私网放行（未设置同样是开启）。
+      # 同样由 runner-egress-policy 强制「存在且恰为 false」。
+      APP_WEB_AUTOMATION_LOGIN_DISCOVERY_ALLOW_PRIVATE_NETWORKS: "false"
+      APP_WEB_AUTOMATION_RUNNER_PUBLIC_URL: http://127.0.0.1:19324
+    ports:
+      - "127.0.0.1:19324:9323"
+
+  hermes:
+    build:
+      context: ./hermes
+      args:
+        HERMES_BASE_IMAGE: ${HAITLIFY_ISOLATED_HERMES_IMAGE:-haitlify-hermes:local}
+    container_name: haitlify-isolated-hermes
+    restart: "no"
+    read_only: true
+    tmpfs:
+      - /tmp:uid=10001,gid=10001,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    user: "10001:10001"
+    environment:
+      HERMES_HOME: /state
+      HERMES_BRIDGE_HOST: "0.0.0.0"
+      HERMES_BRIDGE_PORT: "9420"
+      # 网关子进程用哪个解释器/入口，由基础镜像决定，不在这里猜。
+      HERMES_GATEWAY_CMD: ${HAITLIFY_ISOLATED_HERMES_GATEWAY_CMD:-python3 -m tui_gateway.entry}
+    volumes:
+      - type: volume
+        source: hermes-state
+        target: /state
+    # 不发布端口：只在 isolated 网络内可达。
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c \"import socket;s=socket.create_connection(('127.0.0.1',9420),2);s.close()\""]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+  web:
+    build:
+      context: ../../apps/web
+    container_name: haitlify-isolated-web
+    restart: "no"
+    # 运行时护栏：只读根 + 最小 capabilities + 禁止提权；nginx 写 cache/run 目录。
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/cache/nginx:uid=101,gid=101,mode=0755
+      - /var/run:uid=101,gid=101,mode=0755
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    user: "101:101"
+    depends_on:
+      platform:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:38083:80"
+
+networks:
+  default:
+    name: haitlify-isolated-net
+
+# 显式命名卷：project 改名或复用旧 project 都不会静默接上旧数据卷。
+volumes:
+  mysql-data:
+    name: haitlify-isolated-mysql-data
+  hermes-state:
+    name: haitlify-isolated-hermes-state

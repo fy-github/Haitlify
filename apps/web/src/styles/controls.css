@@ -1,0 +1,390 @@
+/*
+ * Element Plus 控件配色对齐设计稿:
+ * - 弹窗/抽屉底部按钮 = 设计 .small-btn(浅灰底 #f5f7f6、描边 #e6ece8、圆角 18、11px)
+ * - 主按钮 = .small-btn.primary(#54d9b5 / #48cbaa / #184333)
+ * - 标签 = 设计 .r-tag(柔和底 + 深字,不再用 EP 默认蓝色)
+ * - 勾选/开关 = 设计青绿 #4dbb96
+ * - 分段控件 = 设计 [aria-pressed] 白底选中
+ */
+
+/* ---------- 弹窗 / 抽屉底部按钮 ---------- */
+.drawer-actions .el-button,
+.studio-dialog-body + .el-dialog__footer .el-button,
+.el-dialog__footer .el-button:not(.el-button--primary) {
+  min-height: 34px;
+  padding: 8px 12px;
+  color: #56655d;
+  background: #f5f7f6;
+  border-color: #e6ece8;
+  border-radius: 18px;
+  font-size: 11px;
+  font-weight: 500;
+  box-shadow: none;
+}
+
+.el-dialog__footer .el-button:not(.el-button--primary):hover,
+.drawer-actions .el-button:hover {
+  color: #3f5a50;
+  background: #eef3ef;
+  border-color: #dde6e1;
+}
+
+.drawer-actions .el-button--primary,
+.el-dialog__footer .el-button--primary {
+  color: #184333;
+  background: #54d9b5;
+  border-color: #48cbaa;
+  border-radius: 18px;
+  font-size: 11px;
+  font-weight: 500;
+  box-shadow: none;
+}
+
+.drawer-actions .el-button--primary:hover,
+.el-dialog__footer .el-button--primary:hover {
+  color: #184333;
+  background: #4bd2ae;
+  border-color: #41c39f;
+}
+
+/* small-btn 的自然高度为 34.5px (11px × 1.5 + 16px padding + 2px border),
+ * 不再让 EP 固定32px/line-height:1 压扁。只改按钮 variant。 */
+.drawer-actions .el-button,
+.el-dialog__footer .el-button,
+.s-drawer-btn,
+.defect-template-drawer .drawer-actions .btn.small-btn {
+  height: auto;
+  min-height: 34px;
+  padding: 8px 12px;
+  border-radius: 18px;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.5;
+  letter-spacing: normal;
+  box-shadow: none;
+  transform: none;
+}
+
+.defect-template-drawer .drawer-actions .btn.small-btn {
+  color: #56655d;
+  background: #f5f7f6;
+  border-color: #e6ece8;
+}
+
+.defect-template-drawer .drawer-actions .btn.small-btn.primary {
+  color: #184333;
+  background: #54d9b5;
+  border-color: #48cbaa;
+}
+
+.drawer-actions .el-button,
+.el-dialog__footer .el-button {
+  --drawer-button-bg: #f5f7f6;
+  --drawer-button-border: #e6ece8;
+  --drawer-button-ink: #56655d;
+}
+
+.drawer-actions .el-button--primary,
+.el-dialog__footer .el-button--primary {
+  --drawer-button-bg: #54d9b5;
+  --drawer-button-border: #48cbaa;
+  --drawer-button-ink: #184333;
+}
+
+.drawer-actions .el-button:hover:not(.is-disabled):not(.is-link):not(.is-text),
+.el-dialog__footer .el-button:hover:not(.is-disabled):not(.is-link):not(.is-text),
+.drawer-actions .el-button:focus-visible,
+.el-dialog__footer .el-button:focus-visible {
+  color: var(--drawer-button-ink);
+  background: var(--drawer-button-bg);
+  border-color: var(--drawer-button-border);
+  transform: none;
+  box-shadow: none;
+  outline: none;
+  filter: brightness(0.96);
+}
+
+.drawer-actions .el-button:focus-visible,
+.el-dialog__footer .el-button:focus-visible {
+  filter: brightness(0.9);
+}
+
+@media (max-width: 640px) {
+  .drawer-actions .el-button,
+  .el-dialog__footer .el-button,
+  .s-drawer-btn,
+  .defect-template-drawer .drawer-actions .btn.small-btn {
+    min-height: 44px;
+  }
+}
+
+/* ---------- 归档页头按钮 variants ----------
+ * settings-v2 的新增字段确为灰底;cases-v3 导出为 #54d9b5;
+ * users/jira 为 #6ad8b4。用显式作用域保留差异,不用全局 primary 染色。 */
+.settings-page-head:is(.template-head, .jira-head, .user-head, .cases-head, .report-head) .toolbar .el-button:not(.is-link):not(.is-text) {
+  height: auto;
+  min-height: 34px;
+  padding: 8px 14px;
+  gap: 7px;
+  color: var(--page-button-ink, #3f5a50);
+  background: var(--page-button-bg, #f4f7f6);
+  border: 1px solid var(--page-button-border, #e5ece8);
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.5;
+  letter-spacing: normal;
+  box-shadow: none;
+  transform: none;
+  transition: filter 140ms ease;
+}
+
+.cases-head .toolbar .el-button--primary {
+  --page-button-bg: #54d9b5;
+  --page-button-border: #42c5a3;
+  --page-button-ink: #153d32;
+}
+
+.user-head .toolbar .el-button--primary,
+.jira-head .toolbar .el-button--primary {
+  --page-button-bg: #6ad8b4;
+  --page-button-border: #5bc9a4;
+  --page-button-ink: #345f46;
+}
+
+.settings-page-head:is(.template-head, .jira-head, .user-head, .cases-head, .report-head) .toolbar .el-button:not(.is-link):not(.is-text):hover:not(.is-disabled) {
+  filter: brightness(0.96);
+}
+
+.settings-page-head:is(.template-head, .jira-head, .user-head, .cases-head, .report-head) .toolbar .el-button:not(.is-link):not(.is-text):focus-visible {
+  outline: none;
+  filter: brightness(0.9);
+}
+
+.settings-page-head:is(.template-head, .jira-head, .user-head, .cases-head, .report-head) .toolbar .el-button:not(.is-link):not(.is-text).is-disabled {
+  opacity: 0.45;
+  filter: none;
+}
+
+.j-mappings .j-section-head > .el-button {
+  height: auto;
+  min-height: 34px;
+  padding: 8px 14px;
+  gap: 7px;
+  color: #535a64;
+  background: #fff;
+  border: 1px solid #e8ebee;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.5;
+  letter-spacing: normal;
+  box-shadow: none;
+  transform: none;
+}
+
+.defect-page .head-actions .btn {
+  background: #f4f7f6;
+  border-color: #e5ece8;
+  color: #3f5a50;
+  line-height: 1.5;
+}
+
+@media (max-width: 640px) {
+  .settings-page-head:is(.template-head, .jira-head, .user-head, .cases-head, .report-head) .toolbar .el-button:not(.is-link):not(.is-text) {
+    min-height: 40px;
+    padding: 7px 10px;
+    font-size: 10px;
+  }
+
+  .settings-page-head.template-head .toolbar .el-button:not(.is-link):not(.is-text),
+  .settings-page-head.jira-head .toolbar .el-button:not(.is-link):not(.is-text),
+  .settings-page-head.user-head .toolbar .el-button:not(.is-link):not(.is-text) {
+    padding: 6px 9px;
+    font-size: 9px;
+  }
+
+  .settings-page-head.cases-head .toolbar .el-button:not(.is-link):not(.is-text) {
+    min-height: 44px;
+    padding: 8px 14px;
+    font-size: 12px;
+  }
+
+  .j-mappings .j-section-head > .el-button {
+    min-height: 40px;
+    padding: 6px 9px;
+    font-size: 9px;
+  }
+
+  .defect-page .page-head .head-actions .btn {
+    min-height: 40px;
+    padding: 7px 10px;
+    font-size: 10px;
+  }
+}
+
+/* ---------- 标签 ---------- */
+.el-tag {
+  background: #f1f5f2;
+  color: #78877d;
+  border: 0;
+  border-radius: 7px;
+  font-size: 10px;
+  font-weight: 500;
+}
+
+/* EP 用 .el-tag--info.el-tag--light 这类双类选择器写蓝色变量,这里用同等权重覆盖 */
+.el-tag.el-tag--info {
+  background: #f1f5f2;
+  color: #78877d;
+}
+
+.el-tag.el-tag--success {
+  background: #eaf4ed;
+  color: #5d8b6d;
+}
+
+.el-tag.el-tag--warning {
+  background: #f8f1e8;
+  color: #a3865b;
+}
+
+.el-tag.el-tag--danger {
+  background: #fbefeb;
+  color: #b97860;
+}
+
+/* ---------- 勾选 / 开关 ---------- */
+.el-checkbox__input.is-checked .el-checkbox__inner,
+.el-checkbox__input.is-indeterminate .el-checkbox__inner {
+  background: #4dbb96;
+  border-color: #4dbb96;
+}
+
+.el-checkbox__inner {
+  border-color: #ccd5d2;
+  border-radius: 4px;
+}
+
+.el-checkbox__input.is-checked + .el-checkbox__label {
+  color: #4f7560;
+}
+
+.el-switch.is-checked .el-switch__core {
+  background: #4dbb96;
+  border-color: #4dbb96;
+}
+
+/* ---------- 分段控件 ---------- */
+.el-segmented {
+  --el-segmented-bg-color: #f1f4f3;
+  --el-segmented-item-selected-bg-color: #fff;
+  --el-segmented-item-selected-color: #315d47;
+  --el-segmented-color: #69766f;
+  padding: 3px;
+  border-radius: 18px;
+  font-size: 11px;
+}
+
+.el-segmented__item {
+  border-radius: 16px;
+}
+
+.el-segmented__item-selected {
+  border-radius: 16px;
+}
+
+.el-segmented__item,
+.el-segmented__item-label {
+  color: #69766f;
+  font-size: 11px;
+}
+
+.el-segmented__item.is-selected,
+.el-segmented__item.is-selected .el-segmented__item-label {
+  color: #315d47;
+  font-weight: 500;
+}
+
+/* ---------- 输入类:统一描边色,不用 EP 蓝 ---------- */
+.el-input__wrapper,
+.el-select__wrapper,
+.el-textarea__inner {
+  --el-input-border-color: #e4ebe6;
+  --el-input-focus-border-color: #e4ebe6;
+  --el-input-hover-border-color: #e4ebe6;
+}
+
+/* ---------- 弹窗标题 ---------- */
+.el-dialog__title,
+.el-drawer__title {
+  color: #3f4b45;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.el-dialog__header,
+.el-drawer__header {
+  margin-bottom: 0;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #edf0ee;
+}
+
+/* 账号弹层没有展开原稿:沿用归档卡片/小按钮 tokens,不声称精确复刻。
+ * Teleport 到 body,专用 popper 类不污染其它下拉。 */
+.studio-account-popper.el-popper {
+  min-width: 168px;
+  max-width: calc(100vw - 24px);
+  padding: 0;
+  color: #56655d;
+  background: #fff;
+  border: 1px solid #e5ede7;
+  border-radius: 16px;
+  box-shadow: 0 8px 25px #26382f18;
+  overflow: hidden;
+}
+
+.studio-account-popper .el-dropdown-menu {
+  padding: 6px;
+  background: transparent;
+}
+
+.studio-account-popper .el-dropdown-menu__item {
+  min-height: 34px;
+  padding: 8px 12px;
+  color: #56655d;
+  border: 0;
+  border-radius: 9px;
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  outline: none;
+}
+
+.studio-account-popper .el-dropdown-menu__item:not(.is-disabled):hover,
+.studio-account-popper .el-dropdown-menu__item:not(.is-disabled):focus,
+.studio-account-popper .el-dropdown-menu__item:not(.is-disabled):focus-visible {
+  color: #3f5a50;
+  background: #eef3ef;
+  outline: none;
+  filter: none;
+}
+
+.studio-account-popper .el-dropdown-menu__item.is-disabled {
+  min-height: 30px;
+  color: #97aa9d;
+  font-size: 10px;
+  cursor: default;
+}
+
+.studio-account-popper .el-dropdown-menu__item--divided {
+  margin: 5px 0 0;
+  border-top: 1px solid #edf0ee;
+}
+
+@media (max-width: 640px) {
+  .studio-account-popper .el-dropdown-menu__item:not(.is-disabled) {
+    min-height: 44px;
+  }
+}

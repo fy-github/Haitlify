@@ -1,0 +1,1260 @@
+/*
+ * 设置中心页面:与统一外壳一致的页面头部 + 分区卡片。
+ * 只调整视觉与布局,表单字段、按钮事件与数据来源仍由原视图与 App.vue 提供。
+ */
+
+/* 页面头部 */
+.workbench__pane:has(> .jira-config-head),
+.workbench__pane:has(> .settings-page-head) {
+  /* 新头部带副标题,不再套用旧的 58px 顶栏固定行 */
+  grid-template-rows: auto minmax(0, 1fr);
+  background: #fff;
+}
+
+.workbench__pane:has(> .jira-config-head) > .library-workspace,
+.workbench__pane:has(> .settings-page-head) > .library-workspace {
+  min-height: 0;
+  overflow: auto;
+}
+
+.jira-config-head,
+.settings-page-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin: 0;
+  /* 设计稿 .content padding 26px 24px 18px,页头自身不再加左右留白 */
+  padding: 26px 24px 0;
+}
+
+.jira-config-head h1,
+.settings-page-head h1 {
+  margin: 0;
+  color: #272a30;
+  font-size: 25px;
+  font-weight: 600;
+  letter-spacing: -0.6px;
+  line-height: 1.4;
+}
+
+.jira-config-kicker,
+.settings-page-kicker {
+  display: block;
+  margin-bottom: 9px;
+  color: #a0ada5;
+  font-size: 9px;
+  line-height: 1.6;
+  letter-spacing: 0.04em;
+}
+
+.jira-config-head p,
+.settings-page-head p {
+  margin: 4px 0 0;
+  max-width: 660px;
+  color: #6c7480;
+  font-size: 11px;
+  line-height: 1.5;
+  /* 避免中文说明在末行只落一个孤字 */
+  text-wrap: pretty;
+}
+
+.jira-config-head .toolbar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* ---------- 页头按钮唯一来源(设计稿 .head-actions .btn / .btn.primary / .btn.light) ----------
+ * 各页面不再各自定义页头按钮,避免颜色与尺寸反复漂移。
+ */
+.settings-page-head .toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 0;
+}
+
+.settings-page-head .toolbar .el-button {
+  min-height: 35px;
+  padding: 8px 14px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+/* 次级按钮:设计 .head-actions .btn —— 浅灰底 + #e5ece8 描边 + #3f5a50 字 */
+.settings-page-head .toolbar .el-button:not(.el-button--primary) {
+  color: #3f5a50;
+  background: #f4f7f6;
+  border-color: #e5ece8;
+  box-shadow: none;
+}
+
+/* 设计稿里 .head-actions .btn 在 .btn.primary 之后加载,页头主按钮渲染结果同样是浅灰底 */
+.settings-page-head .toolbar .el-button--primary {
+  color: #3f5a50;
+  background: #f4f7f6;
+  border-color: #e5ece8;
+  box-shadow: none;
+}
+
+.settings-page-head .toolbar .el-button--primary.is-disabled,
+.settings-page-head .toolbar .el-button--primary.is-disabled:hover {
+  color: #9db3a6;
+  background: #eef4f0;
+  border-color: #e4ece7;
+}
+
+@media (max-width: 640px) {
+  .settings-page-head .toolbar .el-button {
+    min-height: 40px;
+    padding: 7px 10px;
+    font-size: 10px;
+  }
+}
+
+/* 按钮组与主标题同一水平带(设计稿:按钮中心对齐标题,而非整块居中) */
+.settings-page-head .toolbar {
+  margin-top: 21px;
+}
+
+/* 页面主体:让内容在白容器内自成一块,与头部保持同一左右留白 */
+.jira-config-head + .library-workspace,
+.settings-page-head + .library-workspace {
+  display: block;
+  min-height: 0;
+  padding: 0 26px 26px;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  overflow: visible;
+}
+
+/* 设置分区卡片 */
+.jira-config-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  max-width: none;
+  padding: 22px 24px;
+  background: #fff;
+  border: 1px solid #e7ecef;
+  border-radius: 16px;
+}
+
+.jira-config-panel .studio-form-grid {
+  gap: 18px 24px;
+}
+
+.jira-config-panel .studio-form-wide {
+  grid-column: 1 / -1;
+}
+
+.jira-config-switch {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #eef2f4;
+}
+
+.jira-config-switch :deep(.el-switch__label) {
+  color: #5d7b68;
+  font-size: 12px;
+}
+
+.jira-config-hint {
+  margin: 0;
+  /* 说明文字在白底上需达到正文可读性,不使用过浅的灰绿 */
+  color: #6f7d85;
+  font-size: 11px;
+  line-height: 1.8;
+}
+
+.jira-config-jql {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.jira-config-jql__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 4px;
+}
+
+.jira-config-jql__header h2 {
+  margin: 0;
+  color: #5d7b68;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.jira-config-jql__row {
+  display: grid;
+  grid-template-columns: minmax(160px, 0.9fr) minmax(220px, 2fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid #edf1f3;
+  border-radius: 12px;
+  background: #fbfcfd;
+}
+
+.jira-config-jql__empty {
+  padding: 26px;
+  color: #9aa8af;
+  background: #fafcfc;
+  border: 1px dashed #e2eaee;
+  border-radius: 12px;
+  font-size: 12px;
+  text-align: center;
+}
+
+/* ---------- 设置中心:模板字段 / 用户管理 共用页面骨架 ---------- */
+
+.workbench__pane:has(> .settings-page-head) {
+  grid-template-rows: auto minmax(0, 1fr);
+  background: #fff;
+}
+
+.template-head + .settings-workspace,
+.user-head + .library-workspace,
+.overview-head + .library-workspace {
+  display: grid;
+  /* 内容区高度由内容决定;不要让网格行被父级剩余高度压扁 */
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: none;
+  grid-auto-rows: min-content;
+  align-content: start;
+  gap: 16px;
+  min-height: 0;
+  padding: 0 26px 26px;
+  overflow: auto;
+  background: transparent;
+  border: 0;
+}
+
+.template-body .settings-panel {
+  border: 1px solid #e7ecef;
+  border-radius: 16px;
+  box-shadow: none;
+}
+
+/* 用户管理:列表卡片 */
+.user-panel {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 440px;
+  flex-shrink: 0;
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid #e7ece8;
+  border-radius: 16px;
+}
+
+.user-panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  flex: none;
+  min-height: 55px;
+  padding: 12px 17px;
+  border-bottom: 1px solid #edf1ee;
+}
+
+.user-panel__head strong {
+  display: block;
+  color: #4d6255;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.user-panel__head span {
+  color: #a1b0a6;
+  font-size: 10px;
+}
+
+.user-pager {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.user-pager__index {
+  color: #8b9a8f;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.user-pager button {
+  min-height: 30px;
+  padding: 6px 12px;
+  color: #6c8274;
+  background: #fff;
+  border: 1px solid #e1e9e3;
+  border-radius: 9px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.user-pager button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.user-search {
+  width: 260px;
+}
+
+.user-table-scroll {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: auto;
+}
+
+.user-table-scroll:focus-visible {
+  outline: 2px solid var(--brand-primary);
+  outline-offset: 2px;
+}
+
+.user-management-table {
+  width: 100%;
+  min-width: 860px;
+}
+
+/* 设计稿 .r-table:表头 10px 浅灰、表体 11px 正文色,行高 72px;
+   el-table 根元素同时带 .user-management-table 与 .el-table,不能再要求嵌套 .el-table */
+.user-management-table .cell {
+  padding: 0;
+}
+
+.user-management-table th.el-table__cell {
+  height: 40px;
+  padding: 12px 15px;
+  color: #8a998e;
+  background: #f7f9f8;
+  border-bottom: 1px solid #e9eeeb;
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.user-management-table td.el-table__cell {
+  height: 72px;
+  padding: 14px 15px;
+  color: #6e8074;
+  border-bottom: 1px solid #f0f1f3;
+  font-size: 11px;
+}
+
+.user-cell {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+}
+
+.user-cell__text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.user-cell__name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #5d7966;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.user-cell__text small {
+  margin-top: 5px;
+  color: #9bab9f;
+  font-size: 9px;
+}
+
+.user-avatar {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  place-items: center;
+  overflow: hidden;
+  color: #6b9476;
+  background: #e8f3eb;
+  border-radius: 11px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.user-avatar--large {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  font-size: 16px;
+}
+
+.user-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.user-self {
+  margin-left: 5px;
+  padding: 3px 5px;
+  color: #75a082;
+  background: #edf7ef;
+  border-radius: 6px;
+  font-size: 8px;
+  font-weight: 500;
+}
+
+/* 设计稿的角色胶囊:三种角色各自一套柔和底色 */
+.user-role {
+  display: inline-flex;
+  padding: 5px 8px;
+  color: #7b9482;
+  background: #eff4f0;
+  border-radius: 7px;
+  font-size: 10px;
+}
+
+.user-role--admin {
+  color: #a87969;
+  background: #faeeea;
+}
+
+.user-role--editor {
+  color: #688e72;
+  background: #eaf4ed;
+}
+
+.user-role--viewer {
+  color: #8496a2;
+  background: #eff3f5;
+}
+
+.user-ok {
+  color: #6e9a79;
+  font-size: 11px;
+}
+
+.user-off {
+  color: #b38d7b;
+  font-size: 11px;
+}
+
+.user-pending {
+  color: #ab916b;
+  font-size: 10px;
+}
+
+/* 列表快捷操作:无背景,只保留语义文字色 */
+.user-actions {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.user-link {
+  min-height: 32px;
+  padding: 5px;
+  color: #78a087;
+  background: transparent;
+  border: 0;
+  border-radius: 7px;
+  font: inherit;
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.user-link--stop {
+  color: #b77f6f;
+}
+
+.user-link--enable {
+  color: #5b9972;
+}
+
+.user-link--danger {
+  color: #b38b7d;
+}
+
+.user-link:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+.user-link:disabled {
+  color: #c6ccd1;
+  cursor: not-allowed;
+}
+
+.user-link:focus-visible {
+  outline: 2px solid var(--brand-primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* 用户抽屉 */
+.user-drawer {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.user-drawer__identity {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: #fafcfb;
+  border: 1px solid #eef2f4;
+  border-radius: 14px;
+}
+
+.user-drawer__identity strong {
+  display: block;
+  color: #2b3138;
+  font-size: 14px;
+}
+
+.user-drawer__identity small {
+  color: #8b949e;
+  font-size: 11px;
+}
+
+.user-drawer__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.user-drawer__grid label {
+  display: grid;
+  gap: 7px;
+  color: #5d7b68;
+  font-size: 12px;
+}
+
+.user-avatar-upload {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.user-avatar-upload small {
+  color: #8b949e;
+  font-size: 11px;
+}
+
+.user-roles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.user-role-option {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  color: #4a5a63;
+  text-align: left;
+  background: #fbfcfd;
+  border: 1px solid #e7ecef;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.user-role-option strong {
+  font-size: 12.5px;
+}
+
+.user-role-option small {
+  color: #8b949e;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.user-role-option--active {
+  background: #eff9f5;
+  border-color: #9fd9c7;
+}
+
+.user-role-option--active strong {
+  color: #163f35;
+}
+
+.user-role-option:focus-visible {
+  outline: 2px solid var(--brand-primary);
+  outline-offset: 2px;
+}
+
+.user-drawer__error {
+  margin: 0;
+  color: #c26a5a;
+  font-size: 12px;
+}
+
+/* 抽屉底部操作条:设计稿 .drawer-actions(左状态说明 + 右 small-btn 组),
+   固定在抽屉底部;按钮外观由 controls.css 的 .drawer-actions .el-button 提供 */
+.user-drawer .drawer-actions {
+  position: sticky;
+  bottom: -16px;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 6px -20px -16px;
+  padding: 16px 28px;
+  background: #fff;
+  border-top: 1px solid #edf0ee;
+}
+
+.user-drawer__status {
+  color: #8a9890;
+  font-size: 10px;
+}
+
+.user-drawer__buttons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 团队 / 项目概览(规划中) */
+.overview-status {
+  padding: 7px 12px;
+  color: #8a6f3f;
+  background: #fdf6e9;
+  border: 1px solid #f0e2c8;
+  border-radius: 999px;
+  font-size: 11.5px;
+}
+
+.overview-status[data-status='ready'] {
+  color: #39734d;
+  background: #eef8f1;
+  border-color: #cfe7d5;
+}
+
+.overview-status[data-status='loading'] {
+  color: #52685a;
+  background: #f4f7f6;
+  border-color: #e1e9e3;
+}
+
+.overview-status[data-status='error'] {
+  color: #9c4938;
+  background: #fff2ef;
+  border-color: #f0cfc8;
+}
+
+.overview-state-panel {
+  display: grid;
+  gap: 5px;
+  padding: 14px 16px;
+  color: #4a5a63;
+  background: #f7faf9;
+  border: 1px solid #e7efeb;
+  border-radius: 14px;
+}
+
+.overview-state-panel strong {
+  color: #35443c;
+  font-size: 12.5px;
+}
+
+.overview-state-panel span {
+  color: #697a72;
+  font-size: 11.5px;
+  line-height: 1.8;
+}
+
+.overview-state-panel .overview-state-panel__action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  justify-self: start;
+  min-height: 34px;
+  margin-top: 3px;
+  padding: 8px 14px;
+  border: 1px solid #e5ece8;
+  border-radius: 20px;
+  background: #f4f7f6;
+  color: #3f5a50;
+  font-size: 11.5px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.overview-state-panel .overview-state-panel__action:hover {
+  background: #e9f2ee;
+}
+
+.overview-state-panel.is-error {
+  color: #9c4938;
+  background: #fff5f2;
+  border-color: #f0cfc8;
+}
+
+.overview-state-panel.is-error strong,
+.overview-state-panel.is-error span {
+  color: inherit;
+}
+
+.overview-note {
+  display: grid;
+  gap: 4px;
+  padding: 14px 16px;
+  color: #4a5a63;
+  background: #f7faf9;
+  border: 1px solid #e7efeb;
+  border-radius: 14px;
+}
+
+.overview-note strong {
+  font-size: 12.5px;
+}
+
+.overview-note span {
+  color: #7c8792;
+  font-size: 11.5px;
+  line-height: 1.8;
+}
+
+.overview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.overview-card {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  padding: 18px;
+  background: #fff;
+  border: 1px solid #e7ecef;
+  border-radius: 16px;
+}
+
+.overview-card__icon {
+  color: #7ba49a;
+}
+
+.overview-card h2 {
+  margin: 0;
+  color: #2b3138;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.overview-card__value {
+  color: #39734d;
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.overview-card[data-card-state='ready'] {
+  border-color: #d9eae0;
+}
+
+.overview-card p {
+  margin: 0;
+  color: #7c8792;
+  font-size: 11.5px;
+  line-height: 1.8;
+}
+
+.overview-card__meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+
+.overview-tag {
+  padding: 2px 9px;
+  color: #8a6f3f;
+  background: #fdf6e9;
+  border-radius: 999px;
+  font-size: 10.5px;
+}
+
+.overview-deps {
+  color: #96a3ab;
+  font-size: 10.5px;
+}
+
+/* ---------- 用户管理单页:直接复用设计 HTML 的参数 ---------- */
+.user-body {
+  display: flex !important;
+  flex-direction: column;
+  align-content: stretch;
+  gap: 0;
+  padding: 0 24px 18px !important;
+  overflow: auto !important;
+}
+
+.user-summary {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex: none;
+  min-height: 35px;
+  padding: 0 0 12px;
+  color: #8ea697;
+  font-size: 10px;
+}
+
+.user-summary > span:nth-child(2) {
+  color: #a3ad89;
+}
+
+.user-summary__notice {
+  margin-left: auto;
+}
+
+/* 设计稿:面板头只留标题与搜索,账号总数放在底部范围行 */
+.user-panel__head span {
+  display: none;
+}
+
+.user-search {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 120px;
+  max-width: none;
+  min-height: 36px;
+}
+
+/* 设计稿 .r-pagination:底部范围 + 分页条 */
+.user-panel__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex: none;
+  min-height: 59px;
+  padding: 12px 17px;
+  color: #8b9a8f;
+  border-top: 1px solid #edf1ee;
+  font-size: 10px;
+}
+
+.user-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex: none;
+  min-height: 30px;
+  padding-top: 10px;
+  color: #a0afa5;
+  font-size: 9px;
+}
+
+.user-table-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-width: none;
+  overflow: auto;
+  scrollbar-width: auto;
+  scrollbar-color: #9db8a5 #edf3ef;
+}
+
+.user-table-scroll::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+.user-table-scroll::-webkit-scrollbar-track {
+  background: #edf3ef;
+  border-radius: 8px;
+}
+
+.user-table-scroll::-webkit-scrollbar-thumb {
+  background: #9db8a5;
+  border: 3px solid #edf3ef;
+  border-radius: 8px;
+}
+
+.user-management-table {
+  min-width: 870px;
+}
+
+.user-management-table .el-table__header th {
+  /* 定稿 haitlify-users-v1 `.u-table th`:#8a998e / 500 / 40 / 底 #f7f9f8
+     (此前这条 el-table 覆盖把表头打成 #717884 / 400 / 44) */
+  height: 40px;
+  padding: 8px 15px;
+  color: #8a998e;
+  background: #f7f9f8;
+  border-bottom: 1px solid #e9eeeb;
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.user-management-table .el-table__body td {
+  height: 75px;
+  padding: 13px 15px;
+  border-bottom: 1px solid #f0f1f3;
+}
+
+.user-management-table .el-table__body .cell {
+  line-height: 1.45;
+}
+
+.user-management-table .el-table__row:hover > td {
+  background: #fbfcfc !important;
+}
+
+.user-avatar {
+  width: 34px;
+  height: 34px;
+  flex-basis: 34px;
+  border-radius: 11px;
+  color: #6b9476;
+  background: #e8f3eb;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.user-cell__name {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  color: #5d7966;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.user-cell__text small {
+  margin-top: 3px;
+  line-height: 1.5;
+  color: #9bab9f;
+  font-size: 9px;
+}
+
+.user-self {
+  display: inline-block;
+  margin-left: 5px;
+  vertical-align: middle;
+  color: #75a082;
+  background: #edf7ef;
+  border-radius: 6px;
+  font-size: 8px;
+  padding: 3px 5px;
+}
+
+.user-management-table .el-tag {
+  padding: 5px 8px;
+  border: 0;
+  border-radius: 7px;
+  font-size: 10px;
+}
+
+.user-management-table .el-tag--danger {
+  color: #a87969;
+  background: #faeeea;
+}
+
+.user-management-table .el-tag--primary {
+  color: #688e72;
+  background: #eaf4ed;
+}
+
+.user-management-table .el-tag--info {
+  color: #8496a2;
+  background: #eff3f5;
+}
+
+.user-actions {
+  gap: 9px;
+  flex-wrap: nowrap;
+}
+
+.user-link {
+  white-space: nowrap;
+  flex: none;
+  min-height: 32px;
+  padding: 5px;
+  border-radius: 7px;
+  color: #78a087;
+  font-size: 10px;
+}
+
+.user-link--stop { color: #b77f6f; }
+.user-link--enable { color: #5b9972; }
+.user-link--danger { color: #b38b7d; }
+.user-link:disabled { opacity: .35; }
+
+.user-panel .el-table__empty-block {
+  min-height: 180px;
+}
+
+/* 窄屏横向滚动提示与滑块:桌面隐藏 */
+.user-scroll-hint {
+  display: none;
+  margin: 0;
+  padding: 0 12px 7px;
+  color: #9aaa9f;
+  font-size: 8px;
+  text-align: right;
+}
+
+.user-hscroll {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  padding: 5px 10px 3px;
+  color: #8da296;
+  background: #f7faf7;
+  border-top: 1px solid #e7eee9;
+  font-size: 8px;
+}
+
+.user-hscroll input {
+  width: 100%;
+  height: 16px;
+  accent-color: #7ea68a;
+  cursor: ew-resize;
+}
+
+.user-hscroll > span {
+  flex: none;
+  white-space: nowrap;
+}
+
+.user-head .toolbar {
+  margin-top: 0;
+}
+
+/* 用户管理定稿主按钮:haitlify-users-v1 `.users-main .btn.primary`
+ * (浏览器实测 rgb(106,216,180) / rgb(52,95,70))。只作用于本页页头,
+ * 不删除设置中心的通用灰底基线(设置页新增字段实测仍是灰底)。 */
+.user-head .toolbar .el-button--primary {
+  color: #345f46;
+  background: #6ad8b4;
+  border-color: #5bc9a4;
+  box-shadow: none;
+}
+
+.user-head .toolbar .el-button--primary:hover,
+.user-head .toolbar .el-button--primary:focus-visible {
+  color: #2d5340;
+  background: #5bc9a4;
+  border-color: #4fbe9b;
+}
+
+.user-management-table {
+  background: #fff;
+}
+
+/* 窄屏:头部与映射行改为纵向,避免输入框被压到不可用宽度 */
+@media (max-width: 900px) {
+  .jira-config-head,
+  .settings-page-head {
+    padding: 18px 16px 12px;
+    gap: 12px;
+  }
+
+  .jira-config-head h1,
+  .settings-page-head h1 {
+    font-size: 21px;
+  }
+
+  .jira-config-head .toolbar {
+    width: 100%;
+  }
+
+  .settings-page-head .toolbar {
+    width: 100%;
+    flex-wrap: wrap;
+    margin-top: 0;
+  }
+
+  .jira-config-head + .library-workspace,
+  .settings-page-head + .library-workspace,
+  .template-head + .settings-workspace {
+    padding: 0 16px 18px;
+    gap: 14px;
+  }
+
+  .jira-config-panel {
+    padding: 16px;
+    gap: 14px;
+  }
+
+  .jira-config-panel .studio-form-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+  }
+
+  .jira-config-jql__row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .user-panel {
+    padding: 14px;
+    gap: 12px;
+  }
+
+  .user-search {
+    width: 100%;
+  }
+
+  .user-panel__toolbar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  /* 抽屉内双列改为单列,角色卡纵向排列 */
+  .user-drawer__grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+  }
+
+  .user-roles {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .user-drawer__actions {
+    flex-wrap: wrap;
+  }
+
+  /* 抽屉正文在窄屏把左右内边距收到 16px(studio-canvas.css);
+     操作条负边距必须同值,否则 -20px 会让容器右缘越界 4px(390 → 394) */
+  .user-drawer .drawer-actions {
+    margin-right: -16px;
+    margin-left: -16px;
+  }
+}
+
+/* 用户管理:设计稿的 640px 断点(表内滚动 + 提示条 + 横向滑块) */
+@media (max-width: 640px) {
+  .user-head {
+    margin-bottom: 9px;
+    padding: 14px 12px 9px;
+    gap: 8px;
+  }
+
+  .user-head h1 {
+    font-size: 22px;
+  }
+
+  .user-head p {
+    font-size: 9px;
+    line-height: 1.8;
+  }
+
+  .user-head .toolbar {
+    gap: 8px;
+  }
+
+  .user-head .toolbar .el-button {
+    min-height: 40px;
+    padding: 6px 9px;
+    font-size: 9px;
+  }
+
+  .user-body {
+    padding: 0 10px 10px !important;
+  }
+
+  .user-summary {
+    gap: 6px;
+    align-items: flex-start;
+    font-size: 8px;
+    line-height: 1.7;
+  }
+
+  .user-summary > span:nth-child(2) {
+    display: none;
+  }
+
+  .user-panel__head {
+    min-height: 0;
+    padding: 10px 12px;
+    gap: 8px;
+  }
+
+  .user-panel__head strong {
+    font-size: 13px;
+  }
+
+  .user-search {
+    width: 100%;
+  }
+
+  .user-scroll-hint {
+    display: block;
+  }
+
+  .user-hscroll {
+    display: flex;
+  }
+
+  /* 设计稿窄屏抽屉:整屏宽,底部操作条换行且按钮 44px 触控高度 */
+  .user-drawer-shell {
+    width: 100% !important;
+  }
+
+  .user-drawer .drawer-actions {
+    flex-wrap: wrap;
+    padding: 13px 18px;
+  }
+
+  .user-drawer__buttons {
+    margin-left: auto;
+  }
+
+  .user-drawer .drawer-actions .el-button {
+    min-height: 44px;
+  }
+
+  .user-management-table .el-table__body td {
+    height: 76px;
+    padding: 11px 12px;
+  }
+
+  .user-cell__name {
+    font-size: 11px;
+  }
+
+  .user-cell__text small {
+    font-size: 8px;
+  }
+
+  .user-link {
+    min-height: 40px;
+    padding: 5px 4px;
+  }
+
+  .user-actions {
+    gap: 5px;
+  }
+}

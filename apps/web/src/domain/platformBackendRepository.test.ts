@@ -235,6 +235,16 @@ describe('platformBackendRepository', () => {
     expect(fetchImpl.mock.calls[1]?.[1]).toMatchObject({ method: 'POST' })
   })
 
+  it('preserves a failed project-create status when strict loading is enabled', async () => {
+    const storage = new MemoryStorage()
+    const fetchImpl = vi.fn((input: string, init?: RequestInit) => {
+      if (!init?.method) return jsonResponse({ items: [], total: 0 })
+      return jsonResponse({ message: 'forbidden' }, { status: 403 })
+    })
+    await expect(loadSavedCasesWithBackend(storage, 'Haitlify API', { fetchImpl, throwOnError: true }))
+      .rejects.toMatchObject({ name: 'PlatformBackendRequestError', status: 403 })
+  })
+
   it('loads backend template config and mirrors it into local storage', async () => {
     const storage = new MemoryStorage()
     const fetchImpl = vi.fn((input: string) => {

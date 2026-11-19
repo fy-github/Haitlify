@@ -1,0 +1,8 @@
+{
+  "slot": "slot01",
+  "incarnation": "abc123",
+  "subnet": "10.221.1.0/24",
+  "worker_image": "example.invalid/hermes@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "edge_image": "example.invalid/edge@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "model": "fixture"
+}

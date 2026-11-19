@@ -82,6 +82,10 @@ export interface AutomationRunProgress {
 
 export interface AutomationRunRuntime {
   onProgress?: (progress: AutomationRunProgress) => void
+  /** Frontend-only lifecycle: the actual loop-expanded case, before runOne starts. */
+  onCaseStart?: (testCase: ApiAutomationCaseDraft) => void
+  /** Frontend-only lifecycle: the actual runOne result, immediately after it settles. */
+  onResult?: (result: AutomationRunResult) => void
 }
 
 export interface AutomationResponse {
@@ -94,6 +98,11 @@ export interface AutomationRunResult {
   sourceCaseId: string
   name: string
   module: string
+  /** Web 结果专用：页面名称与起始地址，API 结果不设置。 */
+  pageName?: string
+  startUrl?: string
+  /** Web 结果专用：原始步骤定义（用于转缺陷时保留 steps/evidence）。 */
+  steps?: import('./webAutomationCase').WebAutomationStep[]
   method: string
   path: string
   status: AutomationRunStatus
@@ -262,8 +271,10 @@ export const runAutomationCases = async (
   const notifyProgress = (runningCaseId?: string) => runtime.onProgress?.({ completed, total, ...(runningCaseId ? { runningCaseId } : {}) })
   const runAndTrack = async (testCase: ApiAutomationCaseDraft) => {
     notifyProgress(testCase.id)
+    runtime.onCaseStart?.(testCase)
     const result = await runOneAutomationCase(testCase, environment, executor, options)
     completed += 1
+    runtime.onResult?.(result)
     return result
   }
   const results =

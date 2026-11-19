@@ -4,11 +4,15 @@ export type NavKey =
   | 'jiraConfig'
   | 'api'
   | 'cases'
+  | 'webCases'
   | 'automation'
   | 'reports'
   | 'settings'
-  | 'aiConfig'
   | 'users'
+  | 'assistant'
+  | 'overview'
+  | 'caseTypes'
+  | 'environments'
 
 export type AutomationNavKind = 'api' | 'web'
 export type CaseDesignNavKind = 'interface' | 'web_automation'
@@ -22,22 +26,21 @@ const automationPathMap: Record<AutomationNavKind, string> = {
   web: '/automation/web'
 }
 
-const caseDesignPathMap: Record<CaseDesignNavKind, string> = {
-  interface: '/api',
-  web_automation: '/web-cases'
-}
-
 const navPathMap: Record<NavKey, string> = {
   home: '/',
   defects: '/defects',
   jiraConfig: '/jira-config',
-  api: '/api',
+  api: '/cases',
   cases: '/cases',
+  webCases: '/cases/web',
   automation: automationPathMap.api,
+  environments: '/environments',
   reports: '/reports',
   settings: '/settings',
-  aiConfig: '/ai-config',
-  users: '/users'
+  users: '/users',
+  assistant: '/assistant',
+  overview: '/overview',
+  caseTypes: '/settings/case-types'
 }
 
 const pathNavMap = new Map<string, NavKey>([
@@ -45,17 +48,21 @@ const pathNavMap = new Map<string, NavKey>([
   ['/automation', 'automation'],
   [automationPathMap.api, 'automation'],
   [automationPathMap.web, 'automation'],
-  [caseDesignPathMap.web_automation, 'api']
+  ['/api', 'cases'],
+  ['/web-cases', 'webCases'],
+  ['/ai-config', 'assistant']
 ])
 
 export const navPathFor = (key: NavKey): string => navPathMap[key]
 
 export const automationPathFor = (kind: AutomationNavKind): string => automationPathMap[kind]
 
-export const caseDesignPathFor = (kind: CaseDesignNavKind): string => caseDesignPathMap[kind]
+// 旧设计入口指向对应的用例库，不恢复已下线的设计画布。
+export const caseDesignPathFor = (kind: CaseDesignNavKind): string =>
+  navPathMap[kind === 'web_automation' ? 'webCases' : 'cases']
 
 export const caseDesignKindFromPath = (pathname: string): CaseDesignNavKind =>
-  normalizePath(pathname) === caseDesignPathMap.web_automation ? 'web_automation' : 'interface'
+  navKeyFromPath(pathname) === 'webCases' ? 'web_automation' : 'interface'
 
 export const automationKindFromPath = (pathname: string): AutomationNavKind => {
   const normalizedPath = normalizePath(pathname)

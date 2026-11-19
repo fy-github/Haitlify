@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildBrowserOptions,
-  buildWebRunView
+  buildWebRunView,
+  buildWebRunCaseResultMap,
+  buildWebRunCaseStatusById,
+  resolveWebRunCaseId
 } from './webAutomationRunView'
 import type { WebAutomationRunSnapshot } from './webAutomationRunRepository'
+import type { WebAutomationRunResult } from './webAutomation'
 
 const makeSnapshot = (overrides: Partial<WebAutomationRunSnapshot> = {}): WebAutomationRunSnapshot => ({
   runId: 'run-1',
@@ -33,6 +37,37 @@ const makeSnapshot = (overrides: Partial<WebAutomationRunSnapshot> = {}): WebAut
 })
 
 describe('webAutomationRunView', () => {
+  it('resolves only an exact saved id or one positive loop suffix', () => {
+    const ids = new Set(['WEB-1', 'WEB-1#2'])
+    expect(resolveWebRunCaseId('WEB-1#2', ids)).toBe('WEB-1#2')
+    expect(resolveWebRunCaseId('WEB-1#2#3', ids)).toBe('WEB-1#2')
+    expect(resolveWebRunCaseId('WEB-1#3', ids)).toBe('WEB-1')
+    for (const id of ['WEB-1#0', 'WEB-1#01', 'WEB-1#x', 'WEB-1#3#4', 'WEB-2#1']) {
+      expect(resolveWebRunCaseId(id, ids), id).toBeUndefined()
+    }
+  })
+
+  it.each([
+    ['failed', 'passed', 'failed'],
+    ['passed', 'failed', 'failed'],
+    ['error', 'passed', 'error'],
+    ['failed', 'error', 'error']
+  ] as const)('keeps the worst round of %s and %s as %s without altering evidence', (first, second, expected) => {
+    const results: WebAutomationRunResult[] = [first, second].map((status, index) => ({
+      caseId: `WEB-1#${index + 1}`, sourceCaseId: 'SHARED-SOURCE', name: 'fixture',
+      module: 'fixture', pageName: 'fixture', startUrl: '/fixture', durationMs: 10,
+      status, errorMessage: `round ${index + 1}`
+    }))
+    const before = JSON.stringify(results)
+    const cases = [{ id: 'WEB-1' }, { id: 'WEB-2' }]
+    const mapped = buildWebRunCaseResultMap(cases, results)
+    expect(mapped.get('WEB-1')?.status).toBe(expected)
+    expect(results).toContain(mapped.get('WEB-1'))
+    expect(mapped.has('WEB-2')).toBe(false)
+    expect(buildWebRunCaseStatusById(cases, results)).toEqual({ 'WEB-1': expected, 'WEB-2': 'pending' })
+    expect(JSON.stringify(results)).toBe(before)
+  })
+
   it('maps running progress controls and current step timeline', () => {
     const view = buildWebRunView(makeSnapshot())
     expect(view.statusLabel).toBe('执行中')

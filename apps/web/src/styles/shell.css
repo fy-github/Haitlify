@@ -1,0 +1,655 @@
+/*
+ * 统一外壳层 —— 按已确认设计稿的实际测量值对齐(1440×900):
+ *   应用外壳 #F2F4F7;顶栏实测 68px,内容与轨道前留 4px(来源:归档 settings-v2 的 .body-grid);
+ *   左侧轨道宽 97px,内部为宽 54px 的白色竖向胶囊;白色主内容左上圆角 26px,与外壳右缘齐平。
+ * 只覆盖外壳自身类,不改任何视图内部结构与数据流。
+ */
+
+:root {
+  --shell-canvas: #e8edf2;
+  --shell-surface: #f2f4f7;
+  --shell-white: #ffffff;
+  --shell-border: #e5ebf0;
+  --shell-ink: #22292f;
+  --shell-muted: #7c8894;
+  --shell-accent: #54d9b5;
+  --shell-accent-ink: #153d32;
+  --shell-nav-ink: #2d2e34;
+}
+
+/* ---------- 画布 + 应用外壳 ---------- */
+
+.studio-app-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  min-height: 0;
+  gap: 0;
+  background: var(--shell-surface);
+  border-radius: 32px;
+  color: #272a30;
+  font-size: 13px;
+}
+
+/* 顶栏在上横跨整个外壳,左侧工具栏与内容区在下一行 */
+.studio-app-shell .studio-app-shell__main {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+}
+
+.studio-app-shell .studio-app-shell__body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* Teleported navigation is not a padded editor. Let its sidebar own the
+ * remaining vertical scrollport without adding 100vh below the header. */
+.studio-navigation-drawer .el-drawer__body {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.studio-navigation-drawer .studio-responsive-drawer__header {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 0 8px 0 12px;
+}
+
+.studio-navigation-drawer .studio-sidebar {
+  box-sizing: border-box;
+  flex: 1 1 auto;
+  width: 100%;
+  height: auto;
+  min-height: 0;
+}
+
+/* ---------- 顶栏 ---------- */
+
+.studio-app-shell .studio-global-topbar {
+  height: 68px;
+  min-height: 68px;
+  gap: 20px;
+  padding: 10px 26px 8px;
+  background: transparent;
+  border: 0;
+  line-height: 1.5;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  flex-wrap: nowrap;
+}
+
+/* 顶栏容器随内容高度,不套用旧 48px 固定行 */
+.studio-app-shell .studio-app-shell__topbar {
+  height: auto;
+  min-height: 0;
+  flex: 0 0 auto;
+}
+
+/* 品牌:30px 圆角标 + 21px 字标 */
+.studio-app-shell .studio-topbar__brand {
+  display: flex;
+  order: 0;
+  align-items: center;
+  gap: 9px;
+  flex: none;
+}
+
+.studio-app-shell .studio-topbar__brand-mark {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  place-items: center;
+  color: #173f36;
+  background: #55d5b6;
+  border-radius: 10px;
+  font-size: 21px;
+  font-style: italic;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.studio-app-shell .studio-topbar__brand-name {
+  color: #1f252b;
+  font-size: 21px;
+  font-weight: 650;
+  letter-spacing: -0.8px;
+}
+
+/* 中间主导航:白色胶囊 46px 高,选中为深灰实心胶囊 */
+.studio-app-shell .studio-primary-capsule {
+  display: flex;
+  order: 1;
+  align-items: center;
+  gap: 2px;
+  flex: none;
+  min-width: 0;
+  padding: 5px;
+  margin: 0 auto;
+  background: var(--shell-white);
+  border: 1px solid var(--shell-border);
+  border-radius: 32px;
+}
+
+.studio-app-shell .studio-primary-capsule button {
+  min-height: 34px;
+  padding: 8px 14px;
+  color: #71737d;
+  background: transparent;
+  border: 0;
+  border-radius: 25px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 140ms ease, color 140ms ease;
+}
+
+.studio-app-shell .studio-primary-capsule button:hover:not(.is-active) {
+  color: #31333a;
+  background: #f0f2f4;
+}
+
+.studio-app-shell .studio-primary-capsule button.is-active {
+  color: #fff;
+  background: var(--shell-nav-ink);
+}
+
+.studio-app-shell .studio-primary-capsule button:focus-visible {
+  outline: none;
+  filter: brightness(0.9);
+}
+
+/* 面包屑与同步态在设计稿中不占位,保留 DOM 供读屏与既有断言 */
+.studio-app-shell .studio-global-topbar__breadcrumb,
+.studio-app-shell .studio-sync-state {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* 归档 .top-right:工具组 DOM 与视觉同序。 */
+.studio-app-shell .studio-topbar__tools {
+  position: relative;
+  display: flex;
+  order: 3;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+}
+
+.studio-app-shell .studio-global-topbar__search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  order: 0;
+  margin-left: 0;
+  width: 28px;
+  flex: 0 0 28px;
+  min-width: 0;
+  height: 34px;
+  padding: 0;
+  gap: 0;
+  overflow: visible;
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
+  box-shadow: none;
+}
+
+.studio-app-shell .studio-global-topbar__search:hover,
+.studio-app-shell .studio-global-topbar__search:focus-within,
+.studio-app-shell .studio-global-topbar__search.is-open {
+  background: #f0f3f4;
+  outline: none;
+  box-shadow: none;
+}
+
+.studio-app-shell .studio-global-topbar__search-toggle {
+  display: grid;
+  width: 28px;
+  height: 34px;
+  flex: 0 0 28px;
+  place-items: center;
+  padding: 0;
+  color: #626973;
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.studio-app-shell .studio-global-topbar__search input {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 40;
+  display: none;
+  width: 0;
+  min-width: 0;
+  padding: 0;
+  color: var(--shell-ink);
+  background: #fff;
+  border: 1px solid var(--shell-border);
+  border-radius: 11px;
+  font-size: 12px;
+}
+
+.studio-app-shell .studio-global-topbar__search.is-open input {
+  display: block;
+  width: min(240px, calc(100vw - 24px));
+  min-height: 38px;
+  padding: 8px 11px;
+  opacity: 1;
+}
+
+.studio-app-shell .studio-global-task-status {
+  order: 2;
+}
+
+.studio-app-shell .studio-assistant-entry {
+  display: inline-flex;
+  order: 0;
+  margin-left: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 8px 14px;
+  color: var(--shell-accent-ink);
+  background: var(--shell-accent);
+  border: 1px solid #42c5a3;
+  border-radius: 24px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.studio-app-shell .studio-assistant-entry:hover {
+  background: #43cda8;
+}
+
+.studio-app-shell .studio-assistant-entry:focus-visible {
+  outline: none;
+  background-color: #40cda7;
+  filter: none;
+}
+
+.studio-app-shell .studio-global-topbar__icon {
+  display: grid;
+  order: 0;
+  width: 28px;
+  height: 34px;
+  flex: 0 0 28px;
+  place-items: center;
+  padding: 0;
+  color: #626973;
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.studio-app-shell .studio-global-topbar__avatar {
+  order: 0;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  margin-left: 2px;
+  border: 3px solid var(--shell-white);
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px #e5e8eb;
+  background: #e3e8e9;
+  color: #4d5c5d;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.studio-app-shell .studio-topbar__tools > .el-dropdown {
+  display: inline-flex;
+  flex: none;
+}
+
+.studio-app-shell .studio-global-topbar__icon:hover,
+.studio-app-shell .studio-global-topbar__search-toggle:hover {
+  background: #f0f3f4;
+}
+
+.studio-app-shell .studio-topbar__tools button:focus-visible {
+  outline: none;
+}
+
+.studio-app-shell .studio-global-topbar__icon:focus-visible,
+.studio-app-shell .studio-global-topbar__search-toggle:focus-visible,
+.studio-app-shell .studio-global-topbar__avatar:focus-visible {
+  background-color: #dce9e1;
+  filter: none;
+}
+
+/* 移动端主导航按钮:仅窄屏显示,桌面不出现(设计稿顶部无折叠按钮) */
+.studio-app-shell .studio-global-topbar__mobile-menu {
+  display: none;
+  order: 0;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  padding: 0;
+  color: #626973;
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+/* ---------- 左侧工具栏:轨道 97px,胶囊 54px ---------- */
+
+.studio-app-shell .studio-app-shell__sidebar,
+.studio-app-shell.is-sidebar-collapsed .studio-app-shell__sidebar {
+  width: 97px;
+  flex: 0 0 97px;
+  /* 设计稿 .body-grid padding-top:4px:轨道与白色主内容同时下移,顶栏与内容之间留 4px */
+  padding: 4px 0 23px 21px;
+  overflow: visible;
+}
+
+.studio-app-shell .studio-sidebar,
+.studio-app-shell .studio-sidebar--collapsed {
+  display: flex;
+  flex-direction: column;
+  width: 54px;
+  height: 100%;
+  padding: 0;
+  margin: 0;
+  overflow: visible;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+/* 品牌已在顶栏 */
+.studio-app-shell .studio-sidebar__brand {
+  display: none;
+}
+
+/* 上方胶囊:当前工作区的子功能 */
+.studio-app-shell .studio-sidebar__groups {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  width: 54px;
+  padding: 8px;
+  background: var(--shell-white);
+  border: 1px solid var(--shell-border);
+  border-radius: 27px;
+  box-shadow: none;
+}
+
+/* 下方胶囊:全局设置入口,贴底 */
+.studio-app-shell .studio-sidebar__tools {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 54px;
+  padding: 8px;
+  margin-top: auto;
+  background: var(--shell-white);
+  border: 1px solid var(--shell-border);
+  border-radius: 27px;
+}
+
+.studio-app-shell .studio-sidebar__group {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0;
+}
+
+.studio-app-shell .studio-sidebar__group-label,
+.studio-app-shell .studio-sidebar__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.studio-app-shell .studio-sidebar__items {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  align-items: center;
+  gap: 14px;
+}
+
+.studio-app-shell .studio-sidebar__entry {
+  position: relative;
+  width: 38px;
+}
+
+.studio-app-shell .studio-sidebar__item {
+  /* 组件默认是三列网格(图标/文字/徽标);图标工具栏必须回到单列居中的 flex */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  grid-template-columns: none;
+  width: 38px;
+  min-height: 38px;
+  gap: 0;
+  padding: 0;
+  color: #8b949e;
+  background: transparent;
+  border-radius: 12px;
+}
+
+.studio-app-shell .studio-sidebar__item--active {
+  color: #30353d;
+  /* 设计稿:选中图标落在 38px 浅灰圆形底上 */
+  background: #eef1f4;
+  border: 0;
+  border-radius: 50%;
+  box-shadow: none;
+}
+
+/* 设计稿:工具栏图标统一中性灰,不做彩色描边 */
+.studio-app-shell .studio-sidebar__icon,
+.studio-app-shell .studio-sidebar__item--active .studio-sidebar__icon {
+  color: currentColor;
+}
+
+.studio-app-shell .studio-sidebar__item--disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.studio-app-shell .studio-sidebar__item:hover:not(.studio-sidebar__item--active) {
+  color: #163f35;
+  background: #f1f6f4;
+}
+
+/* 图标悬浮提示(纯视觉,不进入可访问名称) */
+.studio-app-shell .studio-sidebar__item::after {
+  content: attr(data-tip);
+  position: absolute;
+  top: 50%;
+  left: 46px;
+  z-index: 30;
+  display: none;
+  padding: 6px 10px;
+  color: #fff;
+  background: #2b3037;
+  border-radius: 8px;
+  font-size: 11px;
+  white-space: nowrap;
+  transform: translateY(-50%);
+  box-shadow: 0 4px 12px rgba(29, 36, 36, 0.16);
+  pointer-events: none;
+}
+
+.studio-app-shell .studio-sidebar__item:hover::after,
+.studio-app-shell .studio-sidebar__item:focus-visible::after {
+  display: block;
+}
+
+.studio-app-shell .studio-sidebar__badge {
+  position: absolute;
+  top: 2px;
+  right: 0;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  font-size: 9px;
+  line-height: 16px;
+  text-align: center;
+}
+
+.studio-app-shell .studio-sidebar__disclosure {
+  display: none;
+}
+
+/* ---------- 白色主内容 ---------- */
+
+.studio-app-shell .studio-app-shell__body {
+  padding-right: 0;
+}
+
+.studio-app-shell .studio-app-shell__workspace {
+  padding: 4px 0 0;
+}
+
+.studio-app-shell .workspace {
+  background: var(--shell-white);
+  /* 设计稿 .content:左/上 1px #e9edf2 描边,右/下贴边(V5.2 content meets edges) */
+  border: 1px solid #e9edf2;
+  border-right: 0;
+  border-bottom: 0;
+  border-radius: 26px 0 0 0;
+  box-shadow: none;
+}
+
+.studio-app-shell .workspace.is-workbench {
+  background: var(--shell-white);
+}
+
+/* ---------- 窄屏 ---------- */
+
+@media (max-width: 1100px) {
+  .studio-app-shell {
+    border-radius: 0;
+  }
+
+  .studio-app-shell .studio-global-topbar {
+    height: auto;
+    min-height: 0;
+    padding: 12px 14px;
+    gap: 12px;
+    flex-wrap: wrap;
+    row-gap: 10px;
+  }
+
+  .studio-app-shell .studio-primary-capsule {
+    order: 8;
+    flex-basis: 100%;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    row-gap: 2px;
+    margin: 0;
+  }
+
+  /* 旧样式在窄屏隐藏搜索;设计稿保留放大镜入口 */
+  .studio-app-shell .studio-global-topbar__search {
+    display: flex;
+  }
+
+  .studio-app-shell .studio-app-shell__sidebar,
+  .studio-app-shell.is-sidebar-collapsed .studio-app-shell__sidebar {
+    width: 76px;
+    flex: 0 0 76px;
+    padding: 0 0 14px 12px;
+  }
+
+  .studio-app-shell .studio-app-shell__workspace {
+    padding: 4px 0 0;
+  }
+
+  .studio-app-shell .workspace {
+    border-radius: 26px 0 0 0;
+  }
+}
+
+@media (max-width: 640px) {
+  /* 设计稿 ≤640:content 圆角收到 22px,仍只保留左上 */
+  .studio-app-shell .workspace {
+    border-radius: 22px 0 0 0;
+  }
+
+  /* 设计稿 ≤640 顶栏:padding 10/12/8,行间距 8px */
+  .studio-app-shell .studio-global-topbar {
+    padding: 10px 12px 8px;
+    row-gap: 8px;
+  }
+
+  .studio-app-shell .studio-topbar__brand-name {
+    font-size: 19px;
+  }
+
+  .studio-app-shell .studio-primary-capsule button {
+    min-height: 40px;
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+
+  .studio-app-shell .studio-assistant-entry {
+    min-height: 44px;
+    padding: 8px 11px;
+  }
+
+  /* 原稿窄屏隐藏铃铛/头像;产品保留账号入口,显式换行而非挤掉工具。 */
+  .studio-app-shell .studio-topbar__tools {
+    flex-basis: 100%;
+    justify-content: flex-end;
+    gap: 4px;
+  }
+
+  .studio-app-shell .studio-topbar__tools .studio-global-topbar__search,
+  .studio-app-shell .studio-global-topbar__search-toggle {
+    width: 35px;
+    height: 44px;
+    min-height: 44px;
+    flex-basis: 35px;
+  }
+
+  .studio-app-shell .studio-assistant-entry svg {
+    width: 16px;
+    height: 16px;
+  }
+}
+
+@media (max-width: 899px) {
+  .studio-app-shell .studio-global-topbar__mobile-menu {
+    display: grid;
+  }
+}

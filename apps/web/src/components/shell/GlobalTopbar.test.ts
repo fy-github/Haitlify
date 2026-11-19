@@ -1,7 +1,11 @@
 // @vitest-environment jsdom
-import { mount } from '@vue/test-utils'
+import { config, mount } from '@vue/test-utils'
+import ElementPlus from 'element-plus'
 import { describe, expect, it } from 'vitest'
+import { nextTick } from 'vue'
 import GlobalTopbar from './GlobalTopbar.vue'
+
+config.global.plugins.push(ElementPlus)
 
 describe('GlobalTopbar', () => {
   it('keeps a long task visible and recoverable after module navigation', async () => {
@@ -26,8 +30,8 @@ describe('GlobalTopbar', () => {
     expect(statusTexts).toContain('内容解析 · 2/3')
   })
 
-  it('labels and emits the first toggle button from the collapsed state', async () => {
-    const expanded = mount(GlobalTopbar, {
+  it('emits toggleSidebar from the mobile navigation button', async () => {
+    const wrapper = mount(GlobalTopbar, {
       props: {
         sidebarCollapsed: false,
         projectLabel: '默认项目',
@@ -35,20 +39,12 @@ describe('GlobalTopbar', () => {
         searchValue: ''
       }
     })
-    const collapsed = mount(GlobalTopbar, {
-      props: {
-        sidebarCollapsed: true,
-        projectLabel: '默认项目',
-        sectionLabel: '用例生成',
-        searchValue: ''
-      }
-    })
 
-    expect(expanded.find('button').attributes('aria-label')).toBe('收起侧边栏')
-    expect(collapsed.find('button').attributes('aria-label')).toBe('展开侧边栏')
+    const button = wrapper.get('.studio-global-topbar__mobile-menu')
+    expect(button.attributes('aria-label')).toBe('打开主导航')
 
-    await expanded.find('button').trigger('click')
-    expect(expanded.emitted('toggleSidebar')).toHaveLength(1)
+    await button.trigger('click')
+    expect(wrapper.emitted('toggleSidebar')).toHaveLength(1)
   })
 
   it('shows the breadcrumb and updates the controlled global search value', async () => {
@@ -102,5 +98,88 @@ describe('GlobalTopbar', () => {
     expect(syncing.get('[role="status"]').text()).toBe('同步中')
     expect(conflict.get('[role="status"]').text()).toBe('同步冲突')
     expect(conflict.text()).not.toContain('已同步')
+  })
+
+  it('shows an honest search capability message when expanded and on Enter', async () => {
+    const wrapper = mount(GlobalTopbar, {
+      attachTo: document.body,
+      props: {
+        sidebarCollapsed: false,
+        projectLabel: '默认项目',
+        sectionLabel: '用例生成',
+        searchValue: ''
+      }
+    })
+    const searchToggle = wrapper.get('.studio-global-topbar__search-toggle')
+
+    await searchToggle.trigger('click')
+
+    const input = wrapper.get('input[type="search"]')
+    const status = wrapper.get('[data-testid="global-search-status"]')
+    expect(input.attributes('aria-describedby')).toBe('studio-global-search-status')
+    expect(status.attributes('role')).toBe('status')
+    expect(status.text()).toBe('全局搜索暂未接入，请使用各模块筛选')
+
+    await input.trigger('keydown', { key: 'Enter' })
+    expect(wrapper.get('[data-testid="global-search-status"]').text()).toBe('全局搜索暂未接入，请使用各模块筛选')
+
+    await input.trigger('keydown', { key: 'Escape' })
+    expect(wrapper.find('[data-testid="global-search-status"]').exists()).toBe(false)
+    expect(document.activeElement).toBe(searchToggle.element)
+  })
+
+  it('opens a local notification notice with close, Escape, outside-click, and mutual exclusion behavior', async () => {
+    const wrapper = mount(GlobalTopbar, {
+      attachTo: document.body,
+      props: {
+        sidebarCollapsed: false,
+        projectLabel: '默认项目',
+        sectionLabel: '用例生成',
+        searchValue: '',
+        userDisplayName: '测试用户'
+      }
+    })
+    const notificationToggle = wrapper.get('[data-testid="global-notifications-toggle"]')
+
+    expect(notificationToggle.attributes('title')).toBe('通知')
+    expect(notificationToggle.attributes('aria-expanded')).toBe('false')
+    expect(notificationToggle.attributes('aria-controls')).toBe('studio-global-notifications-panel')
+
+    await notificationToggle.trigger('click')
+
+    const panel = wrapper.get('#studio-global-notifications-panel')
+    await nextTick()
+    expect(notificationToggle.attributes('aria-expanded')).toBe('true')
+    expect(panel.attributes('role')).toBe('dialog')
+    expect(panel.text()).toContain('通知数据源尚未接入，暂不展示通知')
+    expect(panel.text()).not.toContain('0')
+    expect(panel.text()).not.toContain('已读')
+    expect(panel.attributes('tabindex')).toBe('-1')
+    expect(panel.find('button[aria-label="关闭通知面板"]').exists()).toBe(true)
+    expect(document.activeElement).toBe(panel.element)
+    expect(panel.get('button[aria-label="关闭通知面板"]').attributes('tabindex')).not.toBe('-1')
+
+    await panel.get('button[aria-label="关闭通知面板"]').trigger('click')
+    expect(wrapper.find('#studio-global-notifications-panel').exists()).toBe(false)
+
+    await notificationToggle.trigger('click')
+    await nextTick()
+    document.dispatchEvent(new Event('pointerdown', { bubbles: true }))
+    await nextTick()
+    expect(wrapper.find('#studio-global-notifications-panel').exists()).toBe(false)
+
+    await notificationToggle.trigger('click')
+    await wrapper.get('#studio-global-notifications-panel').trigger('keydown', { key: 'Escape' })
+    await nextTick()
+    expect(wrapper.find('#studio-global-notifications-panel').exists()).toBe(false)
+    expect(document.activeElement).toBe(notificationToggle.element)
+
+    await wrapper.get('.studio-global-topbar__search-toggle').trigger('click')
+    await notificationToggle.trigger('click')
+    expect(wrapper.find('[data-testid="global-search-status"]').exists()).toBe(false)
+    expect(wrapper.find('#studio-global-notifications-panel').exists()).toBe(true)
+
+    await wrapper.get('.studio-assistant-entry').trigger('click')
+    expect(wrapper.emitted('openAssistant')).toHaveLength(1)
   })
 })

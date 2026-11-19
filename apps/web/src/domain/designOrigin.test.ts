@@ -98,6 +98,26 @@ describe('designOrigin', () => {
     ])
   })
 
+  it('collects loop-expanded design failures without losing round identity or crossing the filtered scope', () => {
+    const cases: SavedWebAutomationRunCase[] = [{
+      id: 'DESIGN-A', sourceCaseId: 'WEB-DESIGN-0001', project: 'fixture', module: 'fixture',
+      pageName: 'fixture', name: 'fixture', startUrl: '/fixture', browser: 'chromium',
+      viewport: '1440x900', authenticationMode: 'skip', steps: [], runOrder: 1, mockOutcome: 'passed',
+      automationLibraryId: 'fixture-design', savedAt: '2026-11-16T00:00:00Z'
+    }]
+    const result = (caseId: string, status: 'passed' | 'failed' | 'error') => ({
+      caseId, sourceCaseId: 'WEB-DESIGN-0001', name: 'fixture', module: 'fixture',
+      pageName: 'fixture', startUrl: '/fixture', status, durationMs: 10
+    })
+    const report: WebAutomationRunReport = {
+      mode: 'sequential', startedAt: '2026-11-16T00:00:00Z', endedAt: '2026-11-16T00:01:00Z',
+      summary: { total: 5, passed: 1, failed: 3, error: 1 },
+      results: [result('DESIGN-A#1', 'failed'), result('DESIGN-A#2', 'passed'), result('DESIGN-A#3', 'error'),
+        result('OUTSIDE-FILTER#1', 'failed'), result('DESIGN-A#0', 'failed')]
+    }
+    expect(collectFailedDesignOriginResults(cases, report).map((row) => row.caseId)).toEqual(['DESIGN-A#1', 'DESIGN-A#3'])
+  })
+
   it('summarizes failed design-origin automation results for UI prompts', () => {
     const summary = summarizeFailedDesignOriginResults([
       {

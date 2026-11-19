@@ -4,9 +4,9 @@
 
 ## Legacy Agent transition
 
-The existing Agent implementation is deprecated but remains fully available until the
-Hermes replacement reaches feature parity and passes acceptance testing. This rebrand
-does not remove or disable Agent APIs, workflows, rules, or persistence.
+The inherited Agent code is scheduled for removal under the Hermes rebuild plan.
+Legacy compatibility is not a release requirement. Removing the old Compose entry
+does not itself remove or disable all inherited application code.
 
 The Java package root is `com.haitlify.aitest.platform`; Maven coordinates are
 `com.haitlify.aitest:platform`. Existing database names and applied Flyway migrations
@@ -39,30 +39,17 @@ and `APP_JIRA_PROJECT_JQL_HAITLIFY_API` for your own deployment.
 - Java 21
 - Docker Desktop or another Docker runtime for MySQL
 
-## Local dependencies
+## Local deployment status
 
-The repository root `docker-compose.yml` provides shared local services:
+The legacy root Compose configuration has been removed. The replacement is the isolated stack under `deploy/isolated/` (see [deployment status](../../DEPLOYMENT.md)); it is **not yet verified on a target host** and must be started only through `scripts/preflight/start-isolated-stack.sh`. Do not start this backend against its inherited default database or reuse old platform volumes.
 
-- MySQL 8.4 on `127.0.0.1:3306`
-- Redis 7.4 on `127.0.0.1:6379`
-- MinIO on `127.0.0.1:9000` with console on `127.0.0.1:9001`
-- Web runner on `127.0.0.1:19323` (host port; container internal `9323`)
-
-Only MySQL is required by the current backend runtime. Redis and MinIO are staged for later platform modules.
-The Web runner is required only when enabling real Web automation execution in V2.
-
-## Commands
+The source and isolated test suite remain available:
 
 ```bash
-docker compose up -d mysql
-docker compose up -d web-runner
-chmod +x mvnw
 ./mvnw test
-./mvnw spring-boot:run
 ```
 
-The app starts on `http://127.0.0.1:18080` by default (non-common port to avoid host conflicts; the Docker container binds `8080` internally via `APP_PORT`).
-For local frontend development, the backend accepts API CORS requests from `http://localhost:*` and `http://127.0.0.1:*`, and the Vite app proxies same-origin `/api` requests to this backend.
+Runtime startup requires the new isolated environment preflight first. Defaults below describe inherited source configuration, not approved connection settings for the new environment.
 
 ## Tests
 
@@ -74,6 +61,24 @@ Current controller coverage includes:
 - interface case library list/save/delete
 - Web automation runner proxy enabled, disabled, and unavailable paths
 
+## Private MCP session authorization
+
+The private `/mcp` endpoint keeps an absolute, non-sliding session deadline:
+`min(grant.expires_at, binding.expires_at, session creation time + 5 minutes)`.
+`ExecutionBindingService.inspectAuthorizedGrant(String raw, String action)` returns
+`AuthorizedGrant(Scope scope, Instant expiresAt)` from the same locked authorization
+transaction; `expiresAt` is the earlier of the current grant and binding deadlines.
+It preserves the existing lock order and ambient-transaction/reentry rejection.
+The existing `withAuthorizedGrant` callback signatures remain unchanged.
+
+The snapshot is not reusable authority: every request revalidates the bearer grant,
+lease and current membership/actor/tenant/project authority. Tool calls additionally
+use their existing authorization transactions. Revocation or a shortened deadline
+rejects the next request, including at exact expiry. Requests and later expiry
+extensions cannot renew an existing session. Sessions stay token/scope-bound, cache
+only the token hash, and retain the 1,024-session ceiling and 120-tool-call budget.
+This protocol behavior is not evidence of a real worker run or a healthy deployment.
+
 ## Environment
 
 Copy values from `.env.example` into your local environment before starting the app.
@@ -84,11 +89,11 @@ export $(grep -v '^#' .env.example | xargs)
 
 Default values:
 
-- `APP_PORT=18080`
+- `APP_PORT=38082`
 - `APP_VERSION=0.1.0-SNAPSHOT`
-- `APP_DB_URL=jdbc:mysql://127.0.0.1:3306/ai_test_platform?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai`
-- `APP_DB_USERNAME=root`
-- `APP_DB_PASSWORD=root`
+- `APP_DB_URL=jdbc:mysql://127.0.0.1:13306/haitlify_isolated?...`（隔离环境取值；改动会触发启动保护拒绝）
+- `APP_DB_USERNAME=haitlify_app`
+- `APP_DB_PASSWORD=`（空：没有默认口令，由 `deploy/isolated/.env` 提供）
 - `APP_WEB_AUTOMATION_RUNNER_ENABLED=false`
-- `APP_WEB_AUTOMATION_RUNNER_BASE_URL=http://127.0.0.1:19323`
+- `APP_WEB_AUTOMATION_RUNNER_BASE_URL=http://127.0.0.1:19324`（隔离栈 web-runner 宿主端口）
 - `APP_WEB_AUTOMATION_RUNNER_TIMEOUT_MS=120000` (short Runner command transport timeout, not total run duration)

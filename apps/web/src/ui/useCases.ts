@@ -4,6 +4,7 @@ import { missingDep } from './depGuard'
 import {
   deleteSavedCases,
   deleteSavedWebAutomationCase,
+  deleteSavedWebAutomationCases,
   listSavedCases,
   listSavedWebAutomationCases,
   saveCaseOrdering,
@@ -22,7 +23,6 @@ import {
 } from '../domain/caseBulkEdit'
 import {
   buildCaseLibraryIndex,
-  buildSupportedCaseKinds,
   collectCaseLibraryOptions,
   filterCaseLibraryRecords,
   paginateSavedCases
@@ -50,7 +50,7 @@ import { saveWebAutomationRunCases } from '../domain/webAutomationRepository'
 import type { GeneratedWebAutomationCase, SavedWebAutomationCase } from '../domain/webAutomationCase'
 import type { SavedWebAutomationRunCase } from '../domain/webAutomationRepository'
 import type { GeneratedInterfaceCase, InterfaceCaseRow } from '../domain/caseGenerator'
-import type { NavKey } from '../domain/appNavigation'
+import type { CaseDesignNavKind, NavKey } from '../domain/appNavigation'
 import { useTemplateConfig } from './useTemplateConfig'
 
 type SelectedLibraryCase =
@@ -60,6 +60,8 @@ type SelectedLibraryCase =
   | SavedWebAutomationCase
 
 export interface CasesDeps {
+  storage?: Storage
+  initialLibraryKind?: CaseDesignNavKind
   confirmDanger?: (title: string, message: string, confirmLabel?: string) => Promise<boolean>
   navigateToNav?: (next: NavKey) => void
   getWebAutomationCases?: () => SavedWebAutomationRunCase[]
@@ -90,6 +92,7 @@ function moveArrayItem<T>(items: T[], from: number, to: number): T[] {
 }
 
 function createCasesState(deps: CasesDeps) {
+  const localStorage = deps.storage ?? window.localStorage
   const confirmDanger = deps.confirmDanger ?? (async () => missingDep('useCases', 'confirmDanger'))
   const navigateToNav = deps.navigateToNav ?? (() => missingDep('useCases', 'navigateToNav'))
   const openEdit = deps.openEdit ?? (() => missingDep('useCases', 'openEdit'))
@@ -98,12 +101,12 @@ function createCasesState(deps: CasesDeps) {
   const openAutomationGenerateDialog = deps.openAutomationGenerateDialog ?? (() => missingDep('useCases', 'openAutomationGenerateDialog'))
   const backupProjectData = deps.backupProjectData ?? (() => missingDep('useCases', 'backupProjectData'))
   const onProjectDataSelected = deps.onProjectDataSelected ?? (() => missingDep('useCases', 'onProjectDataSelected'))
-  const { interfaceFields, fieldCellLabel } = useTemplateConfig()
+  const { interfaceFields, webAutomationFields, fieldCellLabel } = useTemplateConfig()
 
   const librarySelection = ref<SavedInterfaceCase[]>([])
   const libraryPage = ref(1)
   const libraryPageSize = ref(50)
-  const libraryCaseKind = ref<'interface' | 'web_automation'>('interface')
+  const libraryCaseKind = ref(deps.initialLibraryKind ?? 'interface')
   const savedCases = ref<SavedInterfaceCase[]>(listSavedCases(localStorage))
   const savedWebCases = ref<SavedWebAutomationCase[]>(listSavedWebAutomationCases(localStorage))
   const bulkEditVisible = ref(false)
@@ -133,7 +136,6 @@ function createCasesState(deps: CasesDeps) {
     set: (value) => deps.setSelectedCase?.(value)
   })
 
-  const caseKindOptions = computed(() => buildSupportedCaseKinds())
   const caseLibraryIndex = computed(() => buildCaseLibraryIndex(savedCases.value, 'interface'))
   const webCaseLibraryIndex = computed(() => buildCaseLibraryIndex(savedWebCases.value, 'web_automation'))
   const libraryProjects = computed(() => caseLibraryIndex.value.projectOptions)
@@ -168,6 +170,36 @@ function createCasesState(deps: CasesDeps) {
     libraryCaseKind.value === 'interface' ? filteredLibraryCases.value.length : filteredWebLibraryCases.value.length
   )
   const interfaceLibrarySelection = computed(() => librarySelection.value as SavedInterfaceCase[])
+  /**
+   * 选中集合跨页累积:勾选是并集,取消是差集;表头只按当前页求交集,
+   * 因此「部分选中」一定是 indeterminate,而不是按总条数比大小。
+   */
+  type SelectableLibraryCase = SavedInterfaceCase | SavedWebAutomationCase
+  const selectedLibraryIds = computed(() => librarySelection.value.map((item) => item.libraryId))
+  const isLibraryRowSelected = (row: { libraryId: string }): boolean =>
+    librarySelection.value.some((item) => item.libraryId === row.libraryId)
+  const toggleLibraryRow = (row: SelectableLibraryCase, checked: boolean): void => {
+    const next = librarySelection.value.filter((item) => item.libraryId !== row.libraryId)
+    librarySelection.value = (checked ? [...next, row] : next) as SavedInterfaceCase[]
+  }
+  const toggleCurrentPageSelection = (rows: SelectableLibraryCase[], checked: boolean): void => {
+    const pageIds = new Set(rows.map((row) => row.libraryId))
+    const kept = librarySelection.value.filter((item) => !pageIds.has(item.libraryId))
+    librarySelection.value = (checked ? [...kept, ...rows] : kept) as SavedInterfaceCase[]
+  }
+  const currentPageSelectionState = (
+    rows: SelectableLibraryCase[]
+  ): { checked: boolean; indeterminate: boolean } => {
+    const selected = new Set(selectedLibraryIds.value)
+    const hits = rows.filter((row) => selected.has(row.libraryId)).length
+    return {
+      checked: rows.length > 0 && hits === rows.length,
+      indeterminate: hits > 0 && hits < rows.length
+    }
+  }
+  const clearLibrarySelection = (): void => {
+    librarySelection.value = []
+  }
   const bulkTargetCases = computed<SavedInterfaceCase[]>(() =>
     interfaceLibrarySelection.value.length > 0 ? interfaceLibrarySelection.value : filteredLibraryCases.value
   )
@@ -202,7 +234,11 @@ function createCasesState(deps: CasesDeps) {
     libraryPage.value = 1
   }
 
-  const switchLibraryCaseKind = (value: 'interface' | 'web_automation') => {
+  let libraryVisit = 0
+  const invalidateLibraryActions = () => { libraryVisit += 1 }
+
+  const switchLibraryCaseKind = (value: CaseDesignNavKind) => {
+    invalidateLibraryActions()
     libraryCaseKind.value = value
     libraryFilter.project = 'ALL'
     libraryFilter.module = 'ALL'
@@ -210,6 +246,7 @@ function createCasesState(deps: CasesDeps) {
     libraryFilter.source = ''
     libraryFilter.keyword = ''
     libraryPage.value = 1
+    libraryPageSize.value = 50
     librarySelection.value = []
   }
 
@@ -219,11 +256,20 @@ function createCasesState(deps: CasesDeps) {
   }
 
   const syncDeleteLibraryCases = async (cases: SavedInterfaceCase[]) => {
+    const visit = libraryVisit
     const result = await deleteSavedCasesWithBackend(localStorage, cases)
     const deletedIds = new Set(cases.map((item) => item.libraryId))
     refreshSavedCases()
-    librarySelection.value = librarySelection.value.filter((item) => !deletedIds.has(item.libraryId))
+    if (visit === libraryVisit) {
+      librarySelection.value = librarySelection.value.filter((item) => !deletedIds.has(item.libraryId))
+    }
     return result
+  }
+
+  // 浏览器前进/后退不会等待确认框；旧页面的确认不能应用到新页面。
+  const confirmLibraryDelete = async (title: string, message: string): Promise<boolean> => {
+    const visit = libraryVisit
+    return await confirmDanger(title, message) && visit === libraryVisit
   }
 
   const confirmFilteredDesignLocators = () => {
@@ -273,20 +319,27 @@ function createCasesState(deps: CasesDeps) {
     convertWebLibraryCasesToAutomation([testCase], false)
   }
 
+  /**
+   * 导出范围:有勾选只导勾选(跨页累积的那一份),没勾选才导当前筛选结果。
+   * 可见列就是导出列(全部 visible+exportable 字段),不做常用列白名单截断。
+   */
   const exportSavedCsv = () => {
-    if (libraryCaseKind.value !== 'interface') {
-      ElMessage.info('Web 自动化导出将在下一步接入')
-      return
-    }
-    if (filteredLibraryCases.value.length === 0) {
+    const isInterfaceKind = libraryCaseKind.value === 'interface'
+    const scoped = isInterfaceKind
+      ? (librarySelection.value.length ? interfaceLibrarySelection.value : filteredLibraryCases.value)
+      : (librarySelection.value.length ? librarySelection.value : filteredWebLibraryCases.value) as SelectableLibraryCase[]
+    if (scoped.length === 0) {
       ElMessage.warning('没有可导出的已保存用例')
       return
     }
+    const fields = isInterfaceKind ? interfaceFields.value : webAutomationFields.value
     const csv = exportCasesToCsv(
-      interfaceFields.value,
-      filteredLibraryCases.value.map((testCase) => testCase.row as unknown as Record<string, unknown>)
+      fields,
+      scoped.map((testCase) => testCase.row as unknown as Record<string, unknown>)
     )
-    downloadCsv(`${libraryFilter.project !== 'ALL' ? libraryFilter.project : '全部项目'}-用例库-接口测试用例.csv`, csv)
+    const projectLabel = libraryFilter.project !== 'ALL' ? libraryFilter.project : '全部项目'
+    const kindLabel = isInterfaceKind ? '接口测试用例' : 'Web自动化用例'
+    downloadCsv(`${projectLabel}-用例库-${kindLabel}.csv`, csv)
   }
 
   const exportDesignOriginSummary = () => {
@@ -386,14 +439,14 @@ function createCasesState(deps: CasesDeps) {
   }
 
   const deleteLibraryCase = async (testCase: SavedInterfaceCase) => {
-    const confirmed = await confirmDanger('删除用例', `确认删除 ${testCase.row.caseId} 吗？`)
+    const confirmed = await confirmLibraryDelete('删除用例', `确认删除 ${testCase.row.caseId} 吗？`)
     if (!confirmed) return
     const result = await syncDeleteLibraryCases([testCase])
     ElMessage.success(result.source === 'backend' ? '已删除已保存用例，并同步到后端' : '已删除已保存用例')
   }
 
   const deleteWebLibraryCase = async (testCase: SavedWebAutomationCase) => {
-    const confirmed = await confirmDanger('删除 Web 用例', `确认删除 ${testCase.row.caseId} 吗？`)
+    const confirmed = await confirmLibraryDelete('删除 Web 用例', `确认删除 ${testCase.row.caseId} 吗？`)
     if (!confirmed) return
     deleteSavedWebAutomationCase(localStorage, testCase.libraryId)
     refreshSavedCases()
@@ -442,20 +495,30 @@ function createCasesState(deps: CasesDeps) {
   }
 
   const deleteSelectedLibraryCases = async () => {
-    if (libraryCaseKind.value !== 'interface') {
-      ElMessage.info('Web 自动化批量删除将在下一步接入')
-      return
-    }
     if (librarySelection.value.length === 0) {
       ElMessage.warning('请先勾选要删除的用例')
       return
     }
-    const confirmed = await confirmDanger(
+    if (libraryCaseKind.value !== 'interface') {
+      const selectedWebIds = librarySelection.value.map((item) => item.libraryId)
+      const confirmed = await confirmLibraryDelete(
+        '删除勾选 Web 用例',
+        `确认删除已勾选的 ${selectedWebIds.length} 条 Web 用例吗？`
+      )
+      if (!confirmed) return
+      const deleted = deleteSavedWebAutomationCases(localStorage, selectedWebIds)
+      refreshSavedCases()
+      librarySelection.value = []
+      ElMessage.success(`已删除 ${deleted} 条 Web 自动化用例`)
+      return
+    }
+    const selected = [...librarySelection.value]
+    const confirmed = await confirmLibraryDelete(
       '删除勾选用例',
-      `确认删除已勾选的 ${librarySelection.value.length} 条用例吗？`
+      `确认删除已勾选的 ${selected.length} 条用例吗？`
     )
     if (!confirmed) return
-    const result = await syncDeleteLibraryCases([...librarySelection.value])
+    const result = await syncDeleteLibraryCases(selected)
     ElMessage.success(
       result.source === 'backend'
         ? `已删除 ${result.deleted} 条用例，并同步到后端`
@@ -472,12 +535,13 @@ function createCasesState(deps: CasesDeps) {
       ElMessage.warning('当前筛选范围没有可删除的用例')
       return
     }
-    const confirmed = await confirmDanger(
+    const filtered = [...filteredLibraryCases.value]
+    const confirmed = await confirmLibraryDelete(
       '删除当前筛选',
-      `确认删除当前筛选范围的 ${filteredLibraryCases.value.length} 条用例吗？`
+      `确认删除当前筛选范围的 ${filtered.length} 条用例吗？`
     )
     if (!confirmed) return
-    const result = await syncDeleteLibraryCases([...filteredLibraryCases.value])
+    const result = await syncDeleteLibraryCases(filtered)
     ElMessage.success(
       result.source === 'backend'
         ? `已删除 ${result.deleted} 条用例，并同步到后端`
@@ -548,7 +612,6 @@ function createCasesState(deps: CasesDeps) {
     fieldAssignmentForm,
     libraryFilter,
     selectedCase,
-    caseKindOptions,
     caseLibraryIndex,
     webCaseLibraryIndex,
     libraryProjects,
@@ -569,6 +632,12 @@ function createCasesState(deps: CasesDeps) {
     activeLibraryCaseTypes,
     activeLibraryTotal,
     interfaceLibrarySelection,
+    selectedLibraryIds,
+    isLibraryRowSelected,
+    toggleLibraryRow,
+    toggleCurrentPageSelection,
+    currentPageSelectionState,
+    clearLibrarySelection,
     bulkTargetCases,
     jsonFieldAssignments,
     pagedLibraryCases,
@@ -581,6 +650,7 @@ function createCasesState(deps: CasesDeps) {
     fieldCellLabel,
     switchLibraryProject,
     switchLibraryCaseKind,
+    invalidateLibraryActions,
     refreshSavedCases,
     syncDeleteLibraryCases,
     confirmFilteredDesignLocators,
@@ -613,6 +683,6 @@ function createCasesState(deps: CasesDeps) {
 }
 
 export const useCases = (deps: CasesDeps = {}): ReturnType<typeof createCasesState> => {
-  if (!singleton) singleton = createCasesState(deps)
+  if (!singleton || deps.storage) singleton = createCasesState(deps)
   return singleton
 }

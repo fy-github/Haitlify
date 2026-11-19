@@ -1,0 +1,587 @@
+/*
+ * 设置中心 · Jira 配置(按设计 HTML 参数逐值迁移)
+ * 设计来源:haitlify-jira-config-v1
+ */
+
+.workbench__pane:has(> .jira-head) {
+  grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+  background: #fff;
+}
+
+.jira-head {
+  flex: none;
+  margin: 0;
+  padding: 24px 26px 10px;
+}
+
+.jira-head h1 {
+  margin: 0;
+  color: #22292f;
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.4px;
+  line-height: 1.35;
+}
+
+.jira-head p {
+  margin: 6px 0 0;
+  max-width: 660px;
+  color: #767b85;
+  font-size: 11px;
+  line-height: 1.8;
+  text-wrap: pretty;
+}
+
+.jira-head .toolbar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 0;
+}
+
+/* 本页定稿主按钮:haitlify-jira-config-v1 `.jira-main .btn.primary`(#6ad8b4/#5bc9a4/#345f46)。
+ * 只在本页页头作用域内生效,不改设置中心的通用按钮基线(其它设置页仍是灰底)。 */
+.jira-head .toolbar .el-button--primary {
+  color: #345f46;
+  background: #6ad8b4;
+  border-color: #5bc9a4;
+  box-shadow: none;
+}
+
+.jira-head .toolbar .el-button--primary:hover,
+.jira-head .toolbar .el-button--primary:focus-visible {
+  color: #2d5340;
+  background: #5bc9a4;
+  border-color: #4fbe9b;
+}
+
+/* 保存前校验提示(设计 .j-error) */
+.j-error {
+  flex: none;
+  margin: 8px 26px 0;
+  padding: 9px 13px;
+  color: #9c4938;
+  background: #fcf8f4;
+  border: 1px solid #f0e7df;
+  border-radius: 10px;
+  font-size: 11px;
+  line-height: 1.8;
+}
+
+.j-state-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  flex: none;
+  min-height: 35px;
+  padding: 0 26px 12px;
+  color: #8ca696;
+  font-size: 10px;
+}
+
+.j-state-bar .is-dirty {
+  color: #b28d6a;
+}
+
+.j-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 0 24px 0;
+  scrollbar-width: thin;
+  scrollbar-color: #dce8df transparent;
+}
+
+.j-scroll:focus-visible {
+  outline: 2px solid var(--brand-primary);
+  outline-offset: -2px;
+}
+
+.j-card {
+  margin-bottom: 16px;
+  padding: 21px 24px;
+  background: #fff;
+  border: 1px solid #e5ede7;
+  border-radius: 16px;
+}
+
+.j-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.j-section-head h2 {
+  margin: 0 0 7px;
+  color: #5d7b68;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.j-section-head p {
+  margin: 0;
+  color: #97aa9d;
+  font-size: 10px;
+  line-height: 1.8;
+}
+
+.j-section-head .el-button {
+  flex: none;
+  min-height: 32px;
+  padding: 7px 11px;
+  color: #333b40;
+  background: #fff;
+  border-color: #e8ebee;
+  border-radius: 20px;
+  font-size: 11px;
+}
+
+.j-toggle {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 34px;
+  color: #76977f;
+  font-size: 11px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.j-toggle input {
+  width: 16px;
+  height: 16px;
+  accent-color: #80ac90;
+  cursor: pointer;
+}
+
+.j-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 24px;
+}
+
+.j-fields > div {
+  min-width: 0;
+}
+
+.j-fields .wide {
+  grid-column: 1 / -1;
+}
+
+.j-fields label {
+  display: block;
+  margin-bottom: 8px;
+  color: #93a79b;
+  font-size: 10px;
+}
+
+.j-fields input {
+  width: 100%;
+  min-width: 0;
+  padding: 10px 12px;
+  color: #678671;
+  background: #fff;
+  border: 1px solid #e1ebe4;
+  border-radius: 10px;
+  font: inherit;
+  font-size: 12px;
+  outline: 0;
+}
+
+.j-fields input:focus {
+  border-color: #b9d2c3;
+  background: #fbfdfb;
+}
+
+.j-fields small {
+  display: block;
+  margin-top: 7px;
+  color: #a1b2a6;
+  font-size: 9px;
+  line-height: 1.8;
+}
+
+.j-credential {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  margin-top: 18px;
+  padding-top: 14px;
+  color: #a3b4a7;
+  border-top: 1px solid #edf2ee;
+  font-size: 9px;
+}
+
+.j-test-state {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 17px;
+  margin-bottom: 16px;
+  padding: 15px 20px;
+  color: #52685a;
+  background: #f7faf8;
+  border: 1px solid #e7efe9;
+  border-radius: 12px;
+}
+
+/* 状态等级与业务 data-state 分离:保留原状态机,让读者先识别严重程度。 */
+.j-test-state[data-message-level='neutral'] {
+  border-left: 4px solid #d6e2da;
+}
+
+.j-test-state[data-message-level='success'] {
+  color: #39734d;
+  background: #f1f8f2;
+  border-color: #d9ebdc;
+  border-left: 4px solid #4c9a67;
+}
+
+.j-test-state[data-message-level='success'] strong {
+  color: #39734d;
+}
+
+.j-test-state[data-message-level='error'] {
+  color: #9c4938;
+  background: #fff1ed;
+  border-color: #edc9bc;
+  border-left: 4px solid #b85d47;
+}
+
+.j-test-state[data-message-level='error'] strong {
+  color: #9c4938;
+  font-weight: 600;
+}
+
+.j-test-state[data-message-level='warning'] {
+  color: #87651b;
+  background: #fff9eb;
+  border-color: #eddcae;
+  border-left: 4px solid #b88726;
+}
+
+.j-test-state[data-message-level='warning'] strong {
+  color: #87651b;
+  font-weight: 600;
+}
+
+.j-test-state strong {
+  color: #52745e;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.j-test-state p {
+  margin: 0;
+  color: inherit;
+  font-size: 10px;
+  line-height: 1.8;
+}
+
+.j-test-state small {
+  width: 100%;
+  color: inherit;
+  font-size: 9px;
+  overflow-wrap: anywhere;
+}
+
+.j-test-state[data-state='failed']:not([data-message-level]) {
+  background: #fcf8f4;
+  border-color: #f0e6dc;
+}
+
+.j-test-state[data-state='failed']:not([data-message-level]) strong {
+  color: #b19476;
+}
+
+.j-test-state[data-state='success']:not([data-message-level]) {
+  background: #f1f8f2;
+}
+
+/* 兼容未带等级标记的旧嵌入方;新视图优先使用 data-message-level。 */
+.j-test-state[data-state='stale']:not([data-message-level]) {
+  background: #fbfaf6;
+  border-color: #efe9dc;
+}
+
+.j-test-state[data-state='stale']:not([data-message-level]) strong {
+  color: #a99472;
+}
+
+.j-mappings .j-section-head {
+  margin-bottom: 16px;
+}
+
+.j-mapping-scroll {
+  overflow: auto;
+  border: 1px solid #e7eee9;
+  border-radius: 11px;
+}
+
+.j-table {
+  width: 100%;
+  min-width: 730px;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 11px;
+}
+
+.j-table th {
+  padding: 12px 14px;
+  color: #8a998e;
+  text-align: left;
+  background: #f8faf8;
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.j-table th:first-child { width: 25%; }
+.j-table th:nth-child(2) { width: 65%; }
+.j-table th:last-child { width: 10%; }
+
+.j-table td {
+  padding: 12px 14px;
+  color: #5f7668;
+  border-top: 1px solid #edf2ee;
+  font-size: 11px;
+}
+
+.j-table input,
+.j-table textarea {
+  width: 100%;
+  min-width: 0;
+  padding: 8px 10px;
+  color: #759480;
+  background: #fff;
+  border: 1px solid #e0eae3;
+  border-radius: 9px;
+  font: inherit;
+  font-size: 11px;
+  line-height: 1.8;
+  outline: 0;
+}
+
+.j-table textarea {
+  min-height: 52px;
+  resize: vertical;
+}
+
+.j-table input:focus,
+.j-table textarea:focus {
+  border-color: #b9d2c3;
+  background: #fbfdfb;
+}
+
+.j-table .j-remove {
+  min-height: 32px;
+  padding: 1px 6px;
+  color: #b69d8e;
+  background: transparent;
+  border: 0;
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.j-table .j-empty {
+  padding: 30px;
+  color: #a7b6ab;
+  text-align: center;
+  font-size: 11px;
+}
+
+.j-mappings footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding-top: 12px;
+  color: #a1b2a6;
+  font-size: 9px;
+  line-height: 1.8;
+}
+
+.j-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  flex: none;
+  padding: 12px 24px 18px;
+  color: #a4b4a9;
+  font-size: 9px;
+  line-height: 1.8;
+}
+
+.j-dirty-note {
+  color: #b28d6a;
+}
+
+@media (max-width: 1000px) {
+  .j-card {
+    padding: 18px;
+  }
+
+  .j-section-head {
+    gap: 12px;
+  }
+
+  .j-fields {
+    gap: 16px;
+  }
+
+  .j-mappings footer span:last-child {
+    max-width: 72%;
+  }
+}
+
+@media (max-width: 900px) {
+  .jira-head {
+    padding: 18px 16px 8px;
+  }
+
+  .jira-head h1 {
+    font-size: 21px;
+  }
+
+  .j-state-bar,
+  .j-scroll,
+  .j-footer {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .j-error {
+    margin-left: 16px;
+    margin-right: 16px;
+  }
+
+  .j-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .jira-head {
+    gap: 9px;
+    margin-bottom: 10px;
+  }
+
+  .jira-head h1 {
+    font-size: 22px;
+  }
+
+  .jira-head p {
+    font-size: 9px;
+    line-height: 1.8;
+  }
+
+  .jira-head .toolbar {
+    gap: 5px;
+  }
+
+  .jira-head .toolbar .el-button {
+    min-height: 40px;
+    padding: 6px 9px;
+    font-size: 9px;
+  }
+
+  .j-state-bar {
+    min-height: 33px;
+    padding-bottom: 9px;
+    font-size: 9px;
+  }
+
+  .j-card {
+    padding: 14px 12px;
+    border-radius: 13px;
+    margin-bottom: 12px;
+  }
+
+  .j-section-head {
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .j-section-head h2 {
+    font-size: 12px;
+    margin-bottom: 6px;
+  }
+
+  .j-section-head p {
+    font-size: 9px;
+  }
+
+  .j-toggle {
+    min-height: 40px;
+    font-size: 9px;
+    gap: 6px;
+  }
+
+  .j-fields input {
+    font-size: 11px;
+    min-height: 44px;
+  }
+
+  .j-credential {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    margin-top: 15px;
+    padding-top: 12px;
+    font-size: 8px;
+  }
+
+  .j-test-state {
+    display: grid;
+    min-height: 64px;
+    padding: 12px;
+    gap: 7px;
+    border-radius: 11px;
+    font-size: 10px;
+  }
+
+  .j-test-state strong {
+    font-size: 10px;
+  }
+
+  .j-test-state p {
+    font-size: 9px;
+  }
+
+  .j-table {
+    min-width: 680px;
+  }
+
+  .j-table td {
+    padding: 10px;
+  }
+
+  .j-table input,
+  .j-table textarea {
+    min-height: 40px;
+    font-size: 10px;
+  }
+
+  .j-table .j-remove {
+    min-height: 44px;
+  }
+
+  .j-mappings footer {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 7px;
+    font-size: 8px;
+  }
+
+  .j-footer {
+    padding-top: 9px;
+    flex-wrap: wrap;
+    gap: 6px;
+    font-size: 8px;
+  }
+}

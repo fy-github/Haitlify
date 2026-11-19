@@ -156,6 +156,22 @@ describe('webAutomationWorkspaceView', () => {
     })
   })
 
+  it.each([undefined, null])('blocks missing browser capability lists (%s) without throwing or permitting execution', (browsers) => {
+    const preflight = buildWebAutomationPreflight(preflightInput({
+      capabilities: { ...capabilities(), browsers } as unknown as WebAutomationCapabilities
+    }))
+
+    expect(preflight.canExecute).toBe(false)
+    expect(preflight.blockingReason).toBe('chromium 不可用')
+    expect(preflight.items.find((item) => item.id === 'browser')).toEqual({
+      id: 'browser',
+      label: '浏览器',
+      status: 'blocked',
+      detail: 'chromium 不可用',
+      repairAction: 'retry-capabilities'
+    })
+  })
+
   it('blocks unavailable browser with recommendation and keeps first blocking reason in item order', () => {
     const preflight = buildWebAutomationPreflight(
       preflightInput({

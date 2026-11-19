@@ -10,22 +10,24 @@ interface ProxyExecutionPayload {
 }
 
 export default defineConfig({
+  // Frontend verification and local runs must never auto-load repository .env files.
+  envDir: false,
   plugins: [vue(), apiExecutionProxy()],
   server: {
     // 非宿主常用端口,避免被其他项目占用
     port: 51730,
     proxy: {
-      // 默认直连 docker 栈 platform 宿主端口(非常用端口);纯本地后端(18080)用 VITE_API_PROXY_TARGET 覆盖
+      // 默认直连隔离栈 platform 宿主端口(deploy/isolated/compose.yaml 的 38082);其他后端用 VITE_API_PROXY_TARGET 覆盖
       '^/api/': {
-        target: process.env.VITE_API_PROXY_TARGET || 'http://127.0.0.1:38081',
+        target: process.env.VITE_API_PROXY_TARGET || 'http://127.0.0.1:38082',
         changeOrigin: true
       },
       '/artifacts': {
-        target: process.env.VITE_RUNNER_PROXY_TARGET || 'http://127.0.0.1:19323',
+        target: process.env.VITE_RUNNER_PROXY_TARGET || 'http://127.0.0.1:19324',
         changeOrigin: true
       },
       '/fixtures': {
-        target: process.env.VITE_RUNNER_PROXY_TARGET || 'http://127.0.0.1:19323',
+        target: process.env.VITE_RUNNER_PROXY_TARGET || 'http://127.0.0.1:19324',
         changeOrigin: true
       }
     }

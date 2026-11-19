@@ -26,7 +26,11 @@ const defaultBrowserId = process.env.APP_WEB_AUTOMATION_RUNNER_BROWSER_CHANNEL |
 const browserHeadless = process.env.APP_WEB_AUTOMATION_RUNNER_HEADLESS !== 'false'
 const allowLocalNetworkAccess = resolveAllowLocalNetworkAccess()
 const strictStartup = process.env.APP_WEB_AUTOMATION_RUNNER_STRICT_STARTUP === 'true'
-const publicBaseUrl = (process.env.APP_WEB_AUTOMATION_RUNNER_PUBLIC_URL || `http://127.0.0.1:${port}`).replace(/\/$/, '')
+// 未配置 PUBLIC_URL 时不要写死容器内端口：证据链接按请求 Host 还原（见 web-runner-server.mjs）。
+const configuredPublicBaseUrl = process.env.APP_WEB_AUTOMATION_RUNNER_PUBLIC_URL
+  ? process.env.APP_WEB_AUTOMATION_RUNNER_PUBLIC_URL.replace(/\/$/, '')
+  : ''
+const publicBaseUrl = configuredPublicBaseUrl || `http://127.0.0.1:${port}`
 const fixtureDir = path.resolve('fixtures')
 const artifactDir = path.resolve('artifacts')
 const engines = { chromium, firefox, webkit }
@@ -62,7 +66,8 @@ const server = createWebRunnerServer({
     publicBaseUrl,
     launchBrowser: (browserId, launchOptions) => launchSelectedBrowser(browserId, launchOptions, engines)
   }),
-  staticFileHandler: serveStaticFile
+  staticFileHandler: serveStaticFile,
+  publicBaseUrl: configuredPublicBaseUrl || null
 })
 const stopSessionCleanup = startSessionCleanup()
 

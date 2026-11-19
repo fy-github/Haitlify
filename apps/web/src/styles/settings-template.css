@@ -1,0 +1,1205 @@
+/*
+ * 设置中心 · 模板字段 / 用例类型(按设计 HTML 参数逐值迁移)
+ * 设计来源:haitlify-settings-v2(210px 模板目录 + 右侧字段面板 + 64px 表格行)
+ */
+
+.s-workspace {
+  display: grid;
+  grid-template-columns: 210px minmax(0, 1fr);
+  flex: 1;
+  min-height: 0;
+  border: 1px solid #e5ede8;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+/* 设计稿 .content:页头与内容面板共享 26/24/18 内边距(面板不贴白色工作区边缘) */
+.settings-pane {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 26px 24px 18px;
+}
+
+.settings-pane > .settings-page-head {
+  padding: 0;
+  margin: 0 0 18px;
+}
+
+.s-directory {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 16px 11px;
+  background: #fbfdfb;
+  border-right: 1px solid #e7eee9;
+}
+
+.s-directory header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 5px 14px;
+}
+
+.s-directory h2 {
+  margin: 0;
+  color: #65816d;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.s-directory > label {
+  padding: 0 3px 13px;
+}
+
+.s-directory input {
+  width: 100%;
+  min-width: 0;
+  min-height: 35px;
+  padding: 8px 9px;
+  color: #738e7c;
+  background: #fff;
+  border: 1px solid #e2eae4;
+  border-radius: 9px;
+  font: inherit;
+  font-size: 11px;
+  outline: 0;
+}
+
+.s-directory nav {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.s-directory nav button {
+  display: block;
+  width: 100%;
+  min-height: 64px;
+  margin-bottom: 4px;
+  padding: 11px 12px;
+  color: #7a9784;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.s-directory nav button.active {
+  color: #50785f;
+  background: #eaf5ee;
+}
+
+.s-directory nav strong {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.s-directory nav small {
+  color: #9db0a3;
+  font-size: 9px;
+}
+
+.s-directory footer {
+  padding: 13px 5px 0;
+  color: #a1b0a6;
+  font-size: 9px;
+  line-height: 1.9;
+}
+
+.s-field-panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.s-panel-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex: none;
+  padding: 17px 20px 13px;
+}
+
+.s-panel-title h2 {
+  margin: 0 0 7px;
+  color: #5d7c68;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.s-panel-title p {
+  margin: 0;
+  color: #95aa9d;
+  font-size: 10px;
+  line-height: 1.8;
+}
+
+.s-panel-tools {
+  display: flex;
+  gap: 10px;
+  flex: none;
+}
+
+.s-panel-tools button {
+  min-height: 32px;
+  padding: 0 4px;
+  color: #8ba291;
+  background: transparent;
+  border: 0;
+  font-size: 10px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.s-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: none;
+  padding: 0 20px 13px;
+}
+
+.s-search {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  min-width: 120px;
+  min-height: 36px;
+  padding: 0 10px;
+  border: 1px solid #e4ebe6;
+  border-radius: 11px;
+}
+
+.s-search input {
+  width: 100%;
+  min-width: 0;
+  color: #52685a;
+  background: transparent;
+  border: 0;
+  font: inherit;
+  font-size: 11px;
+  outline: 0;
+}
+
+.s-toolbar > span {
+  color: #a1b0a6;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.s-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #bac7c2 #f4f6f5;
+}
+
+.s-scroll:focus-visible {
+  outline: 2px solid var(--brand-primary);
+  outline-offset: -2px;
+}
+
+.s-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 11px;
+}
+
+.s-table th {
+  height: 40px;
+  padding: 12px 15px;
+  color: #8a998e;
+  background: #f7f9f8;
+  border-bottom: 1px solid #e9eeeb;
+  font-size: 10px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.s-table td {
+  height: 64px;
+  padding: 10px 12px;
+  color: #6e8074;
+  border-bottom: 1px solid #f0f1f3;
+  vertical-align: middle;
+}
+
+.s-table tr:last-child td {
+  border-bottom: 0;
+}
+
+.s-fields-table {
+  min-width: 1080px;
+}
+
+.s-fields-table th:nth-child(1) { width: 94px; }
+.s-fields-table th:nth-child(2) { width: 140px; }
+.s-fields-table th:nth-child(3) { width: 180px; }
+.s-fields-table th:nth-child(4) { width: 145px; }
+.s-fields-table th:nth-child(5),
+.s-fields-table th:nth-child(6),
+.s-fields-table th:nth-child(7),
+.s-fields-table th:nth-child(8) { width: 83px; text-align: center; }
+.s-fields-table th:nth-child(9) { width: 78px; }
+
+.s-fields-table td:nth-child(n+5):nth-child(-n+8) {
+  text-align: center;
+}
+
+/* 设计稿:字段 Key 列与用例类型 ID 列用 10px 浅灰弱化(不是正文色) */
+.s-fields-table td:nth-child(2),
+.s-types-table td:nth-child(1) {
+  color: #a0b0a5;
+  font-size: 10px;
+}
+
+.s-table input[type='text'] {
+  width: 100%;
+  min-width: 0;
+  min-height: 35px;
+  padding: 8px 9px;
+  color: #6d8d78;
+  background: #fff;
+  border: 1px solid #e0e9e3;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 11px;
+  outline: 0;
+}
+
+.s-table input[type='text']:focus {
+  border-color: #b9d2c3;
+  background: #fafcfb;
+}
+
+.s-table input[type='checkbox'] {
+  width: 15px;
+  height: 15px;
+  accent-color: #7fae8e;
+  cursor: pointer;
+}
+
+.s-move {
+  min-height: 30px;
+  padding: 5px 6px;
+  color: #8aa392;
+  background: #f6f9f6;
+  border: 0;
+  border-radius: 7px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.s-move:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.s-table-delete {
+  min-height: 30px;
+  padding: 0 4px;
+  color: #b29a8e;
+  background: transparent;
+  border: 0;
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.s-panel-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  flex: none;
+  min-height: 55px;
+  padding: 12px 18px;
+  color: #a1b2a6;
+  border-top: 1px solid #e9efeb;
+  font-size: 9px;
+}
+
+.s-panel-link {
+  color: #81a18d;
+  font-size: 10px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.s-panel-link:hover {
+  text-decoration: underline;
+}
+
+.s-empty {
+  padding: 28px 12px !important;
+  color: #93a89b;
+  text-align: center;
+}
+
+.s-empty strong {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.s-link {
+  color: #6f927d;
+  background: transparent;
+  border: 0;
+  font-size: 11px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* 用例类型页 */
+.s-types-page {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.s-type-filters {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: none;
+  margin-bottom: 15px;
+}
+
+.s-scope-filter {
+  width: 175px;
+  flex: none;
+}
+
+.s-type-filters .s-search {
+  flex: 1;
+}
+
+.s-reset {
+  min-height: 34px;
+  padding: 0 4px;
+  color: #8aa494;
+  background: transparent;
+  border: 0;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.s-types-box {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  border: 1px solid #e7ece8;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.s-box-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex: none;
+  min-height: 55px;
+  padding: 12px 17px;
+  border-bottom: 1px solid #edf1ee;
+}
+
+.s-box-head h2 {
+  margin: 0;
+  color: #4d6255;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.s-box-head span {
+  color: #8b9a90;
+  font-size: 11px;
+}
+
+.s-types-table {
+  min-width: 800px;
+}
+
+.s-types-table th:nth-child(1) { width: 23%; }
+.s-types-table th:nth-child(2) { width: 28%; }
+.s-types-table th:nth-child(3) { width: 25%; }
+.s-types-table th:nth-child(4) { width: 12%; text-align: center; }
+.s-types-table th:nth-child(5) { width: 12%; }
+
+.s-types-table td:nth-child(4) {
+  text-align: center;
+}
+
+/* 设计稿的页面头部按钮 */
+.template-head .toolbar {
+  margin-top: 21px;
+}
+
+/* 设计稿底部保存条:如实显示自动保存状态,失败时提供重试/放弃 */
+.s-savebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex: none;
+  min-height: 42px;
+  padding-top: 10px;
+  color: #92aa9a;
+  background: #fbfdfb;
+  border: 1px solid #e4ece7;
+  border-radius: 10px;
+  font-size: 10px;
+}
+
+.s-save-status {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  line-height: 1.6;
+}
+
+.s-save-status[data-state='failed'] {
+  padding: 7px 10px;
+  color: #9c4938;
+  background: #fff4ef;
+  border: 1px solid #edc9bc;
+  border-left: 4px solid #b85d47;
+  border-radius: 7px;
+  font-weight: 600;
+}
+
+.s-save-status[data-state='saving'] {
+  padding: 7px 10px;
+  color: #596048;
+  background: #f8faf4;
+  border: 1px solid #e8ebda;
+  border-left: 4px solid #a6a68e;
+  border-radius: 7px;
+  font-weight: 500;
+}
+
+.s-save-status[data-state='saved'] {
+  padding: 7px 10px;
+  color: #39734d;
+  background: #f1f8f2;
+  border: 1px solid #d9ebdc;
+  border-left: 4px solid #4c9a67;
+  border-radius: 7px;
+  font-weight: 500;
+}
+
+.s-save-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.s-save-actions button {
+  min-height: 30px;
+  padding: 5px 9px;
+  color: #86a190;
+  background: #fff;
+  border: 1px solid #e3ece6;
+  border-radius: 8px;
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.s-save-actions button:focus-visible,
+.s-drawer-btn:focus-visible {
+  outline: none;
+  box-shadow: none;
+  color: #456b52;
+  background: #f2f8f3;
+  filter: brightness(0.9);
+}
+
+/* 模板恢复条：窄屏也同时展示完整操作集，不依赖横向滚动。 */
+.studio-sync-notice.template-recovery-notice {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.studio-sync-notice.template-recovery-notice .sync-conflict-actions {
+  align-items: flex-start;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
+.template-recovery-action-group {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, auto));
+  gap: 5px;
+  min-width: 0;
+  padding: 6px;
+  border: 1px solid #e2ece5;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.62);
+}
+
+.template-recovery-action-group[data-risk='destructive'] {
+  grid-template-columns: repeat(2, minmax(0, auto));
+  border-color: #eadbd2;
+  background: #fffaf7;
+}
+
+.template-recovery-action-group__label {
+  grid-column: 1 / -1;
+  padding: 0 3px 1px;
+  color: #4f715c;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.template-recovery-action-group[data-risk='destructive'] .template-recovery-action-group__label {
+  color: #805a47;
+}
+
+.template-recovery-action-group > button {
+  min-width: 0;
+  min-height: 30px;
+  padding: 5px 8px;
+  color: #4f6c59;
+  background: #fff;
+  border: 1px solid #dfeae2;
+  border-radius: 8px;
+  font-size: 10px;
+  line-height: 1.35;
+  white-space: normal;
+}
+
+.template-recovery-action-group > button.is-destructive {
+  color: #805a47;
+  background: #fff;
+  border-color: #eadbd2;
+}
+
+.template-recovery-action-group > button:hover:not(:disabled) {
+  filter: brightness(0.96);
+}
+
+.template-recovery-action-group > button:focus-visible:not(:disabled) {
+  outline: none;
+  box-shadow: none;
+  filter: brightness(0.9);
+}
+
+.template-recovery-action-group[data-risk='destructive'] > button:focus-visible {
+  box-shadow: none;
+}
+
+.template-recovery-action-group > button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+@media (max-width: 640px) {
+  .studio-sync-notice.template-recovery-notice {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .studio-sync-notice.template-recovery-notice .sync-conflict-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .template-recovery-action-group,
+  .template-recovery-action-group[data-risk='destructive'] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .template-recovery-action-group__label {
+    font-size: 10px;
+  }
+
+  .studio-sync-notice.template-recovery-notice .sync-conflict-copy span {
+    overflow: visible;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .studio-sync-notice.template-recovery-notice .sync-conflict-actions > button {
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}
+
+/* 设置页表格里的下拉框贴合设计尺寸 */
+.s-table .el-select {
+  width: 100%;
+}
+
+.s-table .el-select__wrapper {
+  min-height: 34px;
+  border-radius: 8px;
+  box-shadow: 0 0 0 1px #e0e9e3 inset;
+  font-size: 11px;
+}
+
+.s-type-filters .el-select__wrapper {
+  min-height: 35px;
+  border-radius: 8px;
+  font-size: 11px;
+}
+
+@media (max-width: 1100px) {
+  .s-workspace {
+    grid-template-columns: 180px minmax(0, 1fr);
+  }
+
+  .s-panel-title {
+    padding: 14px;
+  }
+
+  .s-toolbar {
+    padding: 0 14px 12px;
+  }
+}
+
+@media (max-width: 900px) {
+  .s-workspace {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+  }
+
+  .s-directory {
+    display: grid;
+    /* 设计稿 ≤640:左侧 85px 目录标题列 + 右侧搜索列,nav 横跨两列 */
+    grid-template-columns: 85px minmax(0, 1fr);
+    gap: 5px 8px;
+    flex: none;
+    max-height: 105px;
+    padding: 8px 10px;
+    border-right: 0;
+    border-bottom: 1px solid #e5eee7;
+  }
+
+  /* 设计稿在窄屏保留「用例模板」标题,只隐藏说明性 footer */
+  .s-directory header {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 0;
+  }
+
+  .s-directory header h2 {
+    font-size: 10px;
+  }
+
+  .s-directory footer {
+    display: none;
+  }
+
+  .s-directory > label {
+    padding: 0;
+  }
+
+  .s-directory input {
+    min-height: 32px;
+    padding: 6px 9px;
+    font-size: 10px;
+  }
+
+  .s-directory nav {
+    grid-column: 1 / -1;
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+
+  .s-directory nav button {
+    flex: none;
+    width: auto;
+    max-width: 165px;
+    min-height: 35px;
+    margin: 0;
+    padding: 7px 9px;
+  }
+
+  .s-directory nav strong {
+    margin: 0;
+    font-size: 10px;
+    white-space: nowrap;
+  }
+
+  .s-directory nav small {
+    display: none;
+  }
+
+  .s-type-filters {
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+
+  .s-scope-filter {
+    width: 100%;
+  }
+
+  /* 设计稿 ≤640:面板头与表头同步收窄 */
+  .s-box-head {
+    min-height: 44px;
+    padding: 10px 12px;
+    gap: 8px;
+  }
+
+  .s-table th {
+    padding: 11px 12px;
+  }
+
+  .s-panel-footer {
+    gap: 6px;
+  }
+}
+
+@media (max-width: 640px) {
+  /* 设计稿 ≤640:content padding 收到 20/12/16 */
+  .settings-pane {
+    padding: 20px 12px 16px;
+  }
+
+  /* Persistent notices consume height before this pane. Keep field rows usable
+   * and let the actual pane scroll rather than collapsing the table to zero. */
+  .workspace:has(> .studio-sync-notice) .workbench__pane.settings-pane,
+  .workspace:has(> .studio-offline-notice) .workbench__pane.settings-pane {
+    overflow-y: auto;
+  }
+
+  .workspace:has(> .studio-sync-notice) .settings-pane > .s-workspace,
+  .workspace:has(> .studio-offline-notice) .settings-pane > .s-workspace {
+    flex-shrink: 0;
+    min-height: 420px;
+  }
+
+  .workspace:has(> .studio-sync-notice) .settings-pane > .s-types-page {
+    flex-shrink: 0;
+    min-height: 420px;
+  }
+
+  .workspace:has(> .studio-offline-notice) .settings-pane > .s-types-page {
+    flex-shrink: 0;
+    min-height: 420px;
+  }
+
+  .workspace:has(> .studio-sync-notice) .settings-pane .s-field-panel,
+  .workspace:has(> .studio-offline-notice) .settings-pane .s-field-panel {
+    flex: 1;
+  }
+
+  .workspace:has(> .studio-sync-notice) .settings-pane .s-scroll,
+  .workspace:has(> .studio-offline-notice) .settings-pane .s-scroll {
+    min-height: 120px;
+  }
+
+  .workspace:has(> .studio-sync-notice) .settings-pane .s-types-page .s-scroll,
+  .workspace:has(> .studio-offline-notice) .settings-pane .s-types-page .s-scroll {
+    min-height: 120px;
+  }
+
+  .s-panel-title {
+    padding: 10px;
+  }
+
+  .s-panel-title h2 {
+    font-size: 11px;
+  }
+
+  .s-panel-title p {
+    font-size: 9px;
+    line-height: 1.6;
+  }
+
+  .s-toolbar {
+    padding: 0 10px 8px;
+    gap: 6px;
+  }
+
+  .s-toolbar > span {
+    font-size: 9px;
+  }
+
+  /* 设计稿 ≤640:panel-footer min-height 36 + 链接 30 → 实测 45(原实现 55) */
+  .s-panel-footer {
+    min-height: 36px;
+    padding: 7px 10px;
+    font-size: 8px;
+  }
+
+  .s-panel-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 30px;
+  }
+
+  /* 设计稿 ≤640:kicker 8px/5px、页头说明 9px(settings-pages.css 的基础值更宽) */
+  .settings-page-head.template-head .settings-page-kicker {
+    margin-bottom: 5px;
+    font-size: 8px;
+  }
+
+  .settings-page-head.template-head p {
+    font-size: 9px;
+    line-height: 1.8;
+  }
+
+  /* 设计稿 ≤640:表头 38、单元格输入 40 */
+  .s-table th {
+    height: 38px;
+  }
+
+  .s-table input[type='text'] {
+    min-height: 40px;
+  }
+
+  /* 设计稿 ≤640:页头按钮 40px 高、9px 字、5px 间距 */
+  .settings-page-head .toolbar {
+    gap: 5px;
+  }
+
+  .settings-page-head .toolbar .el-button {
+    min-height: 40px;
+    padding: 6px 9px;
+    font-size: 9px;
+  }
+
+  /* 设计稿 ≤640 的保存条:失败状态保持独立容器,动作另起一行避免挤压正文 */
+  .s-savebar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+    min-height: 44px;
+    gap: 6px;
+    padding-top: 7px;
+    font-size: 10px;
+  }
+
+  .s-save-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 5px;
+  }
+
+  .s-save-actions button {
+    min-height: 36px;
+    padding: 5px 6px;
+    font-size: 9px;
+  }
+
+  .s-panel-link {
+    font-size: 9px;
+  }
+
+  .s-table td {
+    height: 64px;
+  }
+
+  /* 设计稿 ≤640:筛选条保持单行(范围选择 115px),不是 el-select 独占一行 */
+  .s-type-filters {
+    flex-wrap: nowrap;
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+
+  .s-scope-filter {
+    width: 115px;
+  }
+
+  .s-type-filters .s-search {
+    min-height: 40px;
+  }
+}
+
+/* ------------------------------------------------------------------
+ * 新增字段 / 新增类型:右侧抽屉草稿(设计稿 dialog.drawer 实测值)
+ * 740px / 24px 左侧圆角 / 头部 25 28 18 / 主体 22 28 / 底部 16 28
+ * ------------------------------------------------------------------ */
+.s-drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: #1e30272b;
+}
+
+.s-drawer {
+  position: fixed;
+  inset: 0 0 0 auto;
+  z-index: 61;
+  display: flex;
+  flex-direction: column;
+  width: min(740px, calc(100vw - 48px));
+  height: 100dvh;
+  max-height: 100dvh;
+  color: #303b40;
+  background: #fff;
+  border-left: 1px solid #e3e8e6;
+  border-radius: 24px 0 0 24px;
+  box-shadow: -15px 0 70px #263b301f;
+  overflow: hidden;
+}
+
+.s-drawer-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  flex: none;
+  padding: 25px 28px 18px;
+  border-bottom: 1px solid #edf0ee;
+}
+
+.s-drawer-kicker {
+  color: #81908b;
+  font-size: 10px;
+  letter-spacing: 0.6px;
+}
+
+.s-drawer-head h2 {
+  margin: 6px 0 0;
+  color: #303b40;
+  font-size: 19px;
+  font-weight: 600;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.s-drawer-sub {
+  margin: 5px 0 0;
+  color: #7b8882;
+  font-size: 11px;
+  line-height: 1.7;
+}
+
+.s-drawer-close {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  color: #65756d;
+  background: #f3f6f4;
+  border: 0;
+  border-radius: 50%;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.s-drawer-body {
+  flex: 1;
+  min-height: 0;
+  padding: 22px 28px;
+  overflow: auto;
+  scrollbar-width: thin;
+}
+
+.s-drawer-note {
+  margin: 0 0 20px;
+  padding: 11px 13px;
+  color: #718377;
+  background: #f4f8f5;
+  border-radius: 10px;
+  font-size: 11px;
+  line-height: 1.8;
+}
+
+.s-drawer-form {
+  display: grid;
+  gap: 20px;
+}
+
+.s-drawer-field label {
+  display: block;
+  margin-bottom: 7px;
+  color: #8da695;
+  font-size: 11px;
+}
+
+.s-drawer-field input[type='text'] {
+  width: 100%;
+  min-height: 38px;
+  padding: 9px 11px;
+  color: #759680;
+  background: #fff;
+  border: 1px solid #e0eae3;
+  border-radius: 9px;
+  font: inherit;
+  font-size: 12px;
+  outline: 0;
+}
+
+.s-drawer-field input[type='text']:focus {
+  border-color: #b9d2c3;
+  background: #fafcfb;
+}
+
+.s-drawer-field small {
+  display: block;
+  margin-top: 6px;
+  color: #a6b6ab;
+  font-size: 9px;
+  line-height: 1.8;
+}
+
+.s-drawer-field .el-select {
+  width: 100%;
+}
+
+.s-drawer-field .el-select__wrapper {
+  min-height: 38px;
+  border-radius: 9px;
+  box-shadow: 0 0 0 1px #e0eae3 inset;
+  font-size: 12px;
+}
+
+.s-drawer-flags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 13px 18px;
+}
+
+.s-drawer-flags label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #8da695;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.s-drawer-flags input[type='checkbox'] {
+  width: 13px;
+  height: 13px;
+  accent-color: #7fae8e;
+  cursor: pointer;
+}
+
+.s-drawer-error {
+  margin: 0;
+  padding: 9px 11px;
+  color: #9c4938;
+  background: #fff4ef;
+  border: 1px solid #edc9bc;
+  border-left: 4px solid #b85d47;
+  border-radius: 7px;
+  font-weight: 600;
+  font-size: 11px;
+  line-height: 1.7;
+}
+
+.s-drawer-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex: none;
+  padding: 16px 28px;
+  border-top: 1px solid #edf0ee;
+  background: #fff;
+}
+
+.s-drawer-foot > span {
+  color: #303b40;
+  font-size: 13px;
+}
+
+.s-drawer-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.s-drawer-btn {
+  min-height: 34px;
+  padding: 8px 12px;
+  color: #56655d;
+  background: #f5f7f6;
+  border: 1px solid #e6ece8;
+  border-radius: 18px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.s-drawer-btn.primary {
+  color: #184333;
+  background: #54d9b5;
+  border-color: #48cbaa;
+}
+
+@media (max-width: 640px) {
+  .s-drawer {
+    width: 100vw;
+    border-radius: 0;
+    border-left: 0;
+  }
+
+  /* 设计稿 ≤640:头部 20/18/15、标题 18px、关闭 44×44(触控目标) */
+  .s-drawer-head {
+    padding: 20px 18px 15px;
+  }
+
+  .s-drawer-head h2 {
+    font-size: 18px;
+  }
+
+  .s-drawer-close {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  /* 设计稿 ≤640:主体 20/18、输入框 44 高 11px 字、复选行 44(触控目标) */
+  .s-drawer-body {
+    padding: 20px 18px;
+  }
+
+  .s-drawer-field input[type='text'] {
+    min-height: 44px;
+    font-size: 11px;
+  }
+
+  .s-drawer-field .el-select__wrapper {
+    min-height: 44px;
+    font-size: 11px;
+  }
+
+  .s-drawer-flags label {
+    min-height: 44px;
+  }
+
+  .s-drawer-foot {
+    padding: 13px 18px;
+  }
+
+  .s-drawer-btn {
+    min-height: 44px;
+    padding: 8px 12px;
+  }
+}

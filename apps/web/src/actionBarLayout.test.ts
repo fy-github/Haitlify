@@ -21,10 +21,21 @@ const extractNavBlocks = (navKey: string) => {
 }
 
 describe('Case and automation action bar layout', () => {
-  it('separates case-library filters from grouped action rows', () => {
-    expect(casesViewSource).toContain('class="case-filters compact-toolbar"')
-    expect(casesViewSource).toContain('class="panel-action-bar"')
-    expect(casesViewSource).toContain('class="panel-action-main"')
+  it('separates case-library filters from the tools row that carries batch actions', () => {
+    // 已确认设计:筛选独占一条(cv-filter-strip);勾选后的批量操作并入 cv-list-tools,
+    // 紧贴「显示列」左侧,不再单独起一条通栏
+    expect(casesViewSource).toContain('class="cv-filter-strip"')
+    expect(casesViewSource).toContain('class="cv-list-tools"')
+    expect(casesViewSource).not.toContain('class="cv-selection-strip"')
+
+    const toolsIndex = casesViewSource.indexOf('class="cv-list-tools"')
+    const batchIndex = casesViewSource.indexOf('class="cv-batch-actions"')
+    const columnsIndex = casesViewSource.indexOf('cv-columns-btn')
+    expect(batchIndex).toBeGreaterThan(toolsIndex)
+    expect(batchIndex).toBeLessThan(columnsIndex)
+    const batchClose = casesViewSource.indexOf('</div>', batchIndex)
+    const beforeColumns = casesViewSource.slice(batchClose + '</div>'.length, columnsIndex)
+    expect(beforeColumns.trim()).toBe('<button type="button" class="cv-btn')
   })
 
   it('keeps API grouped actions in App and delegates Web automation to the workspace', () => {

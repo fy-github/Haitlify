@@ -1,0 +1,304 @@
+/* Non-runtime drawer/footer controls only.
+ * Measured archive: cases-v3 columns/editor, settings-v2 field, users-v1,
+ * defects-v1 export-template. Bulk/assignment, cURL and added type drawer
+ * derive the same-region small-btn tokens; they have no direct drawing.
+ * These footer primary tokens are NOT the #6ad8b4 users/Jira page-head variant.
+ */
+:is(.case-columns-actions, .case-bulk-actions, .case-assignment-actions,
+    .user-drawer__buttons, .s-drawer-actions,
+    .defect-template-drawer .drawer-actions,
+    .edit-form > .drawer-actions, .curl-preview-head > .drawer-actions,
+    .account-password-dialog .el-dialog__footer, .case-conversion-dialog .drawer-actions) {
+  --footer-button-bg: #f5f7f6;
+  --footer-button-border: #e6ece8;
+  --footer-button-ink: #56655d;
+}
+
+:is(.case-columns-actions, .case-bulk-actions, .case-assignment-actions,
+    .user-drawer__buttons, .s-drawer-actions,
+    .defect-template-drawer .drawer-actions,
+    .edit-form > .drawer-actions, .curl-preview-head > .drawer-actions,
+    .account-password-dialog .el-dialog__footer, .case-conversion-dialog .drawer-actions) > button:not(.is-link):not(.is-text) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: auto;
+  min-height: 34px;
+  margin-left: 0;
+  padding: 8px 12px;
+  color: var(--footer-button-ink);
+  background: var(--footer-button-bg);
+  border: 1px solid var(--footer-button-border);
+  border-radius: 18px;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.5;
+  letter-spacing: normal;
+  box-shadow: none;
+  outline: none;
+  transform: none;
+  transition: filter 140ms ease;
+}
+
+:is(.case-columns-actions, .case-bulk-actions, .case-assignment-actions,
+    .user-drawer__buttons, .s-drawer-actions,
+    .defect-template-drawer .drawer-actions,
+    .edit-form > .drawer-actions, .curl-preview-head > .drawer-actions,
+    .account-password-dialog .el-dialog__footer, .case-conversion-dialog .drawer-actions)
+    > :is(.el-button--primary, .is-primary, .primary) {
+  --footer-button-bg: #54d9b5;
+  --footer-button-border: #48cbaa;
+  --footer-button-ink: #184333;
+}
+
+/* Preserve danger semantics if a guarded destructive action enters this family.
+ * Existing non-runtime footer rows have no danger button; this is not a claim
+ * that an archive contains a destructive footer counterpart. */
+:is(.case-columns-actions, .case-bulk-actions, .case-assignment-actions,
+    .user-drawer__buttons, .s-drawer-actions,
+    .defect-template-drawer .drawer-actions,
+    .edit-form > .drawer-actions, .curl-preview-head > .drawer-actions,
+    .account-password-dialog .el-dialog__footer, .case-conversion-dialog .drawer-actions)
+    > :is(.el-button--danger, .is-danger) {
+  --footer-button-bg: #fbefeb;
+  --footer-button-border: #efdcd5;
+  --footer-button-ink: #b97860;
+}
+
+/* Match legacy footer-hover specificity without repainting unrelated .el-button.
+ * Keep the normal base border; hover/focus never add an edge or glow. */
+:is(.case-columns-actions, .case-bulk-actions, .case-assignment-actions,
+    .user-drawer__buttons, .s-drawer-actions,
+    .defect-template-drawer .drawer-actions,
+    .edit-form > .drawer-actions, .curl-preview-head > .drawer-actions,
+    .account-password-dialog .el-dialog__footer, .case-conversion-dialog .drawer-actions)
+    > button:not(.is-link):not(.is-text):is(:hover, :focus, :focus-visible, :active) {
+  color: var(--footer-button-ink);
+  background: var(--footer-button-bg);
+  border-color: var(--footer-button-border);
+  outline: none;
+  box-shadow: none;
+  transform: none;
+}
+
+:is(.case-columns-actions, .case-bulk-actions, .case-assignment-actions,
+    .user-drawer__buttons, .s-drawer-actions,
+    .defect-template-drawer .drawer-actions,
+    .edit-form > .drawer-actions, .curl-preview-head > .drawer-actions,
+    .account-password-dialog .el-dialog__footer, .case-conversion-dialog .drawer-actions)
+    > button:not(:disabled):not(.is-disabled):not(.is-loading):hover {
+  filter: brightness(0.96);
+}
+
+:is(.case-columns-actions, .case-bulk-actions, .case-assignment-actions,
+    .user-drawer__buttons, .s-drawer-actions,
+    .defect-template-drawer .drawer-actions,
+    .edit-form > .drawer-actions, .curl-preview-head > .drawer-actions,
+    .account-password-dialog .el-dialog__footer, .case-conversion-dialog .drawer-actions)
+    > button:not(:disabled):not(.is-disabled):not(.is-loading):focus-visible {
+  filter: brightness(0.9);
+}
+
+:is(.case-columns-actions, .case-bulk-actions, .case-assignment-actions,
+    .user-drawer__buttons, .s-drawer-actions,
+    .defect-template-drawer .drawer-actions,
+    .edit-form > .drawer-actions, .curl-preview-head > .drawer-actions,
+    .account-password-dialog .el-dialog__footer, .case-conversion-dialog .drawer-actions)
+    > button:is(:disabled, .is-disabled):not(.is-loading) {
+  opacity: 0.45;
+  filter: none;
+  cursor: not-allowed;
+}
+
+:is(.case-columns-actions, .case-bulk-actions, .case-assignment-actions,
+    .user-drawer__buttons, .s-drawer-actions,
+    .defect-template-drawer .drawer-actions,
+    .edit-form > .drawer-actions, .curl-preview-head > .drawer-actions,
+    .account-password-dialog .el-dialog__footer, .case-conversion-dialog .drawer-actions)
+    > button.is-loading {
+  opacity: 1;
+  filter: none;
+}
+
+/* cases-v3 .small-btn.quiet is a distinct transparent restore control. */
+.case-columns-actions > .cv-btn[data-action="restore"]:not(.is-link):not(.is-text),
+.case-columns-actions > .cv-btn[data-action="restore"]:not(.is-link):not(.is-text):is(:hover, :focus, :focus-visible, :active) {
+  --footer-button-bg: transparent;
+  --footer-button-border: currentColor;
+  background: transparent;
+  border: 0;
+  padding-left: 0;
+}
+
+.case-columns-actions {
+  justify-content: flex-end;
+  gap: 8px;
+}
+.case-columns-actions > [data-action="restore"] { margin-right: auto; }
+
+.account-password-dialog .el-dialog__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* Actual close actions; real component glyphs are intentionally unchanged.
+ * Evidence dialogs are footerless. :has() selects only their header close. */
+:is(.case-editor-drawer .studio-responsive-drawer__header > button,
+    .user-drawer-shell .studio-responsive-drawer__header > button,
+    .curl-preview-drawer .el-drawer__close-btn,
+    .defect-template-drawer .el-drawer__close-btn,
+    .s-drawer .s-drawer-close,
+    .case-columns-dialog .el-dialog__headerbtn,
+    .case-bulk-dialog .el-dialog__headerbtn,
+    .case-assignment-dialog .el-dialog__headerbtn,
+    .case-conversion-dialog .el-dialog__headerbtn,
+    .account-password-dialog .el-dialog__headerbtn,
+    .user-management-confirm .el-message-box__headerbtn,
+    .el-dialog:has(> .el-dialog__body > .action-ir-viewer) .el-dialog__headerbtn,
+    .el-dialog:has(> .el-dialog__body > .screenshot-dom-compare) .el-dialog__headerbtn) {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  padding: 0;
+  color: #65756d;
+  background: #f3f6f4;
+  border: 0;
+  border-radius: 50%;
+  box-shadow: none;
+  outline: none;
+  transform: none;
+}
+
+:is(.case-editor-drawer .studio-responsive-drawer__header > button,
+    .user-drawer-shell .studio-responsive-drawer__header > button,
+    .curl-preview-drawer .el-drawer__close-btn,
+    .defect-template-drawer .el-drawer__close-btn,
+    .s-drawer .s-drawer-close,
+    .case-columns-dialog .el-dialog__headerbtn,
+    .case-bulk-dialog .el-dialog__headerbtn,
+    .case-assignment-dialog .el-dialog__headerbtn,
+    .case-conversion-dialog .el-dialog__headerbtn,
+    .account-password-dialog .el-dialog__headerbtn,
+    .user-management-confirm .el-message-box__headerbtn,
+    .el-dialog:has(> .el-dialog__body > .action-ir-viewer) .el-dialog__headerbtn,
+    .el-dialog:has(> .el-dialog__body > .screenshot-dom-compare) .el-dialog__headerbtn):is(:hover, :focus, :focus-visible) {
+  color: #65756d;
+  background: #f3f6f4;
+  border: 0;
+  box-shadow: none;
+  outline: none;
+}
+
+/* Element Plus paints hover ink on the nested icon. */
+:is(.case-columns-dialog, .case-bulk-dialog, .case-assignment-dialog,
+    .case-conversion-dialog, .account-password-dialog,
+    .curl-preview-drawer, .defect-template-drawer,
+    .el-dialog:has(> .el-dialog__body > .action-ir-viewer),
+    .el-dialog:has(> .el-dialog__body > .screenshot-dom-compare))
+    :is(.el-dialog__headerbtn, .el-drawer__close-btn) .el-icon {
+  color: inherit;
+}
+
+/* users-v1 modal .btn, not the smaller .small-btn drawer family. */
+.user-management-confirm .el-message-box__btns {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.user-management-confirm .el-message-box__btns > .el-button {
+  --user-confirm-bg: #fff;
+  --user-confirm-ink: #535a64;
+  height: auto;
+  min-height: 34.5px;
+  margin-left: 0;
+  padding: 8px 14px;
+  color: var(--user-confirm-ink);
+  background: var(--user-confirm-bg);
+  border: 1px solid #e8ebee;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.5;
+  letter-spacing: normal;
+  box-shadow: none;
+  outline: none;
+}
+.user-management-confirm .el-message-box__btns > .el-button--primary {
+  --user-confirm-bg: #4cd8b4;
+  --user-confirm-ink: #163f34;
+  border: 0;
+}
+/* No archive destructive-confirm palette: retain danger semantics using the
+ * existing project danger-soft/ink family, explicitly a derived variant. */
+.user-management-danger-confirm .el-message-box__btns > .el-button--primary {
+  --user-confirm-bg: #fbefeb;
+  --user-confirm-ink: #b97860;
+}
+.user-management-confirm .el-message-box__btns > .el-button:not(.is-disabled):not(.is-link):not(.is-text):is(:hover, :focus, :focus-visible, :active) {
+  color: var(--user-confirm-ink);
+  background: var(--user-confirm-bg);
+  border-color: #e8ebee;
+  box-shadow: none;
+  outline: none;
+}
+.user-management-confirm .el-message-box__btns > .el-button--primary:not(.is-disabled):not(.is-link):not(.is-text):is(:hover, :focus, :focus-visible, :active) {
+  border: 0;
+}
+.user-management-confirm .el-message-box__btns > .el-button:hover { filter: brightness(0.96); }
+.user-management-confirm .el-message-box__btns > .el-button:focus-visible { filter: brightness(0.9); }
+
+@media (max-width: 640px) {
+  .user-management-confirm .el-message-box__btns > .el-button { min-height: 44px; }
+  .case-conversion-dialog.el-dialog { max-width: calc(100vw - 24px); }
+
+  :is(.case-editor-drawer .studio-responsive-drawer__header > button,
+      .user-drawer-shell .studio-responsive-drawer__header > button,
+      .curl-preview-drawer .el-drawer__close-btn,
+      .defect-template-drawer .el-drawer__close-btn,
+      .s-drawer .s-drawer-close,
+      .case-columns-dialog .el-dialog__headerbtn,
+      .case-bulk-dialog .el-dialog__headerbtn,
+      .case-assignment-dialog .el-dialog__headerbtn,
+      .case-conversion-dialog .el-dialog__headerbtn,
+      .account-password-dialog .el-dialog__headerbtn,
+      .user-management-confirm .el-message-box__headerbtn,
+      .el-dialog:has(> .el-dialog__body > .action-ir-viewer) .el-dialog__headerbtn,
+      .el-dialog:has(> .el-dialog__body > .screenshot-dom-compare) .el-dialog__headerbtn) {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .case-columns-dialog.el-dialog,
+  .case-bulk-dialog.el-dialog,
+  .case-assignment-dialog.el-dialog {
+    max-width: calc(100vw - 24px);
+    margin-right: auto;
+    margin-left: auto;
+  }
+
+  :is(.case-columns-actions, .case-bulk-actions, .case-assignment-actions,
+      .user-drawer__buttons, .s-drawer-actions,
+      .defect-template-drawer .drawer-actions,
+      .edit-form > .drawer-actions, .curl-preview-head > .drawer-actions,
+    .account-password-dialog .el-dialog__footer, .case-conversion-dialog .drawer-actions) {
+    flex-wrap: wrap;
+    min-width: 0;
+    gap: 8px;
+  }
+
+  :is(.case-columns-actions, .case-bulk-actions, .case-assignment-actions,
+      .user-drawer__buttons, .s-drawer-actions,
+      .defect-template-drawer .drawer-actions,
+      .edit-form > .drawer-actions, .curl-preview-head > .drawer-actions,
+    .account-password-dialog .el-dialog__footer, .case-conversion-dialog .drawer-actions) > button:not(.is-link):not(.is-text) {
+    min-height: 44px;
+  }
+}

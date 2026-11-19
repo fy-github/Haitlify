@@ -6,7 +6,6 @@ import { mount } from '@vue/test-utils'
 import ElementPlus from 'element-plus'
 import type { JiraConfig } from '../../domain/jiraConfigRepository'
 import { defaultTemplateConfig, saveTemplateConfig } from '../../domain/templateConfigRepository'
-import { defaultAiConfig, saveAiConfig } from '../../domain/aiConfigRepository'
 import type { NavKey } from '../../domain/appNavigation'
 
 interface Props {
@@ -36,7 +35,7 @@ const baseJira = (): JiraConfig => ({
 })
 
 const makeProps = (overrides: Partial<Props> = {}): Props => ({
-  activeNav: 'aiConfig',
+  activeNav: 'settings',
   role: 'ADMIN',
   form: baseJira(),
   loading: false,
@@ -65,7 +64,7 @@ describe('SettingsCenterView', () => {
     localStorage.clear()
     saveTemplateConfig(localStorage, defaultTemplateConfig())
     const wrapper = await mountView(makeProps({ activeNav: 'settings', role: 'ADMIN' }))
-    expect(wrapper.find('h1').text()).toContain('模板配置')
+    expect(wrapper.find('h1').text()).toContain('模板字段')
     expect(wrapper.find('.workbench__pane').exists()).toBe(true)
   })
 
@@ -75,15 +74,8 @@ describe('SettingsCenterView', () => {
       projectJqlRows: [{ key: 'HAITLIFY_API', value: 'project = HAITLIFY' }]
     }))
     expect(wrapper.find('h1').text()).toContain('Jira 配置')
-    expect(wrapper.findAll('.jira-config-jql__row').length).toBe(1)
-  })
-
-  it('renders the platform AI section as a full-height workbench', async () => {
-    localStorage.clear()
-    saveAiConfig(localStorage, { ...defaultAiConfig(), enabled: true, model: 'gpt-4.1', baseUrl: 'https://api.example.com' })
-    const wrapper = await mountView(makeProps({ activeNav: 'aiConfig', role: 'ADMIN' }))
-    expect(wrapper.find('[data-testid="platform-ai-workbench"]').exists()).toBe(true)
-    expect(wrapper.find('h1').text()).toContain('平台 AI')
+    // 设计稿把映射从卡片行改成表格行
+    expect(wrapper.findAll('.j-table tbody tr').length).toBe(1)
   })
 
   it('renders the user management section for admins only', async () => {

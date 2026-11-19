@@ -1,0 +1,336 @@
+/*
+ * Report-detail button surface only.
+ *
+ * The archive's direct counterparts are the reports-v1 `.btn.light`, `.btn.primary`,
+ * `.r-back`, `.result-filter`, `.r-link`, and pagination controls.  Delete remains a
+ * danger action: it uses the archive's light shell geometry with the product danger ink,
+ * rather than inheriting the positive mint primary surface.
+ */
+
+.report-page .report-action-button,
+.report-detail-dialog .report-action-button,
+.report-detail-compare-dialog .report-action-button {
+  box-sizing: border-box;
+  min-height: 34px;
+  height: auto;
+  padding: 8px 14px;
+  border-radius: 20px;
+  border-width: 1px;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.5;
+  letter-spacing: 0;
+  box-shadow: none;
+  background-image: none;
+  transition: none;
+}
+
+/* Archive counterpart: `.btn.light`. */
+.report-page .report-action-button--secondary.el-button,
+.report-detail-dialog .report-action-button--secondary.el-button,
+.report-detail-compare-dialog .report-action-button--secondary.el-button {
+  color: #535a64;
+  border-color: #e8ebee;
+  background: #fff;
+}
+
+/* Archive counterpart: `.btn.primary` (used only for the positive dialog action). */
+.report-detail-dialog .report-action-button--primary.el-button,
+.report-detail-compare-dialog .report-action-button--primary.el-button {
+  color: #163f34;
+  border-color: #4cd8b4;
+  background: #4cd8b4;
+}
+
+/* Danger semantics are preserved without turning delete into a positive action. */
+.report-page .report-action-button--danger.el-button,
+.report-detail-dialog .report-action-button--danger.el-button,
+.report-detail-compare-dialog .report-action-button--danger.el-button {
+  color: var(--color-danger, #b83b52);
+  border-color: var(--color-danger-border, #efbdc8);
+  background: #fff;
+}
+
+/* settings-quality.css has a deliberately broad report-head toolbar token.  The
+ * detail delete action must win that rule while keeping its danger meaning. */
+.report-page.report-detail-page .report-head .toolbar .report-action-button--danger.el-button {
+  color: var(--color-danger, #b83b52);
+  border-color: var(--color-danger-border, #efbdc8);
+  background: #fff;
+  background-image: none;
+  box-shadow: none;
+}
+
+/* Row delete is an archive-derived text action, not a mint button. */
+.report-page .report-action-button--danger.report-action-button--link.el-button.is-link {
+  min-height: 30px;
+  padding: 3px 0;
+  border-color: transparent;
+  border-radius: 0;
+  background: transparent;
+}
+
+.report-page .report-action-button--back,
+.report-page .r-back {
+  min-height: 26px;
+  padding: 0 0 9px;
+  border: 0;
+  border-radius: 0;
+  color: #7b9081;
+  background: transparent;
+  box-shadow: none;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+.report-page .report-action-button--back:hover,
+.report-page .r-back:hover {
+  color: #4d8766;
+  background: transparent;
+  border-color: transparent;
+  filter: none;
+}
+
+/* Archive counterpart: `.result-filter button` / `.r-tabs button`. */
+.report-page .result-filter button,
+.report-page .r-tabs button,
+.report-page .report-action-button--filter {
+  flex: none;
+  min-height: 30px;
+  height: auto;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 9px;
+  color: #839388;
+  background: transparent;
+  background-image: none;
+  box-shadow: none;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+.report-page .result-filter button[aria-pressed='true'],
+.report-page .r-tabs button[aria-pressed='true'],
+.report-page .report-action-button--filter[aria-pressed='true'] {
+  color: #417453;
+  background: #e9f4ed;
+}
+
+/* Archive counterpart: `.r-link`. */
+.report-page .r-link {
+  min-height: 30px;
+  height: auto;
+  padding: 3px 0;
+  border: 0;
+  border-radius: 0;
+  color: #4d8766;
+  background: transparent;
+  background-image: none;
+  box-shadow: none;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+.report-page .r-link:hover {
+  color: #2f6b4c;
+  border-color: transparent;
+  background: transparent;
+  filter: none;
+}
+
+/* Archive counterpart: `.r-pagination button` and `.result-neighbors button`. */
+.report-page .r-pagination button,
+.report-page .result-neighbors button {
+  min-height: 30px;
+  height: auto;
+  padding: 6px 12px;
+  border: 1px solid #e1e9e3;
+  border-radius: 9px;
+  color: #6c8274;
+  background: #fff;
+  background-image: none;
+  box-shadow: none;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+.report-page .r-pagination button:disabled,
+.report-page .result-neighbors button:disabled,
+.report-page .report-action-button:disabled,
+.report-page .report-action-button.is-disabled,
+.report-detail-dialog .report-action-button:disabled,
+.report-detail-dialog .report-action-button.is-disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Archive hover/focus invariants: no gradient, no shadow, no layout shift. */
+.report-page .report-action-button:hover:not(:disabled):not(.is-disabled),
+.report-detail-dialog .report-action-button:hover:not(:disabled):not(.is-disabled),
+.report-page .r-pagination button:hover:not(:disabled),
+.report-page .result-neighbors button:hover:not(:disabled) {
+  filter: brightness(0.96);
+  box-shadow: none;
+  transform: none;
+}
+
+/* The screenshot preview is teleported to body. Constrain the dialog itself so
+ * its footer starts inside a 390px viewport before any locator auto-scroll. */
+.report-detail-dialog.el-dialog {
+  max-width: calc(100vw - 24px);
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* controls.css owns a broad drawer-actions hover rule. Re-assert the direct
+ * report-v1 footer tokens at the real teleported consumer. */
+.report-detail-dialog .drawer-actions .report-action-button--secondary.el-button:hover:not(.is-disabled):not(:disabled) {
+  color: #535a64;
+  border-color: #e8ebee;
+  background: #fff;
+  background-image: none;
+  box-shadow: none;
+  filter: brightness(0.96);
+}
+
+.report-detail-dialog .drawer-actions .report-action-button--primary.el-button:hover:not(.is-disabled):not(:disabled) {
+  color: #163f34;
+  border-color: #4cd8b4;
+  background: #4cd8b4;
+  background-image: none;
+  box-shadow: none;
+  filter: brightness(0.96);
+}
+
+/* Keyboard focus must also win the higher-specificity enabled hover selector. */
+.report-detail-dialog .drawer-actions .report-action-button--secondary.el-button:focus-visible,
+.report-detail-dialog .drawer-actions .report-action-button--secondary.el-button:focus-visible:hover:not(.is-disabled):not(:disabled) {
+  color: #535a64;
+  border-color: #e8ebee;
+  background: #fff;
+  background-image: none;
+  box-shadow: none;
+  outline: none;
+  filter: brightness(0.9);
+}
+
+.report-detail-dialog .drawer-actions .report-action-button--primary.el-button:focus-visible,
+.report-detail-dialog .drawer-actions .report-action-button--primary.el-button:focus-visible:hover:not(.is-disabled):not(:disabled) {
+  color: #163f34;
+  border-color: #4cd8b4;
+  background: #4cd8b4;
+  background-image: none;
+  box-shadow: none;
+  outline: none;
+  filter: brightness(0.9);
+}
+
+@media (max-width: 640px) {
+  /* controls.css has equal specificity on `.drawer-actions .el-button`; the
+   * dialog ancestor must win so both preview actions retain the archive mobile
+   * 40px hit area. */
+  .report-detail-dialog.el-dialog .drawer-actions .report-action-button--secondary.el-button,
+  .report-detail-dialog.el-dialog .drawer-actions .report-action-button--primary.el-button {
+    min-height: 40px;
+    padding: 7px 10px;
+    font-size: 10px;
+  }
+}
+
+.report-page .report-action-button:focus-visible,
+.report-detail-dialog .report-action-button:focus-visible,
+.report-page .result-filter button:focus-visible,
+.report-page .r-tabs button:focus-visible,
+.report-page .r-link:focus-visible,
+.report-page .r-pagination button:focus-visible,
+.report-page .result-neighbors button:focus-visible {
+  outline: none !important;
+  box-shadow: none;
+  background-image: none;
+  filter: brightness(0.9);
+}
+
+.report-page .report-action-button--back:focus-visible,
+.report-page .r-back:focus-visible,
+.report-page .r-link:focus-visible {
+  background-color: #edf4ef;
+}
+
+/* ≤640px archive variant. */
+@media (max-width: 640px) {
+  .report-page .report-action-button,
+  .report-detail-dialog .report-action-button,
+  .report-detail-compare-dialog .report-action-button {
+    min-height: 40px;
+    padding: 7px 10px;
+    font-size: 10px;
+  }
+
+  .report-page .report-action-button--back,
+  .report-page .r-back {
+    min-height: 38px;
+    padding-bottom: 5px;
+    font-size: 11px;
+  }
+
+  .report-page .report-action-button--filter,
+  .report-page .result-filter button,
+  .report-page .r-tabs button {
+    min-height: 36px;
+    padding: 5px 8px;
+    font-size: 10px;
+  }
+
+  .report-page .r-link {
+    min-height: 40px;
+    padding: 3px 0;
+    font-size: 11px;
+  }
+
+  .report-page .report-action-button--danger.report-action-button--link.el-button.is-link {
+    min-height: 40px;
+    padding: 3px 0;
+  }
+
+  .report-page .r-pagination button,
+  .report-page .result-neighbors button {
+    min-height: 38px;
+    font-size: 10px;
+  }
+
+  .report-page .r-pagination button {
+    padding: 5px 8px;
+  }
+
+  .report-page .result-neighbors button {
+    padding: 5px 7px;
+  }
+}
+
+/* The compare dialog is a report-origin surface, but its close control is supplied by
+ * Element Plus.  Keep it on the same quiet archive token without changing behavior. */
+.report-detail-compare-dialog .el-dialog__headerbtn {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  color: #7b9081;
+  background: transparent;
+  box-shadow: none;
+}
+
+.report-detail-compare-dialog .el-dialog__headerbtn:hover {
+  color: #4d8766;
+  background: transparent;
+  filter: brightness(0.96);
+}
+
+.report-detail-compare-dialog .el-dialog__headerbtn:focus-visible {
+  outline: none;
+  box-shadow: none;
+  background: #edf4ef;
+  filter: brightness(0.9);
+}
