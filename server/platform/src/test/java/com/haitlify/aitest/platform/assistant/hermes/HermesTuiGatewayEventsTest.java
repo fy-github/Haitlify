@@ -67,14 +67,18 @@ class HermesTuiGatewayEventsTest {
         gateway = stdio("many+complete");
         gateway.submitPrompt(SESSION, "请生成一个用例");
 
+        // 同一 stdout 读线程先处理全部事件，再处理后续 RPC 回包。
+        // 在这条屏障前不能 drain，否则消费者可能追上生产者，未形成积压。
+        var barrier = gateway.rpc("reload.mcp", MAPPER.createObjectNode(), Duration.ofSeconds(10));
+        assertThat(barrier.path("result").path("status").asString()).isEqualTo("reloaded");
         var events = awaitEvents(1);
         var last = events.get(events.size() - 1);
         assertThat(last.path("params").path("type").asString())
             .as("压力下被淘汰的只能是进度帧：终态必须在")
             .isEqualTo("message.complete");
         assertThat(maxBatchSize)
-            .as("缓冲有界：单次 drain 取走的条数不超过上限")
-            .isLessThanOrEqualTo(HermesTuiGateway.MAX_EVENTS);
+            .as("生产完成后首次 drain：积压应恰好保留上限条数")
+            .isEqualTo(HermesTuiGateway.MAX_EVENTS);
         assertThat(events.size())
             .as("确实发生过淘汰（假网关推了 301 条，累积拿到的不可能是全部）")
             .isLessThan(301);
