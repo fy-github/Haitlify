@@ -1,0 +1,48 @@
+# TEMPLATE ONLY — not installed, parsed by nft, or runtime-isolation certified.
+# Dedicated Linux host prerequisite: bridge netfilter + nft bridge/inet families.
+# Resolve interface/IP placeholders from EXACT label+incarnation inspected resources;
+# do not substitute caller-supplied interface names. Install atomically BEFORE start.
+# No `flush ruleset`: the legacy host rules are outside this pool's ownership.
+# All addresses must be immutable for the entire incarnation. Provider destination
+# IP/SNI/certificate name must be verified together by the trusted edge deployer.
+# Edges use a separate per-slot egress bridge, never a shared platform/DB bridge.
+
+table bridge hlwp_SLOT_INCARNATION {
+  chain input {
+    type filter hook input priority -300; policy accept;
+    # Blocks worker/edges reaching bridge gateway/host (including host DNS).
+    meta ibrname "SLOT_BRIDGE" ether type ip drop
+    meta ibrname "SLOT_BRIDGE" ether type ip6 drop
+  }
+  chain forward {
+    type filter hook forward priority -300; policy accept;
+    # Only two application ports; no DNS, metadata, DB, Runner or peer workers.
+    meta ibrname "SLOT_BRIDGE" ip saddr WORKER_IP ip daddr { MCP_EDGE_IP, PROVIDER_EDGE_IP } tcp dport 8080 accept
+    meta ibrname "SLOT_BRIDGE" ip saddr { MCP_EDGE_IP, PROVIDER_EDGE_IP } ip daddr WORKER_IP tcp sport 8080 ct state established accept
+    # ARP within this dedicated /24 only; no IPv6 route or forwarding exceptions.
+    meta ibrname "SLOT_BRIDGE" ether type arp accept
+    meta ibrname "SLOT_BRIDGE" drop
+    meta obrname "SLOT_BRIDGE" drop
+  }
+}
+table inet hlwp_SLOT_INCARNATION {
+  chain input {
+    type filter hook input priority -300; policy accept;
+    iifname { "SLOT_BRIDGE", "SLOT_EGRESS_BRIDGE" } drop
+  }
+  chain forward {
+    type filter hook forward priority -300; policy accept;
+    # The two edges each get one fixed destination and one fixed TLS port.
+    iifname "SLOT_EGRESS_BRIDGE" ip saddr MCP_EDGE_EGRESS_IP ip daddr MCP_FIXED_IP tcp dport MCP_FIXED_PORT accept
+    iifname "SLOT_EGRESS_BRIDGE" ip saddr PROVIDER_EDGE_EGRESS_IP ip daddr PROVIDER_FIXED_IP tcp dport 443 accept
+    oifname "SLOT_EGRESS_BRIDGE" ip daddr MCP_EDGE_EGRESS_IP ip saddr MCP_FIXED_IP tcp sport MCP_FIXED_PORT ct state established accept
+    oifname "SLOT_EGRESS_BRIDGE" ip daddr PROVIDER_EDGE_EGRESS_IP ip saddr PROVIDER_FIXED_IP tcp sport 443 ct state established accept
+    iifname "SLOT_EGRESS_BRIDGE" drop
+    oifname "SLOT_EGRESS_BRIDGE" drop
+    iifname "SLOT_BRIDGE" drop
+    oifname "SLOT_BRIDGE" drop
+  }
+}
+# Runtime apply is deliberately not implemented. nft bridge hook ordering,
+# Docker's own chains and internal-network semantics require a Linux integration
+# drill; this text is not sufficient evidence. Do not claim it blocks traffic yet.

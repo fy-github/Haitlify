@@ -2,9 +2,12 @@ spring:
   application:
     name: haitlify-platform
   datasource:
-    url: ${APP_DB_URL:jdbc:mysql://127.0.0.1:3306/ai_test_platform?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai}
-    username: ${APP_DB_USERNAME:root}
-    password: ${APP_DB_PASSWORD:root}
+    # 默认值指向隔离环境（deploy/isolated/compose.yaml 的宿主端口 13306 / 库 haitlify_isolated）。
+    # 不要把它改回旧栈地址：平台启动保护会拒绝非隔离环境的数据库目标，见 DEPLOYMENT.md。
+    url: ${APP_DB_URL:jdbc:mysql://127.0.0.1:13306/haitlify_isolated?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai}
+    username: ${APP_DB_USERNAME:haitlify_app}
+    # 不留旧开发默认口令：缺值时连接会失败，而不是静默用 root/root 连上旧库。
+    password: ${APP_DB_PASSWORD:}
     driver-class-name: com.mysql.cj.jdbc.Driver
   flyway:
     enabled: true
@@ -31,15 +34,13 @@ management:
         enabled: true
 
 server:
-  # 本地开发默认用非常用端口,避免被其他项目占用的 8080 劫持;容器内由 APP_PORT 显式指定
-  port: ${APP_PORT:18080}
+  # 本地开发默认用隔离栈的宿主端口，避免与旧栈端口(18080)混淆;容器内由 APP_PORT 显式设为 8080
+  port: ${APP_PORT:38082}
   tomcat:
     max-swallow-size: 25MB
 
 app:
-  # Web exploration rollout flags are read from ai_system_configs.provider_config_json.
-  # Safe defaults when keys are absent: multi-round/session reuse/criticality aware on,
-  # semantic expansion off. These comments document the contract without duplicating DB state.
+  # AI 对话与模型配置由 Hermes 执行单元持有；平台只保留业务链路配置。
   version: ${APP_VERSION:0.1.0-SNAPSHOT}
   security:
     enabled: ${APP_SECURITY_ENABLED:true}
@@ -52,11 +53,76 @@ app:
       token: ${APP_JIRA_TOKEN:}
     project-jql:
       Haitlify API: ${APP_JIRA_PROJECT_JQL_HAITLIFY_API:project = HAITLIFY order by created DESC}
+  # 助手对话 HTTP 入口（Hermes 会话服务的生产调用方）。默认关闭：关闭时控制器 Bean 不存在，
+  # /api/assistant/conversations 直接 404，也不会建立任何 Hermes 连接。
+  assistant:
+    conversation:
+      enabled: ${APP_ASSISTANT_CONVERSATION_ENABLED:false}
+      workspace: ${APP_ASSISTANT_CONVERSATION_WORKSPACE:/state/workspace}
+      reply-timeout-seconds: ${APP_ASSISTANT_CONVERSATION_REPLY_TIMEOUT_SECONDS:60}
+      resume-idle-wait-seconds: ${APP_ASSISTANT_CONVERSATION_RESUME_IDLE_WAIT_SECONDS:10}
+      max-conversations: ${APP_ASSISTANT_CONVERSATION_MAX:256}
+      # 对话受理后是否为该轮铸一张私有 MCP 租约。默认关闭；开启还要求 app.assistant.mcp.lease.enabled=true。
+      # public-base-url 是网关能看到的那一半（平台对外地址），lease id 由平台随机生成且从不落盘。
+      mcp-lease:
+        enabled: ${APP_ASSISTANT_CONVERSATION_MCP_LEASE_ENABLED:false}
+        public-base-url: ${APP_ASSISTANT_CONVERSATION_MCP_LEASE_PUBLIC_BASE_URL:}
+        ttl-seconds: ${APP_ASSISTANT_CONVERSATION_MCP_LEASE_TTL_SECONDS:300}
+        # 是否把本轮租约 URL 写进网关的 MCP 条目并 reload（先写条目、再 reload，见 mcp/README.md）。
+        # 默认关闭；关闭时配置器一次都不调用。真实的 ConfigFileGatewayMcpControl 只由显式路径触发：
+        # 设置 APP_ASSISTANT_CONVERSATION_MCP_LEASE_GATEWAY_CONFIG_PATH 才会注册；条目位置是**顶层**
+        # mcp_servers.<name>（name 见 gateway-server-name，默认 haitlify），整条替换成 {url: ...}。
+        # reload 走 reload.mcp（confirm=true，预算见 gateway-reload-timeout-seconds，默认 60s）：transport=tcp
+        # 时由真实的 TcpGatewayReloader 提供；stdio 下没有 RPC 落点，设了路径会启动即失败。
+        # 默认不注册，也不会读写任何网关配置文件（尤其不会碰 ~/.hermes/config.yaml）。
+        # 开启但本轮没有 ACTIVE binding 时清除条目（fail-closed），不回退旧 URL。
+        configure-gateway: ${APP_ASSISTANT_CONVERSATION_MCP_LEASE_CONFIGURE_GATEWAY:false}
+      # 用户×项目隔离的执行单元：每个 (tenant, project, actor) 一个独立网关子进程 + 一份私有 profile 副本。
+      # 默认关闭；关闭时装配仍是单进程形状（一个网关、一个 MCP 条目、一个许可），行为与之前一致。
+      # 开启后：base-profile（必须有 config.yaml 与 .env，常规文件、不跟随符号链接）必填，root 必填，
+      # transport 必须是 stdio（单元自成子进程），command 必须给出；任一不满足启动即失败，绝不回退
+      # 到 ~/.hermes 或共享单元。容量耗尽 -> 本轮 FAILED（不共享、不驱逐、不排队）。
+      execution-units:
+        enabled: ${APP_ASSISTANT_CONVERSATION_EXECUTION_UNITS_ENABLED:false}
+        base-profile: ${APP_ASSISTANT_CONVERSATION_EXECUTION_UNITS_BASE_PROFILE:}
+        root: ${APP_ASSISTANT_CONVERSATION_EXECUTION_UNITS_ROOT:}
+        capacity: ${APP_ASSISTANT_CONVERSATION_EXECUTION_UNITS_CAPACITY:8}
+        idle-ttl-seconds: ${APP_ASSISTANT_CONVERSATION_EXECUTION_UNITS_IDLE_TTL_SECONDS:900}
+        reap-interval-millis: ${APP_ASSISTANT_CONVERSATION_EXECUTION_UNITS_REAP_INTERVAL_MILLIS:1000}
+        # 单元目录根的位置校验：Hermes 根由 base-profile 的 <root>/profiles/<name> 形状推导，推不出再看 HERMES_HOME。
+        # 根外（如 /tmp、/var/lib）时子网关会把每个单元目录当成全新数据根：preparing dependencies + 完整 uv sync
+        # （约 1.3G），每建一个单元重装一次运行时——单元就绪从秒级变成分钟级，并发建单元还会在安装锁上互抢。
+        # 默认 false：只记一条 WARN，照常启动；置 true 才拒绝启动（推导不出根时仍只 WARN，绝不猜路径）。
+        require-root-under-hermes-root: ${APP_ASSISTANT_CONVERSATION_EXECUTION_UNITS_REQUIRE_ROOT_UNDER_HERMES_ROOT:false}
+    # 私有 MCP 端点。默认关闭；lease 是第二条路径，只接受不可猜的 lease id（真实 grant token 只在内存）。
+    mcp:
+      enabled: ${APP_ASSISTANT_MCP_ENABLED:false}
+      lease:
+        enabled: ${APP_ASSISTANT_MCP_LEASE_ENABLED:false}
+        ttl-seconds: ${APP_ASSISTANT_MCP_LEASE_TTL_SECONDS:300}
+        capacity: ${APP_ASSISTANT_MCP_LEASE_CAPACITY:256}
   web-automation:
     runner:
       enabled: ${APP_WEB_AUTOMATION_RUNNER_ENABLED:false}
-      base-url: ${APP_WEB_AUTOMATION_RUNNER_BASE_URL:http://127.0.0.1:19323}
+      base-url: ${APP_WEB_AUTOMATION_RUNNER_BASE_URL:http://127.0.0.1:19324}
       timeout-ms: ${APP_WEB_AUTOMATION_RUNNER_TIMEOUT_MS:120000}
+    # 受控登录：凭据只在这里（环境变量），不会进入草稿、编译产物、报告或日志。
+    hermes:
+      # stdio：本地子进程；tcp：Hermes 独立容器（平台→bridge→tui_gateway）。
+      transport: ${APP_ASSISTANT_HERMES_TRANSPORT:stdio}
+      host: ${APP_ASSISTANT_HERMES_HOST:hermes}
+      port: ${APP_ASSISTANT_HERMES_PORT:9420}
+      timeout-seconds: ${APP_ASSISTANT_HERMES_TIMEOUT_SECONDS:60}
+    login:
+      enabled: ${APP_ASSISTANT_LOGIN_ENABLED:false}
+      login-url: ${APP_ASSISTANT_LOGIN_URL:}
+      username: ${APP_ASSISTANT_LOGIN_USERNAME:}
+      password: ${APP_ASSISTANT_LOGIN_PASSWORD:}
+      username-locator: ${APP_ASSISTANT_LOGIN_USERNAME_LOCATOR:#account}
+      password-locator: ${APP_ASSISTANT_LOGIN_PASSWORD_LOCATOR:#password}
+      submit-locator: ${APP_ASSISTANT_LOGIN_SUBMIT_LOCATOR:button:has-text("登录")}
+      success-type: ${APP_ASSISTANT_LOGIN_SUCCESS_TYPE:url}
+      success-target: ${APP_ASSISTANT_LOGIN_SUCCESS_TARGET:}
   figma:
     enabled: ${APP_FIGMA_ENABLED:false}
     token: ${APP_FIGMA_TOKEN:}

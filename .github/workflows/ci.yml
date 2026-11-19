@@ -135,3 +135,29 @@ jobs:
       # Tests are hermetic: they serve a local 127.0.0.1 fixture and spawn server.mjs.
       - name: Run node:test suite
         run: npm test
+
+  # 计划 §7.1：隔离环境配置面必须始终满足隔离要求；旧资源标识/个人目录一旦进入配置面即失败。
+  environment-isolation-guard:
+    name: Isolated environment guard (preflight + surface scan)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      # 预检依赖 `config --no-env-resolution`（env_file 的结构性判据）。这一步必须在预检之前跑：
+      # 否则在该 flag 不受支持时，先行的预检步骤失败就会中止 job，本步骤永远不会执行（第十三轮复核指出）。
+      - name: Verify docker compose supports --no-env-resolution
+        run: |
+          docker compose version
+          docker compose --env-file deploy/isolated/.env.example -f deploy/isolated/compose.yaml config --no-env-resolution --format json > /dev/null
+      # 用 .env.example 解析隔离栈结构（占位凭据只告警，不要求真实凭据）；不依赖 docker daemon。
+      - name: Validate isolated stack definition
+        run: node scripts/preflight/environment-preflight.mjs check --env-file deploy/isolated/.env.example --no-host-checks --out "$RUNNER_TEMP/isolated-preflight.json"
+      - name: Scan environment surfaces for legacy identities and personal paths
+        run: node scripts/preflight/environment-preflight.mjs scan --json
+      # 对抗性用例集：把历轮独立复核发现的绕过形态固化成负例（必须 FAIL）与正例（必须 PASS）。
+      # 只做 compose 解析（不访问 daemon、不起容器），在本 runner 上约 1 分钟。
+      - name: Adversarial preflight test suite
+        run: node --test scripts/preflight/environment-preflight.test.mjs
