@@ -2,7 +2,16 @@
 
 Haitlify 是面向 QA 团队的 AI 测试工作区，支持接口 / Web 用例的生成、评审、质量闭环与回归对比。当前工作区仍以既有业务与 Runner 能力为基础；Hermes-backed testing workspace 是目标架构，正在规划迁移，尚不宣称已完成 Hermes 集成。
 
-> 内部工具优先、后期商业化。当前为单人维护的单体仓库。历史设计与验收文档保留其原始时间线，并不等同于当前实现状态。
+> 公开开发、社区协作，采用 Apache-2.0 许可证。当前为单人维护的单体仓库。历史设计与验收文档保留其原始时间线，并不等同于当前实现状态。
+
+## 开源协作与许可
+
+- **许可证**：[Apache License 2.0](LICENSE)。允许按许可证条款商用、修改与分发，包含明确的贡献者专利授权；不提供担保，也不授予商标使用权。
+- **贡献指南**：[CONTRIBUTING.md](CONTRIBUTING.md)，包含开发验证、PR 要求、隐私规则及第三方材料的授权边界。
+- **问题与建议**：[GitHub Issues](https://github.com/fy-github/Haitlify/issues)。请使用合成数据，公开日志和附件必须脱敏。
+- **安全漏洞**：[SECURITY.md](SECURITY.md)；请通过 [私密漏洞报告](https://github.com/fy-github/Haitlify/security/advisories/new) 提交，不在公开 Issue 中披露利用细节。
+
+除另有声明的第三方材料外，项目自有代码按 Apache-2.0 发布；第三方依赖、转载资料及原有归属声明继续遵循各自条款，不因本仓库公开而自动重新授权。当前仍在开发中，公开源码不等于已完成生产验收。
 
 ## 当前架构状态
 
