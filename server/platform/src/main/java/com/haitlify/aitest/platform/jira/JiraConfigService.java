@@ -77,8 +77,8 @@ class JiraConfigService implements JiraConfigSource {
             secretCipher.encrypt(token),
             !token.isBlank(),
             toJson(projectJql),
-            com.haitlify.aitest.platform.ai.security.AiActorResolver.currentOrSystem(),
-            com.haitlify.aitest.platform.ai.security.AiActorResolver.currentOrSystemName(),
+            com.haitlify.aitest.platform.security.ActorResolver.currentOrSystem(),
+            com.haitlify.aitest.platform.security.ActorResolver.currentOrSystemName(),
             current == null ? now : current.getCreatedAt(),
             now
         );

@@ -163,7 +163,7 @@ class WebAutomationRunExceptionHandler {
         };
     }
 
-    /** 与 WebCaseAgentDispatcher.networkBlockedHint 同源：把被拦来源与放行建议写进建议列表。 */
+    /** 把被拦来源与放行建议写进建议列表（旧 Agent 分发器退役前与该实现同源）。 */
     private static String networkBlockedHint(JsonNode details) {
         if (details == null) return "";
         JsonNode network = details.path("network");

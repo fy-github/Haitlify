@@ -12,7 +12,7 @@ import org.springframework.jdbc.datasource.DriverManagerDataSource;
 
 
 /**
- * T10 bullet 6 合同（与 ai.agentic 包的 WebCaseAiRuntimeFlowTest 配对）：执行回写只能来自
+ * T10 bullet 6 合同（旧 ai.agentic 流程与其测试已在 A3 退役，断言独立保留）：执行回写只能来自
  * Runner 快照——失败快照如实落 failed 与 0 passed，AI 生成成功与评审接受都不会、
  * 也无权把它改写成 PASS。
  */
