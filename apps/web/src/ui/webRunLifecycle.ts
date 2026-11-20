@@ -75,6 +75,10 @@ export function createWebRunLifecycle(state: WebExecutionState, ports: WebExecut
         try {
           const snapshot = await api.getWebAutomationRun(runId)
           if (!current()) return
+          if (snapshot.runId !== runId) {
+            clearRecoveredWebRun('执行已中断：Runner 返回的任务标识不匹配')
+            return
+          }
           consecutiveFailures = 0
           state.webRunConnectionState.value = 'polling'
           applyWebRunSnapshot(snapshot)
@@ -111,6 +115,10 @@ export function createWebRunLifecycle(state: WebExecutionState, ports: WebExecut
       const command = { pause: api.pauseWebAutomationRun, resume: api.resumeWebAutomationRun, stop: api.stopWebAutomationRun }[action]
       const snapshot = await command(runId)
       if (!current()) return
+      if (snapshot.runId !== runId) {
+        ports.notify('error', 'Web 执行控制失败：Runner 返回的任务标识不匹配')
+        return
+      }
       applyWebRunSnapshot(snapshot)
       if (action === 'stop' && api.isTerminalWebAutomationRun(snapshot.status)) finalizeWebRunSnapshot(snapshot)
       if (action === 'resume' && state.webRunConnectionState.value === 'interrupted') {
@@ -137,6 +145,10 @@ export function createWebRunLifecycle(state: WebExecutionState, ports: WebExecut
     try {
       const snapshot = await api.getWebAutomationRun(recovery.runId)
       if (!current()) return
+      if (snapshot.runId !== recovery.runId) {
+        clearRecoveredWebRun('执行已中断：Runner 返回的任务标识不匹配')
+        return
+      }
       state.activeWebRunId.value = snapshot.runId
       applyWebRunSnapshot(snapshot)
       ports.sessionStorage.setItem(WEB_AUTOMATION_ACTIVE_RUN_SESSION_KEY, snapshot.runId)

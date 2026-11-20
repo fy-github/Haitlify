@@ -258,7 +258,7 @@ controller factory 接收窄端口，组件层可以通过 `provide/inject` 获�
 - Modify: `apps/web/src/actionBarLayout.test.ts`
 - Modify: `apps/web/src/appShellStructure.test.ts` if it references moved source text
 
-- [ ] **Step 1: 写 API controller 测试**
+- [x] **Step 1: 写 API controller 测试**
 
   覆盖运行快照冻结、循环次数校验、并发/顺序参数、monitor 事件顺序、旧 run generation 丢弃迟到结果、执行完成后报告保存和运行期间环境抽屉关闭。
 
@@ -293,7 +293,7 @@ controller factory 接收窄端口，组件层可以通过 `provide/inject` 获�
 - Modify: `apps/web/src/App.webRunStartSnapshot.test.ts`
 - Modify: `apps/web/src/App.integration.test.ts`
 
-- [ ] **Step 1: 写 Web controller 测试**
+- [x] **Step 1: 写 Web controller 测试**
 
   覆盖 create run 的 frozen request、环境快照、poll coordinator、连续失败进入 retrying、终态报告保存、浏览器刷新恢复、run id 不匹配清理、pause/resume/stop 的代次校验和旧响应丢弃。
 
@@ -330,7 +330,7 @@ controller factory 接收窄端口，组件层可以通过 `provide/inject` 获�
 - Modify: `apps/web/src/appShellStructure.test.ts`
 - Modify: `apps/web/src/actionBarLayout.test.ts`
 
-- [ ] **Step 1: 写导航行为测试**
+- [x] **Step 1: 写导航行为测试**
 
   覆盖 path 到 `NavKey` 的转换、API/Web automation path、push/replace/skip、`popstate`、Jira/environment draft 离开确认，以及登录状态变化时的导航恢复。
 

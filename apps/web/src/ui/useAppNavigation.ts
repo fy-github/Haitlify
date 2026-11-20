@@ -33,7 +33,7 @@ export interface AppNavigation {
   setAutomationKind(next: 'api' | 'web', onChange?: () => void): void
   navigateToNav(next: NavKey, mode?: NavHistoryMode, onNavigated?: () => void): void
   applyNavChange(next: NavKey, mode: NavHistoryMode): void
-  syncNavWithLocation(mode?: 'replace' | 'skip'): void
+  syncNavWithLocation(mode?: 'replace' | 'skip', onNavigated?: () => void): void
   restoreLocationForActiveNav(): void
   handlePopState(): void
   writeWebMonitorQuery(mode: 'workbench' | 'monitor', runId?: string, historyMode?: 'push' | 'replace'): void
@@ -77,19 +77,18 @@ export const createAppNavigation = (options: AppNavigationOptions = {}): AppNavi
       apply()
     })
   }
-  const syncNavWithLocation = (mode: 'replace' | 'skip' = 'replace') => {
+  const syncNavWithLocation = (mode: 'replace' | 'skip' = 'replace', onNavigated?: () => void) => {
     if (!location) return
     const path = location.pathname.replace(/\/$/, '') || '/'
     const next = navKeyFromPath(path)
     if (next === 'automation') automationKind.value = automationKindFromPath(path)
     const target = pathFor(next)
     if (next === 'cases' || next === 'webCases') {
-      navigateToNav(next, location.pathname === target ? 'skip' : 'replace')
-    } else navigateToNav(next, path === target ? 'skip' : mode)
+      navigateToNav(next, location.pathname === target ? 'skip' : 'replace', onNavigated)
+    } else navigateToNav(next, path === target ? 'skip' : mode, onNavigated)
   }
   const handlePopState = () => {
-    syncNavWithLocation('skip')
-    options.afterPop?.()
+    syncNavWithLocation('skip', options.afterPop)
   }
   const writeWebMonitorQuery = (mode: 'workbench' | 'monitor', runId = '', historyMode: 'push' | 'replace' = 'push') => {
     if (!location || !history) return

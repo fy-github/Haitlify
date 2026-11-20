@@ -78,3 +78,11 @@
 - API 移动端计数布局测试改为读取实际样式归属 `ApiExecutionPage.vue`；环境页相关类型导入改为 `appPorts.ts`。所有结构扫描测试保留原断言，未通过删除测试规避失败。
 - 本轮最终检查：`npm run test -- --run` 206 文件、1608 测试通过；`npx vue-tsc --noEmit` 和 `npm run build` 通过，`git diff --check` 通过。构建仍有基线已知的 `:deep` 和 chunk 大小提示。
 - 尚未完成计划中更严格的测试迁移：API/Web controller 的运行副作用仍主要由 App 集成测试护航，未完全用 fake ports 独立覆盖；Web 全量生命周期及导航 URL/守卫边界测试仍需补齐。`getAppState` 需逐步收窄为 typed fixture 或 UI 断言，不将测试专用接口作为长期业务 API。
+
+## 2026-11-20 执行边界补强
+
+- API controller 新增确认前冻结用例/环境/参数、报告只保存一次、旧确认和 reset 后迟到响应不得写回的独立测试。
+- Web run admission 新增项目查找期间快照冻结与 workspace lease 失效不发起 POST 的端口测试；生命周期新增轮询连续失败/恢复、404 保留证据、暂停/恢复、旧控制响应和响应任务 ID 不匹配的回归。修复了恢复、轮询和控制响应可接受错误任务 ID 的缺口。
+- 导航新增 push/replace/skip、Web 监控 URL 与异步离开确认的 `popstate` 测试；`afterPop` 现在仅在确认通过、导航实际生效后执行，取消时保持旧页面且不启动错误工作区恢复。
+- `npm run test -- --run`：207 文件、1622 测试通过；`npm run build`（含 `vue-tsc --noEmit`）通过，`git diff --check` 通过。构建的 `:deep` 和 chunk 提示与基线一致。
+- 仍需逐步将 16 个通过 `getAppState` 访问宽测试接口的 App 测试迁往 controller 或页面行为边界；`appWorkspace.ts` 仍为 951 行，当前补强没有改变这两项架构风险。方案中对应迁移步骤保持未勾选。
