@@ -103,7 +103,7 @@ const mountEnvironments = async () => {
   await flushPromises()
   await vi.waitFor(() => expect(document.querySelector('[data-testid="environment-inline-editor"]')).toBeTruthy())
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const s = getAppState(wrapper) as any
+  const s = getAppState(wrapper)
   return { wrapper, s, ...stub }
 }
 

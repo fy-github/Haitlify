@@ -3,8 +3,9 @@ import { getAppState } from './ui/appTestAccess'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import ElementPlus, { ElMessageBox } from 'element-plus'
+import type { DefectDraft } from './domain/defectRepository'
 let wrapper: VueWrapper
-const row = { defectId: 'd1', sourceCaseId: 'c1', sourceReportCaseId: 'r1', projectName: 'Fixture', issueType: 'Bug', summary: 'Original', priority: '', assignee: '', description: '', faultCategory: '', blocksIssueKey: '', status: 'pending_jira_export', jiraFieldValues: {}, createdAt: '2026', updatedAt: '2026' }
+const row: DefectDraft = { defectId: 'd1', sourceCaseId: 'c1', sourceReportCaseId: 'r1', projectName: 'Fixture', issueType: 'Bug', summary: 'Original', priority: '', assignee: '', description: '', faultCategory: '', blocksIssueKey: '', status: 'pending_jira_export', jiraFieldValues: {}, createdAt: '2026', updatedAt: '2026' }
 async function setup() {
   vi.resetModules(); localStorage.clear(); sessionStorage.clear(); window.history.replaceState({}, '', '/defects')
   const { defaultTemplateConfig } = await import('./domain/templateConfigRepository')

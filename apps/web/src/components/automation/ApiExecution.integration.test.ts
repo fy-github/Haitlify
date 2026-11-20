@@ -5,7 +5,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import ElementPlus, { ElMessageBox } from 'element-plus'
 
 let wrapper: ReturnType<typeof mount> | undefined
-const testCase = { id: 'api-one', sourceCaseId: 'one', project: '项目A', module: '模块A', name: '读取列表', method: 'GET', path: '/items', headers: {}, pathParams: {}, queryParams: {}, expectedStatus: 200, assertions: [], runOrder: 1, exportTarget: 'apifox', automationLibraryId: 'lib', savedAt: '' }
+const testCase = { id: 'api-one', sourceCaseId: 'one', project: '项目A', module: '模块A', name: '读取列表', method: 'GET', path: '/items', headers: {}, pathParams: {}, queryParams: {}, expectedStatus: 200, assertions: [], runOrder: 1, exportTarget: 'apifox' as const, automationLibraryId: 'lib', savedAt: '' }
 
 afterEach(() => { wrapper?.unmount(); vi.restoreAllMocks(); vi.unstubAllGlobals(); localStorage.clear(); sessionStorage.clear() })
 
@@ -31,7 +31,7 @@ async function boot() {
   await flushPromises()
   const state = getAppState(wrapper)
   state.automationCases = [structuredClone(testCase)]
-  state.executionEnvironmentLibrary = { activeEnvironmentId: 'env-one', environments: [{ id: 'env-one', name: '测试环境', baseUrl: 'https://fixture.test', auth: { type: 'none' }, entries: [], updatedAt: '' }] }
+  state.executionEnvironmentLibrary = { activeEnvironmentId: 'env-one', environments: [{ id: 'env-one', name: '测试环境', baseUrl: 'https://fixture.test', auth: { type: 'none' }, entries: [], createdAt: '', updatedAt: '' }] }
   return { state, executed }
 }
 
@@ -54,8 +54,8 @@ it('confirms a locked API scope before executing and keeps the frozen snapshot a
   await running
 
   expect(executed).toEqual(['https://fixture.test/items'])
-  expect(state.automationRunReport.summary.total).toBe(1)
-  expect(state.apiRunSnapshot.options.loopCount).toBe(1)
+  expect(state.automationRunReport?.summary.total).toBe(1)
+  expect(state.apiRunSnapshot?.options.loopCount).toBe(1)
 })
 
 it('does not execute when the confirmation is cancelled', async () => {

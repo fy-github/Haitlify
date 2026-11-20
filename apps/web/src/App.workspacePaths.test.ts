@@ -3,6 +3,7 @@ import { getAppState } from './ui/appTestAccess'
 import { afterEach, expect, it, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import ElementPlus, { ElMessage, ElMessageBox } from 'element-plus'
+import type { SavedWebAutomationRunCase } from './domain/webAutomationRepository'
 const A = { id: 1, username: 'a', displayName: 'A', role: 'EDITOR', mustChangePassword: false }
 const B = { ...A, id: 2, username: 'b', displayName: 'B' }
 const reply = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status })
@@ -61,7 +62,7 @@ for (const kind of ['switch', 'unmount']) {
       outcome === 'success' ? pending.resolve(reply(snapshot('old', 'running'))) : pending.resolve(reply({}, 404))
       await flushPromises(); expect(state(s)).toBe(before); expect(JSON.stringify(sessionStorage)).toBe(stored); expect(window.location.href).toBe(location); expect(fetch.mock.calls.length).toBe(requests)
     })
-    for (const method of ['saveJiraSettings', 'testJiraConnection']) {
+    for (const method of ['saveJiraSettings', 'testJiraConnection'] as const) {
       it(`${method} ${outcome} after ${kind} cannot mutate flags or toast`, async () => {
         const pending = deferred()
         const { w, s } = await setup((url, init) => url.includes('/jira/config') && init?.method ? pending.promise : undefined)
@@ -89,7 +90,7 @@ for (const kind of ['switch', 'unmount']) {
   })
 }
 for (const kind of ['switch', 'unmount']) for (const outcome of ['success', 'error']) {
-  for (const method of ['pauseActiveWebRun', 'resumeActiveWebRun', 'stopActiveWebRun']) {
+  for (const method of ['pauseActiveWebRun', 'resumeActiveWebRun', 'stopActiveWebRun'] as const) {
     it(`${method} ${outcome} after ${kind} cannot affect current run`, async () => {
       const pending = deferred()
       const { w, s } = await setup(url => /\/runs\/old\/(pause|resume|stop)$/.test(url) ? pending.promise : undefined)
@@ -106,14 +107,14 @@ it('restarting the same run monitor supersedes the old pending read without losi
   const { s } = await setup(url => url.endsWith('/runs/live') ? (++calls === 1 ? old.promise : Promise.resolve(reply(snapshot('live')))) : undefined)
   s.activeWebRunId = 'live'; void s.monitorActiveWebRun('live'); await flushPromises()
   await s.monitorActiveWebRun('live'); await flushPromises()
-  expect(calls).toBe(2); expect(s.activeWebRunSnapshot.status).toBe('completed')
+  expect(calls).toBe(2); expect(s.activeWebRunSnapshot?.status).toBe('completed')
   const before = state(s); old.resolve(reply(snapshot('live', 'running'))); await flushPromises(); expect(state(s)).toBe(before)
 })
 it('resuming an interrupted run restarts polling without stranding control busy', async () => {
   const { s } = await setup(url => url.endsWith('/runs/live/resume') ? Promise.resolve(reply(snapshot('live', 'running'))) : url.endsWith('/runs/live') ? Promise.resolve(reply(snapshot('live'))) : undefined)
   s.activeWebRunId = 'live'; s.webRunConnectionState = 'interrupted'
   await s.resumeActiveWebRun(); await flushPromises()
-  expect(s.webRunControlLoading).toBe(''); expect(s.activeWebRunSnapshot.runId).toBe('live')
+  expect(s.webRunControlLoading).toBe(''); expect(s.activeWebRunSnapshot?.runId).toBe('live')
 })
 it.each(['switch', 'unmount'])('poll timer after %s does not dispatch another read', async kind => {
   const { w, s, fetch } = await setup(url => url.endsWith('/runs/live') ? Promise.resolve(reply(snapshot('live', 'running'))) : undefined)
@@ -153,7 +154,7 @@ it('newest same-session capabilities request wins', async () => {
   const old = deferred(); let calls = 0
   const { s } = await setup(url => url.includes('/capabilities') && ++calls === 1 ? old.promise : undefined)
   await s.loadWebRunCapabilities(); old.resolve(reply({ status: 'DEGRADED', checkedAt: 'old', browsers: [] })); await flushPromises()
-  expect(s.webRunCapabilities.checkedAt).toBe('current')
+  expect(s.webRunCapabilities?.checkedAt).toBe('current')
 })
 for (const kind of ['switch', 'unmount']) {
   it(`workspace reload confirmation after ${kind} cannot dispatch a load`, async () => {
@@ -196,7 +197,12 @@ for (const kind of ['switch', 'unmount']) {
     const pending = deferred(); let armed = false
     const { w, s, fetch } = await setup(url => armed && url === '/api/projects' ? pending.promise : undefined)
     s.webExecutionEnvironmentLibrary.environments[0].baseUrl = 'https://test.invalid'; armed = true
-    void s.startVisualWebAutomationRun([{ id: 'case', project: '默认项目', steps: [] }]); await flushPromises()
+    const webCase: SavedWebAutomationRunCase = {
+      id: 'case', sourceCaseId: 'case', project: '默认项目', module: 'M', pageName: 'Page', name: 'Case',
+      startUrl: '/start', browser: 'chromium', viewport: '1280x720', authenticationMode: 'skip',
+      steps: [], runOrder: 1, mockOutcome: 'passed', automationLibraryId: 'case', savedAt: '2026-01-01'
+    }
+    void s.startVisualWebAutomationRun([webCase]); await flushPromises()
     expect(s.webAutomationRunning).toBe(true)
     armed = false
     await boundary(kind, w, s); const before = state(s); const requests = fetch.mock.calls.length
@@ -226,9 +232,9 @@ it('expiry clears hidden editors as well as visible workspace refs', async () =>
   s.curlImportText = 'A-secret'; s.editRow.title = 'A-private'; s.webEditRow.title = 'A-private'
   s.reports.reportEnvironmentFilter.value = 'A-private'
   s.defects.defectEditForm.summary = 'A-private'
-  s.editRow.customSecret = 'A-private'; s.webEditRow.customSecret = 'A-private'
+  Object.assign(s.editRow, { customSecret: 'A-private' }); Object.assign(s.webEditRow, { customSecret: 'A-private' })
   s.casesModule.bulkEditForm.targetValue = 'A-private'; s.casesModule.fieldAssignmentForm.value = 'A-private'
-  s.defects.jiraCsvTemplate.value = [{ id: 'secret', header: 'A-private', source: 'constant', constantValue: 'A-private', enabled: true }]
+  s.defects.jiraCsvTemplate.value = [{ key: 'secret', header: 'A-private', source: { kind: 'jiraFieldValue', fieldKey: 'secret' }, enabled: true }]
   s.handleSessionExpired()
   expect(JSON.stringify(s.editingEnvironment)).not.toContain('A-secret'); expect(JSON.stringify(s.editingEnvironment)).not.toContain('A-private')
   expect(s.curlImportText).toBe(''); expect(s.editRow.title).not.toBe('A-private'); expect(s.webEditRow.title).not.toBe('A-private')
@@ -264,7 +270,7 @@ it('expiry clears loaded sensitive state before B loads; legacy unowned storage 
   appendAutomationReport(localStorage, report)
   const legacy = localStorage.getItem('ai-test-platform.automation-reports.v1')
   s.refreshAutomationReports(); expect(s.automationReports).toEqual([])
-  s.jiraConfigForm.token = 'old-secret'; s.activeWebRunId = 'old'; s.webRunCapabilities = { checkedAt: 'old' }
+  s.jiraConfigForm.token = 'old-secret'; s.activeWebRunId = 'old'; s.webRunCapabilities = { status: 'UP', browsers: [], checkedAt: 'old' }
   s.handleSessionExpired()
   expect(s.jiraConfigForm.token).toBe(''); expect(s.jiraConfigForm.username).toBe(''); expect(s.activeWebRunId).toBe(''); expect(s.webRunCapabilities).toBeUndefined()
   s.onLoginSuccess(B); await flushPromises(); expect(s.automationReports).toEqual([])

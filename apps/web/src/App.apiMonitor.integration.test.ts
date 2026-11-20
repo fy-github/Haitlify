@@ -3,8 +3,9 @@ import { getAppState } from './ui/appTestAccess'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import ElementPlus, { ElMessageBox } from 'element-plus'
+import type { SavedAutomationCase } from './domain/automationRepository'
 
-const fixture = (id = 'A', module = 'M') => ({
+const fixture = (id = 'A', module = 'M'): SavedAutomationCase => ({
   id, sourceCaseId: `source-${id}`, project: 'Fixture', module, name: `Case ${id}`,
   method: 'POST', path: `/fixture/${id}`, headers: {}, pathParams: {}, queryParams: {}, body: { id },
   expectedStatus: 200, assertions: ['body.ok = true'], runOrder: 1,
@@ -50,43 +51,43 @@ describe('App API monitor lifecycle', () => {
     await vi.waitFor(() => expect(pending).toHaveLength(1))
     expect(wrapper.find('[data-testid="api-run-monitor"]').exists()).toBe(true)
     expect(wrapper.findAll('[data-testid="api-monitor-queue-row"]')).toHaveLength(4)
-    expect(s.apiRunMonitor.rows.map((r: any) => [r.caseId, r.status])).toEqual([
+    expect(s.apiRunMonitor!.rows.map((r) => [r.caseId, r.status])).toEqual([
       ['A#1', 'running'], ['B#1', 'pending'], ['A#2', 'pending'], ['B#2', 'pending']
     ])
     pending[0]!.resolve(reply({ status: 200, body: { ok: false } }))
     await vi.waitFor(() => expect(pending).toHaveLength(2))
-    expect(s.apiRunMonitor.rows[0].result.actualStatus).toBe(200)
-    expect(s.apiRunMonitor.rows[0].result.errorMessage).toContain('断言失败')
-    expect(s.apiRunMonitor.rows[0].status).toBe('failed')
-    expect(s.apiRunMonitor.rows[1].status).toBe('running')
+    expect(s.apiRunMonitor!.rows[0]!.result!.actualStatus).toBe(200)
+    expect(s.apiRunMonitor!.rows[0]!.result!.errorMessage).toContain('断言失败')
+    expect(s.apiRunMonitor!.rows[0]!.status).toBe('failed')
+    expect(s.apiRunMonitor!.rows[1]!.status).toBe('running')
     expect(s.apiAutomationRunning).toBe(true)
     for (let i = 1; i < 4; i++) {
       await vi.waitFor(() => expect(pending.length).toBeGreaterThan(i))
       pending[i]!.resolve(reply({ status: 200, body: { ok: true } }))
     }
     await finished; await flushPromises()
-    expect(s.apiRunMonitor.status).toBe('completed')
-    expect(s.apiRunMonitor.rows.every((r: any) => r.result)).toBe(true)
+    expect(s.apiRunMonitor!.status).toBe('completed')
+    expect(s.apiRunMonitor!.rows.every((r) => r.result)).toBe(true)
   })
   it('holds the launch lock while an already-dispatched sibling drains after request construction fails', async () => {
     const { s, pending } = await setup()
     vi.spyOn(ElMessageBox, 'confirm').mockImplementation(() => Promise.resolve('confirm') as never)
     s.automationRunMode = 'concurrent'
-    s.automationCases[1].method = undefined
+    s.automationCases[1]!.method = undefined as unknown as string
     const finished = s.executeAllAutomationCases()
     await vi.waitFor(() => expect(pending).toHaveLength(1))
     await flushPromises()
-    expect(s.apiRunMonitor.status).toBe('error')
+    expect(s.apiRunMonitor!.status).toBe('error')
     expect(s.apiAutomationRunning).toBe(true)
-    const old = s.apiRunMonitor
+    const old = s.apiRunMonitor!
     await s.executeAllAutomationCases()
     expect(pending).toHaveLength(1)
     expect(s.apiRunMonitor).toBe(old)
     pending[0]!.resolve(reply({ status: 200, body: { ok: true } }))
     await finished
     expect(s.apiAutomationRunning).toBe(false)
-    expect(old.rows[0].result).toBeUndefined()
-    expect(old.rows[0].status).toBe('unreturned')
+    expect(old.rows[0]!.result).toBeUndefined()
+    expect(old.rows[0]!.status).toBe('unreturned')
   })
   it('ignores a confirmed start after owner changes and does not dispatch requests', async () => {
     const { s, pending } = await setup()
@@ -94,7 +95,7 @@ describe('App API monitor lifecycle', () => {
     vi.spyOn(ElMessageBox, 'confirm').mockImplementation(() => confirmation.promise as never)
     const finished = s.executeAllAutomationCases()
     await flushPromises()
-    s.onLoginSuccess({ id: 902, username: 'next-fixture', role: 'ADMIN', mustChangePassword: false })
+    s.onLoginSuccess({ id: 902, username: 'next-fixture', displayName: 'Next Fixture', role: 'ADMIN', mustChangePassword: false })
     await flushPromises()
     confirmation.resolve('confirm')
     await finished
@@ -107,15 +108,15 @@ describe('App API monitor lifecycle', () => {
     vi.spyOn(ElMessageBox, 'confirm').mockImplementation(() => Promise.resolve('confirm') as never)
     const finished = s.executeAllAutomationCases()
     await vi.waitFor(() => expect(pending).toHaveLength(1))
-    const old = s.apiRunMonitor
-    s.onLoginSuccess({ id: 902, username: 'next-fixture', role: 'ADMIN', mustChangePassword: false })
+    const old = s.apiRunMonitor!
+    s.onLoginSuccess({ id: 902, username: 'next-fixture', displayName: 'Next Fixture', role: 'ADMIN', mustChangePassword: false })
     await flushPromises()
     const storage = JSON.stringify({ ...localStorage })
     pending[0]!.resolve(ok ? reply({ status: 200, body: { ok: true } }) : reply({ error: 'fixture fail' }, 502))
     await finished; await flushPromises()
     expect(s.apiRunMonitor).toBeUndefined()
     expect(s.apiAutomationRunning).toBe(false)
-    expect(old.rows[0].result).toBeUndefined()
+    expect(old.rows[0]!.result).toBeUndefined()
     expect(requests.filter(r => r.url === '/__api-test-platform/execute')).toHaveLength(1)
     expect(JSON.stringify({ ...localStorage })).toBe(storage)
   })
@@ -124,7 +125,7 @@ describe('App API monitor lifecycle', () => {
     const scroll = wrapper.get('.automation-workspace .el-scrollbar__wrap').element as HTMLElement
     s.apiPreparationScroll = { top: 80, left: 120 }
     const finished = s.returnApiRunPreparation()
-    s.onLoginSuccess({ id: 902, username: 'next-fixture', role: 'ADMIN', mustChangePassword: false })
+    s.onLoginSuccess({ id: 902, username: 'next-fixture', displayName: 'Next Fixture', role: 'ADMIN', mustChangePassword: false })
     await finished
     expect(scroll.scrollTop).toBe(0)
     expect(scroll.scrollLeft).toBe(0)
@@ -134,7 +135,7 @@ describe('App API monitor lifecycle', () => {
     vi.spyOn(ElMessageBox, 'confirm').mockImplementation(() => Promise.resolve('confirm') as never)
     const finished = s.executeAllAutomationCases()
     await vi.waitFor(() => expect(pending).toHaveLength(1))
-    s.onLoginSuccess({ id: 902, username: 'next-fixture', role: 'ADMIN', mustChangePassword: false })
+    s.onLoginSuccess({ id: 902, username: 'next-fixture', displayName: 'Next Fixture', role: 'ADMIN', mustChangePassword: false })
     await flushPromises()
     pending[0]!.resolve(reply({}, 404))
     await finished

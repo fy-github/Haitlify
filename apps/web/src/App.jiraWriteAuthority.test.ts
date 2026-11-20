@@ -202,7 +202,7 @@ describe('Jira 未落定的确认:跨 owner 不生效(R16/R17)', () => {
 
     await switchOwner(wrapper)
     const ownerRows = JSON.stringify(s.jiraProjectJqlRows)
-    expect(s.currentUser.username).toBe('owner-b')
+    expect(s.currentUser?.username).toBe('owner-b')
     expect(ownerRows).toContain('project = b')
 
     await confirm.accept()

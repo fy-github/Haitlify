@@ -306,7 +306,7 @@ describe('App.vue integration', () => {
     const apiCases = [1, 2].map((index) => ({
       id: `AUTO-NAV-${index}`, sourceCaseId: `NAV-${index}`, project: '导航项目', module: '导航模块', name: `导航 API ${index}`,
       method: 'GET', path: `/nav/${index}`, headers: {}, pathParams: {}, queryParams: {}, expectedStatus: 200,
-      assertions: [], runOrder: index, exportTarget: 'apifox', automationLibraryId: `nav-library-${index}`,
+      assertions: [], runOrder: index, exportTarget: 'apifox' as const, automationLibraryId: `nav-library-${index}`,
       savedAt: `2026-10-30T10:0${index}:00.000Z`
     }))
     localStorage.setItem('ai-test-platform.workspace.user%3A1.ai-test-platform.automation-library.v1', JSON.stringify(apiCases))
@@ -332,7 +332,7 @@ describe('App.vue integration', () => {
       await vi.waitFor(() => expect(wrapper.find('[data-work-id="nav-library-2"]').exists()).toBe(true))
       const state = getAppState(wrapper)
       state.apiRunMonitor = {
-        snapshot: { cases: [apiCases[0]], options: { mode: 'sequential', loopCount: 1 }, scopeLabel: '旧执行', environment: {}, frozenAt: '2026' },
+        snapshot: { cases: [apiCases[0]!], options: { mode: 'sequential', loopCount: 1 }, scopeLabel: '旧执行', environment: { baseUrl: '' }, frozenAt: '2026' },
         status: 'running', startedAt: '2026-10-30T10:00:00.000Z', progress: { completed: 0, total: 1 }, rows: []
       }
       state.apiAutomationWorkspaceMode = 'monitor'
@@ -357,8 +357,8 @@ describe('App.vue integration', () => {
       await vi.waitFor(() => expect(state.apiAutomationRunning).toBe(false))
       await flushPromises()
       expect(executed.map(request => request.url)).toEqual(['https://fixture.invalid/nav/2'])
-      expect(state.apiRunSnapshot.cases.map((item: { id: string }) => item.id)).toEqual(['AUTO-NAV-2'])
-      expect(state.apiRunMonitor.rows[0].result.responseBody).toEqual({ receipt: 'https://fixture.invalid/nav/2' })
+      expect(state.apiRunSnapshot!.cases.map((item: { id: string }) => item.id)).toEqual(['AUTO-NAV-2'])
+      expect(state.apiRunMonitor!.rows[0]!.result!.responseBody).toEqual({ receipt: 'https://fixture.invalid/nav/2' })
 
       await wrapper.get('[data-testid="api-monitor-back"]').trigger('click')
       await flushPromises()
@@ -375,7 +375,7 @@ describe('App.vue integration', () => {
       expect(executed.slice(1).map(request => [request.method, request.url])).toEqual([
         ['GET', 'https://fixture.invalid/nav/1'], ['GET', 'https://fixture.invalid/nav/2']
       ])
-      expect(state.apiRunSnapshot.cases.map((item: { id: string }) => item.id)).toEqual(['AUTO-NAV-1', 'AUTO-NAV-2'])
+      expect(state.apiRunSnapshot!.cases.map((item: { id: string }) => item.id)).toEqual(['AUTO-NAV-1', 'AUTO-NAV-2'])
     } finally { wrapper.unmount(); confirmation.mockRestore() }
   })
 

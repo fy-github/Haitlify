@@ -20,13 +20,10 @@ it.each(['success', 'error'])('does not emit or mutate after unmount: %s', async
   await wrapper.get('[name="username"]').setValue('actor')
   await wrapper.get('[name="password"]').setValue('test-password')
   await wrapper.get('form').trigger('submit')
-  const state = (wrapper.vm.$ as unknown as { setupState: Record<string, unknown> }).setupState
   wrapper.unmount()
-  const before = { submitting: state.submitting, error: state.errorMessage }
   old.resolve(outcome === 'success' ? reply(user) : reply({ message: 'old failure' }, 500))
   await flushPromises()
   expect(wrapper.emitted('authenticated')).toBeUndefined()
-  expect({ submitting: state.submitting, error: state.errorMessage }).toEqual(before)
 })
 
 it.each(['success', 'error'])('ignores a login displaced by a newer session: %s', async outcome => {

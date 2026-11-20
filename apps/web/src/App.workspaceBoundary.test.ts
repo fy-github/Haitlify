@@ -24,7 +24,7 @@ it.each(['reauthenticate','unmount'])('workspace boundary: pending old Jira succ
   await flushPromises();expect(jiraCalls).toBe(1)
   if(boundary==='reauthenticate'){
    await http.authedFetch('/expire');await flushPromises();await w.get('[name="username"]').setValue('b');await w.get('[name="password"]').setValue('valid-password');await w.get('form').trigger('submit');await flushPromises()
-   expect(s.currentUser.id).toBe(2);expect(s.jiraConfigForm.username).toBe('new')
+   expect(s.currentUser?.id).toBe(2);expect(s.jiraConfigForm.username).toBe('new')
   }else w.unmount()
   const before=JSON.stringify({form:s.jiraConfigForm,loading:s.jiraConfigLoading})
   old.resolve(reply(jira('old')));await flushPromises()

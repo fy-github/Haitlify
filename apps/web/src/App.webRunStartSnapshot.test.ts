@@ -128,8 +128,7 @@ const mountWeb = async (projectsGate?: Deferred, snapshot = runSnapshot(), recov
   mounted.push(wrapper)
   await flushPromises()
   await vi.waitFor(() => expect(document.querySelector('[data-testid="web-automation-workspace"]')).toBeTruthy())
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const s = getAppState(wrapper) as any
+  const s = getAppState(wrapper)
   s.webAutomationSelectedIds = [CASES[0].id]
   await flushPromises()
   return { wrapper, s, posts, requests }
@@ -318,7 +317,7 @@ describe('Web 执行发起:s快照冻结', () => {
     // 发起后、POST 落地前改动 live state
     s.webAutomationCases[0].startUrl = '/mutated-after-confirm'
     s.webAutomationLoopCount = 3
-    s.webExecutionEnvironmentLibrary.environments.find((environment: { id: string }) => environment.id === 'env-web-b').baseUrl = 'https://changed.example.test'
+    s.webExecutionEnvironmentLibrary.environments.find((environment: { id: string }) => environment.id === 'env-web-b')!.baseUrl = 'https://changed.example.test'
 
     gate.resolve(undefined)
     await flushPromises()
@@ -351,7 +350,7 @@ describe('Web 执行发起:s快照冻结', () => {
     await flushPromises()
 
     s.webAutomationLoopCount = 9
-    s.webExecutionEnvironmentLibrary.environments.find((environment: { id: string }) => environment.id === 'env-web-a').baseUrl = 'https://changed.example.test'
+    s.webExecutionEnvironmentLibrary.environments.find((environment: { id: string }) => environment.id === 'env-web-a')!.baseUrl = 'https://changed.example.test'
 
     gate.resolve(undefined)
     await flushPromises()
@@ -427,7 +426,7 @@ describe('Web 执行发起:s快照冻结', () => {
     // 确认之后、POST 落地之前改 live state:循环、用例起址、环境地址全部不得进入本次提交
     s.webAutomationCases[0].startUrl = '/mutated-after-confirm'
     s.webAutomationLoopCount = 5
-    s.webExecutionEnvironmentLibrary.environments.find((environment: { id: string }) => environment.id === 'env-web-b').baseUrl = 'https://changed.example.test'
+    s.webExecutionEnvironmentLibrary.environments.find((environment: { id: string }) => environment.id === 'env-web-b')!.baseUrl = 'https://changed.example.test'
 
     gate.resolve(undefined)
     await flushPromises()

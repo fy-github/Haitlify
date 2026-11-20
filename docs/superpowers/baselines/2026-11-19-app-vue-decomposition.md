@@ -86,3 +86,11 @@
 - 导航新增 push/replace/skip、Web 监控 URL 与异步离开确认的 `popstate` 测试；`afterPop` 现在仅在确认通过、导航实际生效后执行，取消时保持旧页面且不启动错误工作区恢复。
 - `npm run test -- --run`：207 文件、1622 测试通过；`npm run build`（含 `vue-tsc --noEmit`）通过，`git diff --check` 通过。构建的 `:deep` 和 chunk 提示与基线一致。
 - 仍需逐步将 16 个通过 `getAppState` 访问宽测试接口的 App 测试迁往 controller 或页面行为边界；`appWorkspace.ts` 仍为 951 行，当前补强没有改变这两项架构风险。方案中对应迁移步骤保持未勾选。
+
+## 2026-11-20 最终验收
+
+- `appTestAccess.ts` 现在从 `createAppWorkspace` 推断测试接口类型，不再用 `Record<string, any>` 隐藏夹具错误；相关 App 集成测试补全实际必需的类型字段。`App.webRunStartSnapshot.test.ts` 和 `App.environmentEditorGuards.test.ts` 删除对整份 fixture 的 `as any`。
+- Web run 的启动、恢复、轮询和控制规则已有独立端口测试；App 测试继续覆盖账号切换、URL 恢复、确认弹窗和真实页面组合。`LoginScreen.lifecycle.test.ts` 和 `UserManagementView.writeAuthority.test.ts` 改为组件事件及 DOM 行为断言；全库测试不再读取 Vue 私有 `setupState`。
+- `appWorkspace.ts` 的返回值仅含页面展示对象和仅在 test mode 创建的测试接口，不再向外暴露未使用的所有 controllers、项目状态及导航内部对象。文件仍有 948 行，但承担的是每个 App 实例一次性的 feature 组装与窄端口接线；保留在此处的 UI 状态/副作用需要后续按实际变更风险持续评审，不能把行数下降当成行为解耦的唯一证据。
+- `App.vue` 161 行（script setup 约 17 行）；三个执行/环境 controller 分别为 359、363、108 行；未出现 controller 反向 import App 或相互 import。计划中的所有步骤已验证，但现有 16 份 App 测试仍通过类型化测试入口访问内部状态，这是后续继续收窄测试契约的维护债务，不属于生产 API。
+- `npm run test -- --run`：207 文件、1622 测试通过；`npm run build`（含 `vue-tsc --noEmit`）通过；`git diff --check` 通过。构建的 `:deep` 及 chunk 提示与基线一致。

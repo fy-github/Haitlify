@@ -305,7 +305,7 @@ controller factory 接收窄端口，组件层可以通过 `provide/inject` 获�
 
   `WebAutomationWorkspace.vue` 只接收 `header`、`preparation`、`scope`、`table`、`preflight`、`run`、`suites` 等 view model，并发送现有事件。事件 handler 由 `WebExecutionPage.vue` 绑定 controller 命令，App 不再列出全部 Web 事件。
 
-- [ ] **Step 4: 迁移 Web 测试**
+- [x] **Step 4: 迁移 Web 测试**
 
   将 run 生命周期和恢复规则放入 controller 测试；保留 App 测试验证 URL 恢复、页面组合和账号边界。原有 `setupState` 访问改为 controller 测试或页面行为测试。
 
@@ -401,7 +401,7 @@ controller factory 接收窄端口，组件层可以通过 `provide/inject` 获�
 
   `App.vue` 最终只保留：认证状态门禁、AppShell 组装、controller 创建/provider、route view、overlays、全局错误和卸载清理。删除业务 repository 调用、执行轮询、环境保存、Jira 保存和跨模块计算。
 
-- [ ] **Step 2: 迁移所有新增测试边界**
+- [x] **Step 2: 迁移所有新增测试边界**
 
   新增 controller 测试使用 fake ports；页面测试使用 props/events；App 测试只验证跨模块行为。现有测试如果仍需读取 setup state，优先暴露 typed controller fixture 或改为用户行为，不把更多内部 ref 加回 App。
 

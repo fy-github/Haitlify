@@ -1,7 +1,10 @@
 import type { VueWrapper } from '@vue/test-utils'
+import type { createAppWorkspace } from './appWorkspace'
 
-export function getAppState(wrapper: VueWrapper): Record<string, any> {
-  const state = (wrapper.vm.$.exposed as { testAccess?: Record<string, unknown> } | null)?.testAccess
+type AppTestAccess = NonNullable<ReturnType<typeof createAppWorkspace>['testAccess']>
+
+export function getAppState(wrapper: VueWrapper): AppTestAccess {
+  const state = (wrapper.vm.$.exposed as { testAccess?: AppTestAccess } | null)?.testAccess
   if (!state) throw new Error('App test state unavailable')
   return state
 }

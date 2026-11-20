@@ -61,9 +61,26 @@ const mountView = async (currentUsername: string, fixture = usersFixture()) => {
   mountedViews.push(wrapper)
   await flushPromises()
   await flushPromises()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const s = ((wrapper.vm as any).$).setupState
-  return { wrapper, s, writes }
+  const openAdminEditor = async () => {
+    await wrapper.findAll('.user-actions')[0]!.get('button.user-link').trigger('click')
+    await flushPromises()
+    const toggle = wrapper.findComponent({ name: 'ElSwitch' })
+    expect(toggle.exists()).toBe(true)
+    toggle.vm.$emit('update:modelValue', false)
+    await flushPromises()
+  }
+  const submitEditor = async () => {
+    const button = document.querySelector<HTMLButtonElement>('.user-drawer__buttons .el-button--primary')
+    expect(button).not.toBeNull()
+    button!.click()
+    await flushPromises()
+  }
+  const listAction = async (rowIndex: number, label: string) => {
+    const button = wrapper.findAll('.user-actions')[rowIndex]!.findAll('button').find(action => action.text() === label)
+    expect(button).toBeDefined()
+    await button!.trigger('click')
+  }
+  return { wrapper, openAdminEditor, submitEditor, listAction, writes }
 }
 
 afterEach(() => {
@@ -81,28 +98,24 @@ afterEach(() => {
 
 describe('权限确认的 authority(R18)', () => {
   it('确认期间 owner 变成目标账号:确认后不再发 self 停用请求', async () => {
-    const { s, wrapper, writes } = await mountView('second.admin')
+    const { wrapper, openAdminEditor, submitEditor, writes } = await mountView('second.admin')
     const confirm = controlConfirm()
-    s.openEdit(s.users[0])
-    s.draft.enabled = false
-    void s.submitDrawer()
-    await flushPromises()
+    await openAdminEditor()
+    await submitEditor()
     expect(confirm.count()).toBe(1)
 
     await wrapper.setProps({ currentUsername: 'admin' })
     await confirm.accept()
 
     expect(writes).toHaveLength(0)
-    expect(s.drawerError).toContain('身份')
+    expect(document.querySelector('.user-drawer__error')?.textContent).toContain('身份')
   })
 
   it('确认期间 owner 未变:确认后照常保存(门禁不误伤)', async () => {
-    const { s, writes } = await mountView('second.admin')
+    const { openAdminEditor, submitEditor, writes } = await mountView('second.admin')
     const confirm = controlConfirm()
-    s.openEdit(s.users[0])
-    s.draft.enabled = false
-    void s.submitDrawer()
-    await flushPromises()
+    await openAdminEditor()
+    await submitEditor()
     await confirm.accept()
 
     expect(writes).toHaveLength(1)
@@ -114,12 +127,10 @@ describe('权限确认的 authority(R18)', () => {
 
 describe('权限确认的 authority(R19/R20)', () => {
   it('组件卸载后,挂起的抽屉权限确认不再发特权写', async () => {
-    const { s, wrapper, writes } = await mountView('second.admin')
+    const { wrapper, openAdminEditor, submitEditor, writes } = await mountView('second.admin')
     const confirm = controlConfirm()
-    s.openEdit(s.users[0])
-    s.draft.enabled = false
-    void s.submitDrawer()
-    await flushPromises()
+    await openAdminEditor()
+    await submitEditor()
     expect(confirm.count()).toBe(1)
 
     wrapper.unmount()
@@ -129,9 +140,9 @@ describe('权限确认的 authority(R19/R20)', () => {
   })
 
   it.each(['toggleEnabled', 'removeUser'])('组件卸载后,挂起的列表 %s 确认不再发写', async (handler) => {
-    const { s, wrapper, writes } = await mountView('admin')
+    const { wrapper, listAction, writes } = await mountView('admin')
     const confirm = controlConfirm()
-    void s[handler](s.users[1])
+    await listAction(1, handler === 'toggleEnabled' ? '停用' : '删除')
     await flushPromises()
     expect(confirm.count()).toBe(1)
 
@@ -142,9 +153,9 @@ describe('权限确认的 authority(R19/R20)', () => {
   })
 
   it('同一上下文的列表停用确认仍然写入(门禁不误伤)', async () => {
-    const { s, writes } = await mountView('admin')
+    const { listAction, writes } = await mountView('admin')
     const confirm = controlConfirm()
-    void s.toggleEnabled(s.users[1])
+    await listAction(1, '停用')
     await flushPromises()
     await confirm.accept()
 

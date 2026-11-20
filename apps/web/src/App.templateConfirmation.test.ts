@@ -39,7 +39,7 @@ it.each(['resetConfig', 'removeField', 'removeCaseTemplate', 'removeCaseType'])(
   const success = vi.spyOn(ElMessage, 'success')
   const m = s.templateConfigModule
   const pending = action === 'removeField' ? m.removeField(s.templateConfig.interfaceFields[0].key) :
-    action === 'removeCaseTemplate' ? m.removeCaseTemplate(s.templateConfig.caseTemplates.find((t: any) => t.id === 'custom-template')) :
+    action === 'removeCaseTemplate' ? m.removeCaseTemplate(s.templateConfig.caseTemplates.find((t: any) => t.id === 'custom-template')!) :
     action === 'removeCaseType' ? m.removeCaseType('custom-type') : m.resetConfig()
   owner = 'B'; s.handleSessionExpired(); s.onLoginSuccess(B); await flushPromises()
   expect(s.templateConfig.interfaceFields[0].label).toBe('B-owned-custom')

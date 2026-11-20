@@ -26,12 +26,12 @@ it('App exposes one persistent recovery strip for adapter conflicts, sharing the
  expect(recovery.find('[data-recovery-group="recover"]').findAll('button')).toHaveLength(3)
  expect(recovery.find('[data-recovery-group="decision"]').findAll('button')).toHaveLength(2)
  expect(recovery.find('[data-recovery-group="decision"]').attributes('data-risk')).toBe('destructive')
- expect(s.templateConfig.interfaceFields.find((f:any)=>f.key==='project').label).toBe('B')
+ expect(s.templateConfig.interfaceFields.find((f:any)=>f.key==='project')?.label).toBe('B')
  expect(f.mock.calls.filter(([u,init]:any)=>u.includes('/case-template/')&&init?.method==='PUT')).toHaveLength(0)
  vi.spyOn(ElMessageBox,'confirm').mockResolvedValue('confirm' as never)
  const take=wrapper.get('[data-template-recovery]').findAll('button').find(b=>b.text().includes('采用后端'))!
  await take.trigger('click')
- await vi.waitFor(()=>expect(s.templateConfig.interfaceFields.find((f:any)=>f.key==='project').label).toBe('C'))
+ await vi.waitFor(()=>expect(s.templateConfig.interfaceFields.find((f:any)=>f.key==='project')?.label).toBe('C'))
  expect(wrapper.find('[data-template-recovery]').exists()).toBe(false)
  const heldFetch=f.getMockImplementation()!;let late!:(r:Response)=>void
  f.mockImplementationOnce(()=>new Promise(ok=>{late=ok}))
@@ -46,8 +46,8 @@ it('App exposes one persistent recovery strip for adapter conflicts, sharing the
  const pack=exportProjectData(s.workspaceStorage.storage)
  pack.payload.templateConfig=updateCaseField(A,'project',{label:'imported'})
  const input={files:[{text:async()=>JSON.stringify(pack)}],value:'file'}
- await s.onProjectDataSelected({target:input}); await flushPromises()
+ await s.onProjectDataSelected({target:input} as unknown as Event); await flushPromises()
  expect(s.templateConfigModule.saveStatus.fields.state).toBe('failed')
  expect(localStorage.getItem(prefix+'ai-test-platform.template-config-pending.v1')).toContain('imported')
- expect(s.templateConfig.interfaceFields.find((f:any)=>f.key==='project').label).toBe('imported')
+ expect(s.templateConfig.interfaceFields.find((f:any)=>f.key==='project')?.label).toBe('imported')
 })
