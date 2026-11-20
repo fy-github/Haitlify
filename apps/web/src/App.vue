@@ -28,23 +28,18 @@ import {
 } from './domain/apiExecution'
 import {
   buildWebExecutionRuntime,
-  buildExecutionEnvironment,
   defaultExecutionEnvironmentLibrary,
   defaultWebExecutionEnvironmentLibrary,
   defaultWebExecutionRuntimeConfig,
   WEB_EXECUTION_ENV_LIBRARY_STORAGE_KEY,
   loadExecutionEnvironmentLibrary,
   newEnvironmentEntry,
-  newSavedExecutionEnvironment,
-  newSavedWebExecutionEnvironment,
   normalizeWebExecutionRuntimeConfig,
   parseCurlEnvironmentImport,
-  saveExecutionEnvironmentLibrary,
   validateExecutionEnvironment,
   validateWebExecutionEnvironment,
   type BuiltWebExecutionRuntime,
   type EnvironmentEntryType,
-  type ExecutionEnvironmentLibrary,
   type SavedExecutionEnvironment,
   type WebRuntimeBrowser
 } from './domain/executionEnvironmentRepository'
@@ -67,26 +62,10 @@ import {
   exportApifoxAutomationDraft,
   generateAutomationCasesFromInterfaceCases,
   removeResultsFromAutomationRunReport,
-  runAutomationCases,
   type AutomationRunResult,
-  type AutomationRunMode,
-  type AutomationRunReport,
   type ApiAutomationCaseDraft
 } from './domain/apiAutomation'
-import {
-  buildApiRunSnapshot,
-  parseApiLoopCount,
-  resolveApiExecutionScopeLabel,
-  type ApiRunSnapshot
-} from './domain/apiExecutionPreparation'
-import {
-  createApiRunMonitor,
-  recordApiCaseStart,
-  recordApiCaseResult,
-  completeApiRunMonitor,
-  apiMonitorCounts,
-  type ApiRunMonitor
-} from './domain/apiRunMonitor'
+import { apiMonitorCounts } from './domain/apiRunMonitor'
 import ApiRunMonitorView from './components/automation/ApiRunMonitorView.vue'
 import {
   exportWebAutomationRunCases,
@@ -213,13 +192,12 @@ import {
 import {
   automationKindFromPath,
   automationPathFor,
-  defaultNavKey,
   navKeyFromPath,
   navPathFor,
   type NavKey
 } from './domain/appNavigation'
 import { fetchCurrentUser, logout, changePassword, type AuthUser } from './domain/authRepository'
-import { advanceAuthSessionEpoch, authedFetch, getAuthSessionEpoch, setUnauthorizedHandler } from './domain/http'
+import { getAuthSessionEpoch, setUnauthorizedHandler } from './domain/http'
 import AppShell from './components/shell/AppShell.vue'
 import ResponsiveDrawer from './components/shell/ResponsiveDrawer.vue'
 import LoginScreen from './components/auth/LoginScreen.vue'
@@ -233,6 +211,7 @@ import AssistantChainView from './components/views/AssistantChainView.vue'
 import SettingsCenterView from './components/views/SettingsCenterView.vue'
 import QualityWorkbenchView from './components/views/QualityWorkbenchView.vue'
 import ExecutionWorkbenchView from './components/views/ExecutionWorkbenchView.vue'
+import ApiExecutionPage from './components/views/ApiExecutionPage.vue'
 import EnvironmentManagementView from './components/views/EnvironmentManagementView.vue'
 import EnvironmentEditorSurface from './components/automation/EnvironmentEditorSurface.vue'
 import CasesView from './components/views/CasesView.vue'
@@ -247,9 +226,15 @@ import { useDefects } from './ui/useDefects'
 import DefectFailureBanner from './components/defects/DefectFailureBanner.vue'
 import { useReports } from './ui/useReports'
 import { createWorkspaceStorage } from './ui/workspaceStorage'
+import { createWorkspaceRuntime } from './ui/useWorkspaceRuntime'
+import { createAppSession } from './ui/useAppSession'
 import { createTemplateOperationAdapter } from './ui/templateOperationAdapter'
+import { createEnvironmentController } from './ui/useEnvironmentController'
+import { createApiExecutionController } from './ui/useApiExecutionController'
+import { createWebExecutionController } from './ui/useWebExecutionController'
+import { createAppNavigation } from './ui/useAppNavigation'
 import { useTemplateConfig } from './ui/useTemplateConfig'
-import { useCases } from './ui/useCases'
+import { provideCases, useCases } from './ui/useCases'
 import {
   automationStatusLabel,
   automationStatusTagType,
@@ -300,10 +285,58 @@ interface WorkspaceSyncConflictNotice {
 
 type NavHistoryMode = 'push' | 'replace' | 'skip'
 
-const workspaceStorage = createWorkspaceStorage(window.localStorage)
-const workspaceSessionStorage = createWorkspaceStorage(window.sessionStorage)
+type AuthStatus = 'checking' | 'authenticated' | 'unauthenticated'
+const authStatus = ref<AuthStatus>('checking')
+const currentUser = ref<AuthUser | null>(null)
+let authDisposed = false
+let invalidateTemplateWorkspace: () => void = () => undefined
+const workspaceRuntime = createWorkspaceRuntime({
+  storage: createWorkspaceStorage(window.localStorage),
+  sessionStorage: createWorkspaceStorage(window.sessionStorage),
+  isAuthenticated: () => authStatus.value === 'authenticated',
+  isDisposed: () => authDisposed,
+  onWorkspaceBegin: (templateLease) => {
+    if (!templateLease) invalidateTemplateWorkspace()
+  }
+})
+const workspaceStorage = workspaceRuntime.storage
+const workspaceSessionStorage = workspaceRuntime.sessionStorage
 const localStorage = workspaceStorage.storage
 const sessionStorage = workspaceSessionStorage.storage
+const isCurrentAuth = workspaceRuntime.isCurrentAuth
+const workspaceOperationId = workspaceRuntime.operationId
+const beginWorkspaceOperation = (resource: string, templateLease = false): () => boolean =>
+  workspaceRuntime.begin(resource, templateLease)
+const workspaceFetch = (isCurrent: () => boolean) => workspaceRuntime.fetch(isCurrent)
+const authSession = createAppSession({
+  workspace: workspaceRuntime,
+  authStatus,
+  currentUser,
+  fetchCurrentUser,
+  logout,
+  onBeforeReset: (user) => {
+    casesModule.invalidateLibraryActions()
+    if (user) writeWebMonitorQuery('workbench', '', 'replace')
+  },
+  onReset: () => {
+    resetWorkspaceState()
+    passwordOperation += 1
+    changePasswordDialogVisible.value = false
+    Object.assign(changePasswordForm, {
+      currentPassword: '', newPassword: '', confirmPassword: '', error: '', submitting: false
+    })
+  },
+  onReady: () => {
+    templateConfigModule.bindWorkspace()
+    loadWorkspaceData()
+  },
+  onMustChangePassword: () => openChangePasswordDialog(),
+  onStop: () => stopBackgroundActivity()
+})
+const handleSessionExpired = authSession.handleSessionExpired
+const onLoginSuccess = authSession.onLoginSuccess
+const bootstrapAuth = authSession.bootstrap
+const handleLogout = authSession.handleLogout
 const savedCollapsed = window.localStorage.getItem('ai-test-platform.sidebar-collapsed')
 const railCollapsed = ref(initialSidebarCollapsed(savedCollapsed, window.innerWidth))
 const viewportMode = useViewportMode()
@@ -315,7 +348,8 @@ const helpVisible = ref(false)
 const compactContextVisible = ref(false)
 const compactInspectorVisible = ref(false)
 const globalSearch = ref('')
-const activeNav = ref<NavKey>(resolveInitialNav())
+const appNavigation = createAppNavigation()
+const { activeNav, automationKind } = appNavigation
 const homeSection = ref<HomeSection>('runs')
 const importedProjects = ref<ImportedOpenApiProject[]>([])
 const activeProjectId = ref('')
@@ -323,71 +357,79 @@ const requirementAnalysisProjectName = ref('默认项目')
 const generationKind = ref<'interface' | 'web_automation'>('web_automation')
 const automationCases = ref<SavedAutomationCase[]>(listSavedAutomationCases(localStorage))
 const webAutomationCases = ref<SavedWebAutomationRunCase[]>(listSavedWebAutomationRunCases(localStorage))
-const automationKind = ref<'api' | 'web'>(resolveInitialAutomationKind())
-const automationRunMode = ref<AutomationRunMode>('sequential')
-const webAutomationRunMode = ref<WebAutomationRunMode>('sequential')
-const automationConcurrencyLimit = ref(8)
-const apiAutomationLoopCount = ref(1)
-const webAutomationLoopCount = ref(1)
-const responseBodyMatchThreshold = ref(100)
-const apiRunCountMin = 1
-/** 循环次数/并发数：− 输入 ＋ 步进，允许直输但只接受正整数。 */
-const apiRunCountValue = computed(() =>
-  automationRunMode.value === 'concurrent' ? automationConcurrencyLimit.value : apiAutomationLoopCount.value
-)
-const apiRunCountInput = ref(String(apiRunCountValue.value))
-const apiRunCountError = ref('')
-const syncApiRunCountInput = () => {
-  apiRunCountInput.value = String(apiRunCountValue.value)
-  apiRunCountError.value = ''
-}
-const applyApiRunCount = (value: number) => {
-  if (automationRunMode.value === 'concurrent') {
-    automationConcurrencyLimit.value = value
-    return
+const apiExecutionController = createApiExecutionController({
+  getAvailableCaseCount: () => filteredAutomationCases.value.length,
+  getFilteredCases: () => filteredAutomationCases.value,
+  getCanEdit: () => canEdit.value,
+  getOwnerId: () => currentUser.value?.id ?? undefined,
+  getEnvironment: () => resolveRunnableEnvironment(),
+  getEnvironmentName: () => activeApiExecutionEnvironment.value?.name || '默认环境',
+  beginOperation: (resource) => beginWorkspaceOperation(resource),
+  captureStorage: (isCurrent) => workspaceStorage.capture(isCurrent),
+  executeRequest: (request, isCurrent) => executeBrowserRequest(request, isCurrent),
+  enterMonitor: () => enterApiRunMonitor(),
+  refreshReports: () => refreshAutomationReports(),
+  selectReport: (project, reportId) => {
+    selectedReportProject.value = project
+    selectedReportId.value = reportId
+  },
+  notify: {
+    warning: (message) => ElMessage.warning(message),
+    success: (message) => ElMessage.success(message),
+    error: (message) => ElMessage.error(message)
   }
-  apiAutomationLoopCount.value = value
-}
-const commitApiRunCount = (raw: string = apiRunCountInput.value) => {
-  const parsed = parseApiLoopCount(raw)
-  if (!parsed.valid) {
-    apiRunCountError.value = parsed.message || '循环次数必须是正整数'
-    return false
-  }
-  apiRunCountError.value = ''
-  applyApiRunCount(parsed.value)
-  apiRunCountInput.value = String(parsed.value)
-  return true
-}
-const stepApiRunCount = (delta: number) => {
-  commitApiRunCount()
-  applyApiRunCount(Math.max(apiRunCountMin, apiRunCountValue.value + delta))
-  apiRunCountInput.value = String(apiRunCountValue.value)
-  apiRunCountError.value = ''
-}
-/** 直输保持草稿态，非法值只提示不写回；合法值即时生效。 */
+})
+const {
+  automationRunMode,
+  automationConcurrencyLimit,
+  apiAutomationLoopCount,
+  responseBodyMatchThreshold,
+  apiRunCountMin,
+  apiRunCountValue,
+  apiRunCountInput,
+  apiRunCountError,
+  apiRunSnapshot,
+  apiRunMonitor,
+  apiAutomationWorkspaceMode,
+  apiRunConfirming,
+  apiAutomationRunning,
+  apiAutomationProgress,
+  automationSelection,
+  automationRunReport,
+  apiRunGeneration,
+  apiExecutionScopeLabel,
+  commitApiRunCount,
+  stepApiRunCount
+} = apiExecutionController
+const webExecutionController = createWebExecutionController()
+const {
+  webAutomationRunning,
+  webAutomationRunMode,
+  webAutomationLoopCount,
+  webAutomationRunReport,
+  activeWebRunId,
+  activeWebRunSnapshot,
+  activeWebRunCases,
+  webRunCapabilities,
+  webRunConnectionState,
+  webRunControlLoading,
+  webAutomationSelectedIds,
+  webAutomationStatusFilter,
+  webAutomationWorkspaceMode,
+  webAutomationTableScrollTop,
+  webAutomationTableScrollLeft,
+  webRunCreationError,
+  webRunInterruptionMessage,
+  webRunPollCoordinator
+} = webExecutionController
 const onApiRunCountInput = (event: Event) => {
   const target = event.target as HTMLInputElement | null
-  const raw = target?.value ?? ''
-  apiRunCountInput.value = raw
-  const parsed = parseApiLoopCount(raw)
-  if (!parsed.valid) {
-    apiRunCountError.value = parsed.message || '循环次数必须是正整数'
-    return
-  }
-  apiRunCountError.value = ''
-  applyApiRunCount(parsed.value)
+  apiExecutionController.onApiRunCountInput(target?.value ?? '')
 }
-watch([automationRunMode, apiAutomationLoopCount, automationConcurrencyLimit], syncApiRunCountInput)
-const apiRunSnapshot = ref<ApiRunSnapshot>()
-const apiRunMonitor = ref<ApiRunMonitor>()
-const apiAutomationWorkspaceMode = ref<'prepare' | 'monitor'>('prepare')
 const apiRunMonitorRef = ref<InstanceType<typeof ApiRunMonitorView>>()
 const apiPreparationElement = ref<HTMLElement>()
 const apiMonitorEntry = ref<HTMLElement>()
 const apiPreparationScroll = ref({ top: 0, left: 0 })
-const apiRunConfirming = ref(false)
-let apiRunGeneration = 0
 const enterApiRunMonitor = async () => {
   if (!apiRunMonitor.value) return
   const isCurrent = beginWorkspaceOperation('apiMonitorNavigation')
@@ -407,37 +449,10 @@ const returnApiRunPreparation = async () => {
   if (scroll) { scroll.scrollTop = apiPreparationScroll.value.top; scroll.scrollLeft = apiPreparationScroll.value.left }
   apiMonitorEntry.value?.focus({ preventScroll: true })
 }
-const apiExecutionScopeLabel = computed(() =>
-  resolveApiExecutionScopeLabel(automationSelection.value.length, filteredAutomationCases.value.length)
-)
-const apiAutomationRunning = ref(false)
-const webAutomationRunning = ref(false)
-const apiAutomationProgress = reactive({
-  completed: 0,
-  total: 0,
-  runningCaseId: ''
-})
-const automationSelection = ref<SavedAutomationCase[]>([])
 const automationGenerateVisible = ref(false)
 const automationGenerateProject = ref('ALL')
 const automationGenerateModule = ref('ALL')
-const automationRunReport = ref<AutomationRunReport>()
-const webAutomationRunReport = ref<WebAutomationRunReport>()
-const activeWebRunId = ref('')
-const activeWebRunSnapshot = shallowRef<WebAutomationRunSnapshot>()
-const activeWebRunCases = shallowRef<SavedWebAutomationRunCase[]>([])
-const webRunCapabilities = shallowRef<WebAutomationCapabilities>()
-const webRunConnectionState = ref<'idle' | 'polling' | 'retrying' | 'interrupted'>('idle')
-const webRunControlLoading = ref<'pause' | 'resume' | 'stop' | ''>('')
-const webAutomationSelectedIds = ref<string[]>([])
-const webAutomationStatusFilter = ref<WebCaseStatusFilter>('ALL')
-const webAutomationWorkspaceMode = ref<'workbench' | 'monitor'>('workbench')
-const webAutomationTableScrollTop = ref(0)
-const webAutomationTableScrollLeft = ref(0)
-const webRunCreationError = ref('')
-const webRunInterruptionMessage = ref('')
 const webAutomationWorkspaceRef = ref<InstanceType<typeof WebAutomationWorkspace>>()
-const webRunPollCoordinator = createWebRunPollCoordinator()
 let finalizedWebRunId = ''
 const jiraConfigForm = reactive<JiraConfig>(defaultJiraConfig())
 const jiraConfigLoading = ref(false)
@@ -478,6 +493,7 @@ const templateConfigModule = useTemplateConfig({
     generation.selectedCaseTypeIds = ids
   }
 })
+invalidateTemplateWorkspace = () => templateConfigModule.invalidateWorkspace()
 const {
   templateConfig,
   selectedTemplateId,
@@ -512,6 +528,7 @@ const casesModule = useCases({
   backupProjectData: () => backupProjectData(),
   onProjectDataSelected: (event) => onProjectDataSelected(event)
 })
+provideCases(casesModule)
 const {
   savedCases,
   savedWebCases,
@@ -604,29 +621,56 @@ const workspaceSyncConflict = ref<WorkspaceSyncConflictNotice>()
 const workspaceSyncLoading = ref(false)
 const editRow = reactive<InterfaceCaseRow>(emptyEditRow())
 const webEditRow = reactive<WebAutomationCaseRow>(emptyWebEditRow())
-const executionEnvironmentLibrary = ref<ExecutionEnvironmentLibrary>(loadExecutionEnvironmentLibrary(localStorage))
-const webExecutionEnvironmentLibrary = ref<ExecutionEnvironmentLibrary>(
-  loadExecutionEnvironmentLibrary(localStorage, WEB_EXECUTION_ENV_LIBRARY_STORAGE_KEY)
-)
-const editingEnvironment = reactive<SavedExecutionEnvironment>(cloneEnvironment(
-  executionEnvironmentLibrary.value.environments.find((environment) => environment.id === executionEnvironmentLibrary.value.activeEnvironmentId)
-  || defaultExecutionEnvironmentLibrary().environments[0]
-))
-const editingWebAllowedRequestOriginsText = computed({
-  get: () => (editingEnvironment.web?.allowedRequestOrigins || []).join('\n'),
-  set: (value: string) => {
-    if (!editingEnvironment.web) editingEnvironment.web = defaultWebExecutionRuntimeConfig()
-    editingEnvironment.web.allowedRequestOrigins = value.split(/\r?\n/).map((item) => item.trim()).filter(Boolean)
+const environmentController = createEnvironmentController({
+  storage: localStorage,
+  beginOperation: (resource) => beginWorkspaceOperation(resource),
+  confirmDanger: (title, message, confirmLabel) => confirmDangerAction(title, message, confirmLabel),
+  confirmDiscard: async (message) => {
+    try {
+      await ElMessageBox.confirm(message, '放弃未保存的环境修改？', {
+        confirmButtonText: '放弃修改',
+        cancelButtonText: '继续编辑',
+        type: 'warning',
+        customClass: 'theme-confirm-box environment-discard-confirm'
+      })
+      return true
+    } catch {
+      return false
+    }
+  },
+  notify: {
+    info: (message) => ElMessage.success(message),
+    warning: (message) => ElMessage.warning(message),
+    error: (message) => ElMessage.error(message)
   }
 })
-const editingWebNetworkPolicyMode = computed({
-  get: () => editingEnvironment.web?.networkPolicyMode || 'blocklist',
-  set: (value: 'blocklist' | 'allowlist') => {
-    if (!editingEnvironment.web) editingEnvironment.web = defaultWebExecutionRuntimeConfig()
-    editingEnvironment.web.networkPolicyMode = value === 'allowlist' ? 'allowlist' : 'blocklist'
-  }
-})
-const environmentEditorTarget = ref<'api' | 'web'>('api')
+const {
+  executionEnvironmentLibrary,
+  webExecutionEnvironmentLibrary,
+  editingEnvironment,
+  editingWebAllowedRequestOriginsText,
+  editingWebNetworkPolicyMode,
+  environmentEditorTarget,
+  environmentEditorKind,
+  currentEnvironmentLibrary,
+  activeApiExecutionEnvironment,
+  activeWebExecutionEnvironment,
+  runnableApiExecutionEnvironment,
+  runnableWebRuntime,
+  environmentDraftDirty,
+  bindEditingEnvironment,
+  syncEnvironmentEditorToLibrary,
+  discardEnvironmentDraft,
+  captureDraftIntent: captureEnvironmentIntent,
+  confirmDiscardDraft: confirmDiscardEnvironmentDraft,
+  runWithDraftGuard: runWithEnvironmentDraftGuard,
+  openEditor: openEnvironmentEditorCore,
+  persistEnvironmentLibrary,
+  selectExecutionEnvironment,
+  addEnvironment,
+  deleteEnvironment,
+  saveEnvironment
+} = environmentController
 const curlImportText = ref('')
 const webEnvironmentVerifying = ref(false)
 const webEnvironmentVerification = ref<{
@@ -666,131 +710,6 @@ const automationFilter = reactive({
   source: 'ALL' as 'ALL' | 'design' | 'default',
   keyword: ''
 })
-
-const environmentEditorKind = computed<'api' | 'web'>(() => environmentEditorTarget.value)
-const currentEnvironmentLibrary = computed(() =>
-  environmentEditorKind.value === 'web' ? webExecutionEnvironmentLibrary.value : executionEnvironmentLibrary.value
-)
-const activeApiExecutionEnvironment = computed(() =>
-  executionEnvironmentLibrary.value.environments.find((environment) =>
-    environment.id === executionEnvironmentLibrary.value.activeEnvironmentId
-  )
-)
-const activeWebExecutionEnvironment = computed(() =>
-  webExecutionEnvironmentLibrary.value.environments.find((environment) =>
-    environment.id === webExecutionEnvironmentLibrary.value.activeEnvironmentId
-  )
-)
-const runnableApiExecutionEnvironment = computed<ExecutionEnvironment | undefined>(() =>
-  activeApiExecutionEnvironment.value ? buildExecutionEnvironment(activeApiExecutionEnvironment.value) : undefined
-)
-const runnableWebRuntime = computed<BuiltWebExecutionRuntime | undefined>(() =>
-  activeWebExecutionEnvironment.value ? buildWebExecutionRuntime(activeWebExecutionEnvironment.value) : undefined
-)
-
-/* ── 环境编辑器草稿:绑定目录所选环境 + 未保存修改的 guard ───────────────────── */
-
-/** 递归按键排序的 JSON:同一份环境配置换过对象/字段顺序也不算“有修改”。 */
-function stableStringify(value: unknown): string {
-  if (value === null || typeof value !== 'object') return JSON.stringify(value) ?? 'null'
-  if (Array.isArray(value)) return `[${value.map((item) => stableStringify(item)).join(',')}]`
-  const entries = Object.entries(value as Record<string, unknown>)
-    .filter(([, item]) => item !== undefined)
-    .sort(([left], [right]) => left.localeCompare(right))
-  return `{${entries.map(([key, item]) => `${JSON.stringify(key)}:${stableStringify(item)}`).join(',')}}`
-}
-
-/**
- * 参与“是否有未保存修改”比较的投影。
- * 存储契约里会被保存丢弃的字段(web 环境的 auth/entries/cookieOrigins、更新时间)不参与比较,
- * 否则刚打开或刚保存就会误报脏。比较基准与草稿都走同一个投影。
- */
-function environmentComparable(environment: SavedExecutionEnvironment, kind: 'api' | 'web'): string {
-  const copy = cloneEnvironment(environment)
-  delete (copy as { updatedAt?: string }).updatedAt
-  if (kind === 'web') {
-    copy.auth = { type: 'none' }
-    copy.entries = []
-    const web = normalizeWebExecutionRuntimeConfig(copy.web)
-    web.cookieOrigins = []
-    copy.web = web
-  }
-  return stableStringify(copy)
-}
-
-/** 把编辑器绑定到某个环境:先清空草稿键,避免上一个环境独有的字段残留。 */
-function bindEditingEnvironment(environment: SavedExecutionEnvironment, kind: 'api' | 'web'): void {
-  for (const key of Object.keys(editingEnvironment)) delete (editingEnvironment as unknown as Record<string, unknown>)[key]
-  Object.assign(editingEnvironment, cloneEnvironment(environment))
-  if (kind === 'web') {
-    editingEnvironment.auth = editingEnvironment.auth || { type: 'none' }
-    editingEnvironment.web = normalizeWebExecutionRuntimeConfig(editingEnvironment.web)
-  }
-}
-
-/** 目录当前所选环境(找不到就退回第一条)。 */
-function selectedEnvironmentOf(kind: 'api' | 'web'): SavedExecutionEnvironment | undefined {
-  const library = kind === 'web' ? webExecutionEnvironmentLibrary.value : executionEnvironmentLibrary.value
-  return library.environments.find((environment) => environment.id === library.activeEnvironmentId)
-    || library.environments[0]
-}
-
-const environmentDraftBaseline = computed(() =>
-  currentEnvironmentLibrary.value.environments.find((environment) => environment.id === editingEnvironment.id)
-)
-
-/** 编辑器草稿与其已保存版本是否存在差异(类别切换/选其他环境/返回/导航/关窗口共用)。 */
-const environmentDraftDirty = computed(() => {
-  const baseline = environmentDraftBaseline.value
-  if (!baseline) return false
-  const kind = environmentEditorKind.value
-  return environmentComparable(baseline, kind) !== environmentComparable(editingEnvironment, kind)
-})
-
-/** 丢弃未保存草稿:编辑器重新绑定到当前兜底环境(基线与草稿同时回到已保存状态)。 */
-function discardEnvironmentDraft(): void {
-  const target = environmentDraftBaseline.value || selectedEnvironmentOf(environmentEditorKind.value)
-  if (target) bindEditingEnvironment(target, environmentEditorKind.value)
-}
-
-/** 冷启动/切换账号:编辑器必须绑定目录当前所选环境,不能停在默认环境。 */
-function syncEnvironmentEditorToLibrary(): void {
-  const target = selectedEnvironmentOf(environmentEditorKind.value)
-  if (target) bindEditingEnvironment(target, environmentEditorKind.value)
-}
-
-/** 确认框跨 await:发起时固定会话 authority,owner 切换后旧意图不得改新会话的页面。 */
-function captureEnvironmentIntent(): () => boolean {
-  return beginWorkspaceOperation('environmentDraft')
-}
-
-const confirmDiscardEnvironmentDraft = async (message: string): Promise<boolean> => {
-  try {
-    await ElMessageBox.confirm(message, '放弃未保存的环境修改？', {
-      confirmButtonText: '放弃修改',
-      cancelButtonText: '继续编辑',
-      type: 'warning',
-      customClass: 'theme-confirm-box environment-discard-confirm'
-    })
-    return true
-  } catch {
-    return false
-  }
-}
-
-/** 有未保存修改时先确认;取消则连页面状态都不动(草稿完整保留)。 */
-function runWithEnvironmentDraftGuard(message: string, action: () => void): void {
-  if (!environmentDraftDirty.value) {
-    action()
-    return
-  }
-  const isCurrentIntent = captureEnvironmentIntent()
-  void confirmDiscardEnvironmentDraft(message).then((confirmed) => {
-    if (!confirmed || !isCurrentIntent()) return
-    discardEnvironmentDraft()
-    action()
-  })
-}
 
 function cancelEnvironmentEditing(): void {
   runWithEnvironmentDraftGuard('取消编辑会丢弃当前未保存的环境修改。', () => {
@@ -1814,8 +1733,8 @@ const startVisualWebAutomationRun = async (
 const pauseActiveWebRun = async () => {
   const currentOperation = beginWorkspaceOperation('webRunControl')
   const runId = activeWebRunId.value
-  const runOperation = workspaceOperations.get('webRun')
-  const isCurrent = () => currentOperation() && activeWebRunId.value === runId && workspaceOperations.get('webRun') === runOperation
+  const runOperation = workspaceOperationId('webRun')
+  const isCurrent = () => currentOperation() && activeWebRunId.value === runId && workspaceOperationId('webRun') === runOperation
   if (!runId || !isCurrent()) return
   webRunControlLoading.value = 'pause'
   try {
@@ -1832,8 +1751,8 @@ const pauseActiveWebRun = async () => {
 const resumeActiveWebRun = async () => {
   const currentOperation = beginWorkspaceOperation('webRunControl')
   const runId = activeWebRunId.value
-  const runOperation = workspaceOperations.get('webRun')
-  const isCurrent = () => currentOperation() && activeWebRunId.value === runId && workspaceOperations.get('webRun') === runOperation
+  const runOperation = workspaceOperationId('webRun')
+  const isCurrent = () => currentOperation() && activeWebRunId.value === runId && workspaceOperationId('webRun') === runOperation
   if (!runId || !isCurrent()) return
   webRunControlLoading.value = 'resume'
   try {
@@ -1855,8 +1774,8 @@ const resumeActiveWebRun = async () => {
 const stopActiveWebRun = async () => {
   const currentOperation = beginWorkspaceOperation('webRunControl')
   const runId = activeWebRunId.value
-  const runOperation = workspaceOperations.get('webRun')
-  const isCurrent = () => currentOperation() && activeWebRunId.value === runId && workspaceOperations.get('webRun') === runOperation
+  const runOperation = workspaceOperationId('webRun')
+  const isCurrent = () => currentOperation() && activeWebRunId.value === runId && workspaceOperationId('webRun') === runOperation
   if (!runId || !isCurrent()) return
   webRunControlLoading.value = 'stop'
   try {
@@ -1960,173 +1879,7 @@ const executeAllAutomationCases = async () => {
     await startVisualWebAutomationRun()
     return
   }
-
-  if (!canEdit.value || apiAutomationRunning.value || apiRunConfirming.value) return
-  const isCurrent = beginWorkspaceOperation('apiRunStart')
-  if (!isCurrent()) return
-  const casesToRun = automationSelection.value.length > 0 ? automationSelection.value : filteredAutomationCases.value
-  if (casesToRun.length === 0) {
-    ElMessage.warning('没有可执行的自动化用例')
-    return
-  }
-  const loopValidation = parseApiLoopCount(String(apiAutomationLoopCount.value))
-  if (!loopValidation.valid) {
-    ElMessage.warning(loopValidation.message || '循环次数必须是正整数')
-    return
-  }
-  const environment = resolveRunnableEnvironment()
-  if (!environment) return
-
-  // 启动前锁定本次范围/环境/参数；确认后即使准备页继续改动，也不会改写这一批任务。
-  const snapshot = buildApiRunSnapshot({
-    cases: casesToRun,
-    environment,
-    environmentName: activeApiExecutionEnvironment.value?.name || '默认环境',
-    options: {
-      mode: automationRunMode.value,
-      concurrencyLimit: automationConcurrencyLimit.value,
-      responseBodyMatchThreshold: responseBodyMatchThreshold.value,
-      loopCount: loopValidation.value
-    },
-    scopeLabel: apiExecutionScopeLabel.value,
-    frozenAt: new Date().toISOString()
-  })
-  apiRunConfirming.value = true
-  let confirmed = false
-  try {
-    confirmed = await confirmApiRunSnapshot(snapshot)
-  } finally {
-    if (isCurrent()) apiRunConfirming.value = false
-  }
-  if (!confirmed || !isCurrent()) return
-  apiRunSnapshot.value = snapshot
-  await executeApiAutomationCases(snapshot)
-}
-
-const confirmApiRunSnapshot = async (snapshot: ApiRunSnapshot): Promise<boolean> => {
-  const modeLabel = snapshot.options.mode === 'sequential'
-    ? '顺序'
-    : snapshot.options.mode === 'concurrent' ? '并发' : '按模块'
-  try {
-    await ElMessageBox.confirm(
-      [
-        `执行范围：${snapshot.scopeLabel}（用例 ${snapshot.cases.length} 条）`,
-        `运行环境：${snapshot.environmentName || '默认环境'} · ${snapshot.environment.baseUrl || '未配置地址'}`,
-        `执行方式：${modeLabel} · 循环 ${snapshot.options.loopCount ?? 1} 次 · 并发 ${snapshot.options.concurrencyLimit ?? 8}`,
-        `返回体一致度：${snapshot.options.responseBodyMatchThreshold ?? 100}%`,
-        '',
-        '确认后本次用例、环境与运行参数即锁定，准备页后续修改不会影响这一批执行。'
-      ].join('\n'),
-      '确认本次执行',
-      { confirmButtonText: '开始执行', cancelButtonText: '取消', type: 'info', customClass: 'api-execution-confirm' }
-    )
-    return true
-  } catch {
-    return false
-  }
-}
-
-const executeApiAutomationCases = async (
-  snapshot: ApiRunSnapshot
-): Promise<boolean> => {
-  if (!canEdit.value || apiAutomationRunning.value) return false
-  const currentOperation = beginWorkspaceOperation('apiRun')
-  const generation = ++apiRunGeneration
-  const owner = currentUser.value?.id
-  const isCurrent = () => currentOperation() && apiRunGeneration === generation && currentUser.value?.id === owner
-  if (!isCurrent()) return false
-  const casesToRun = snapshot.cases as SavedAutomationCase[]
-  if (casesToRun.length === 0) {
-    ElMessage.warning('没有可执行的自动化用例')
-    return false
-  }
-
-  apiAutomationRunning.value = true
-  automationRunReport.value = undefined
-  apiRunMonitor.value = createApiRunMonitor(snapshot)
-  const monitor = apiRunMonitor.value
-  const acceptsEvent = () => isCurrent() && apiRunMonitor.value === monitor && monitor.status === 'running'
-  apiAutomationProgress.completed = 0
-  apiAutomationProgress.total = monitor.rows.length
-  apiAutomationProgress.runningCaseId = ''
-  // Keep preparation mounted; its filters, table selection and both scroll axes survive.
-  void enterApiRunMonitor()
-  const reportStorage = workspaceStorage.capture(isCurrent)
-  const pendingRequests = new Set<Promise<unknown>>()
-  try {
-    const report = await runAutomationCases(
-      casesToRun,
-      snapshot.environment,
-      snapshot.options,
-      async (request) => {
-        if (!acceptsEvent()) throw new Error('本次 API 执行上下文已失效')
-        const pending = executeBrowserRequest(request, acceptsEvent)
-        pendingRequests.add(pending)
-        try {
-          const response = await pending
-          if (!acceptsEvent()) throw new Error('本次 API 执行上下文已失效')
-          return response
-        } finally {
-          pendingRequests.delete(pending)
-        }
-      },
-      {
-        onProgress: (progress) => {
-          if (!acceptsEvent()) return
-          apiAutomationProgress.completed = progress.completed
-          apiAutomationProgress.total = progress.total
-          apiAutomationProgress.runningCaseId = progress.runningCaseId || ''
-          monitor.progress = { ...progress }
-        },
-        onCaseStart: (testCase) => {
-          if (acceptsEvent()) recordApiCaseStart(monitor, testCase)
-        },
-        onResult: (result) => {
-          if (acceptsEvent()) recordApiCaseResult(monitor, result)
-        }
-      }
-    )
-    if (!acceptsEvent()) return false
-    completeApiRunMonitor(monitor, report)
-    automationRunReport.value = report
-    const reportRecord: SavedAutomationReport = {
-      ...report,
-      reportId: `report-${Date.now()}`,
-      name: `${snapshot.environmentName || '默认环境'}-${new Date().toLocaleString('zh-CN', {
-        hour12: false
-      })}`,
-      project: casesToRun[0]?.project || '全部项目',
-      environmentName: snapshot.environmentName || '默认环境',
-      moduleScope: Array.from(new Set(casesToRun.map((testCase) => testCase.module))),
-      createdAt: new Date().toISOString()
-    }
-    appendAutomationReport(reportStorage, reportRecord)
-    refreshAutomationReports()
-    selectedReportProject.value = reportRecord.project
-    selectedReportId.value = reportRecord.reportId
-    ElMessage.success(`执行完成：通过 ${report.summary.passed}，失败 ${report.summary.failed}，错误 ${report.summary.error}`)
-    return true
-  } catch (error) {
-    if (!isCurrent()) return false
-    // A request-construction throw can reject a concurrent batch while siblings
-    // remain in flight. Terminal status rejects their later start/result events.
-    monitor.status = 'error'
-    monitor.endedAt = new Date().toISOString()
-    monitor.errorMessage = error instanceof Error ? error.message : 'API 自动化执行失败'
-    ElMessage.error(monitor.errorMessage)
-    return false
-  } finally {
-    // A local construction failure does not cancel already-dispatched requests.
-    // Keep the start lock until they settle, without accepting any late results.
-    await Promise.allSettled([...pendingRequests])
-    if (isCurrent()) {
-      if (monitor.status === 'error') {
-        for (const row of monitor.rows) if (row.status === 'running' && !row.result) row.status = 'unreturned'
-      }
-      apiAutomationRunning.value = false
-      apiAutomationProgress.runningCaseId = ''
-    }
-  }
+  await apiExecutionController.executeAllAutomationCases()
 }
 
 const refreshAutomationCases = () => {
@@ -2952,14 +2705,6 @@ const resolveWebRuntimeEnvironment = (): BuiltWebExecutionRuntime | undefined =>
   return runnableWebRuntime.value
 }
 
-const persistEnvironmentLibrary = (kind: 'api' | 'web' = environmentEditorKind.value) => {
-  if (kind === 'web') {
-    saveExecutionEnvironmentLibrary(localStorage, webExecutionEnvironmentLibrary.value, WEB_EXECUTION_ENV_LIBRARY_STORAGE_KEY)
-    return
-  }
-  saveExecutionEnvironmentLibrary(localStorage, executionEnvironmentLibrary.value)
-}
-
 const webLogoutActionOptions: Array<{ label: string; value: WebAutomationAction }> = [
   { label: '点击元素', value: 'click' },
   { label: '打开地址', value: 'goto' },
@@ -3008,13 +2753,7 @@ const openEnvironmentEditor = (
   environmentId?: string,
   kind: 'api' | 'web' = environmentEditorKind.value
 ) => {
-  environmentEditorTarget.value = kind
-  const library = kind === 'web' ? webExecutionEnvironmentLibrary.value : executionEnvironmentLibrary.value
-  const targetEnvironmentId = environmentId || library.activeEnvironmentId
-  const environment = library.environments.find((item) => item.id === targetEnvironmentId)
-    || library.environments[0]
-    || (kind === 'web' ? defaultWebExecutionEnvironmentLibrary() : defaultExecutionEnvironmentLibrary()).environments[0]
-  bindEditingEnvironment(environment, kind)
+  openEnvironmentEditorCore(environmentId, kind)
   curlImportText.value = ''
   webEnvironmentVerification.value = undefined
   environmentVisible.value = true
@@ -3051,100 +2790,18 @@ const returnToPreparationFromEnvironments = (kind: 'api' | 'web') => {
   })
 }
 
-const selectExecutionEnvironment = (environmentId: string, kind: 'api' | 'web' = environmentEditorKind.value) => {
-  if (kind === 'web') {
-    webExecutionEnvironmentLibrary.value = {
-      ...webExecutionEnvironmentLibrary.value,
-      activeEnvironmentId: environmentId
-    }
-    persistEnvironmentLibrary('web')
-    return
-  }
-  executionEnvironmentLibrary.value = {
-    ...executionEnvironmentLibrary.value,
-    activeEnvironmentId: environmentId
-  }
-  persistEnvironmentLibrary('api')
-}
-
 const addExecutionEnvironment = (kind: 'api' | 'web' = environmentEditorKind.value) => {
-  const library = kind === 'web' ? webExecutionEnvironmentLibrary.value : executionEnvironmentLibrary.value
-  const environment = kind === 'web'
-    ? newSavedWebExecutionEnvironment(`Web 环境 ${library.environments.length + 1}`)
-    : newSavedExecutionEnvironment(`环境 ${library.environments.length + 1}`)
-  const updatedLibrary = {
-    activeEnvironmentId: environment.id,
-    environments: [...library.environments, environment]
-  }
-  if (kind === 'web') {
-    webExecutionEnvironmentLibrary.value = updatedLibrary
-  } else {
-    executionEnvironmentLibrary.value = updatedLibrary
-  }
-  persistEnvironmentLibrary(kind)
+  const environment = addEnvironment(kind)
   openEnvironmentEditor(environment.id, kind)
 }
 
 const deleteExecutionEnvironment = async (environmentId: string, kind: 'api' | 'web' = environmentEditorKind.value) => {
-  const library = kind === 'web' ? webExecutionEnvironmentLibrary.value : executionEnvironmentLibrary.value
-  if (library.environments.length <= 1) {
-    ElMessage.warning('至少保留一个运行环境')
-    return
-  }
-  const target = library.environments.find((environment) => environment.id === environmentId)
-  const confirmed = await confirmDangerAction(
-    '删除运行环境',
-    `确认删除运行环境 ${target?.name || ''} 吗？`
-  )
-  if (!confirmed) return
-  const environments = library.environments.filter((environment) => environment.id !== environmentId)
-  const updatedLibrary = {
-    activeEnvironmentId: environments[0].id,
-    environments
-  }
-  if (kind === 'web') {
-    webExecutionEnvironmentLibrary.value = updatedLibrary
-  } else {
-    executionEnvironmentLibrary.value = updatedLibrary
-  }
-  persistEnvironmentLibrary(kind)
-  openEnvironmentEditor(environments[0].id, kind)
-  ElMessage.success('已删除运行环境')
+  const deleted = await deleteEnvironment(environmentId, kind)
+  if (deleted) openEnvironmentEditor(undefined, kind)
 }
 
 const saveEditingEnvironment = (kind: 'api' | 'web' = environmentEditorKind.value) => {
-  const validation = kind === 'web'
-    ? validateWebExecutionEnvironment(editingEnvironment)
-    : validateExecutionEnvironment(editingEnvironment)
-  if (!validation.valid) {
-    ElMessage.warning(validation.message)
-    return
-  }
-  const updated = {
-    ...cloneEnvironment(editingEnvironment),
-    updatedAt: new Date().toISOString()
-  }
-  if (kind === 'web') {
-    updated.web = normalizeWebExecutionRuntimeConfig(updated.web)
-    updated.web.cookieOrigins = []
-    updated.auth = { type: 'none' }
-    updated.entries = []
-  }
-  const library = kind === 'web' ? webExecutionEnvironmentLibrary.value : executionEnvironmentLibrary.value
-  const updatedLibrary = {
-    activeEnvironmentId: updated.id,
-    environments: library.environments.map((environment) =>
-      environment.id === updated.id ? updated : environment
-    )
-  }
-  if (kind === 'web') {
-    webExecutionEnvironmentLibrary.value = updatedLibrary
-  } else {
-    executionEnvironmentLibrary.value = updatedLibrary
-  }
-  persistEnvironmentLibrary(kind)
-  environmentVisible.value = false
-  ElMessage.success('运行环境已保存')
+  if (saveEnvironment(kind)) environmentVisible.value = false
 }
 
 const startWebLoginDiscovery = async () => {
@@ -3658,16 +3315,6 @@ function emptyWebEditRow(): WebAutomationCaseRow {
   }
 }
 
-function resolveInitialNav(): NavKey {
-  if (typeof window === 'undefined') return defaultNavKey
-  return navKeyFromPath(window.location.pathname)
-}
-
-function resolveInitialAutomationKind(): 'api' | 'web' {
-  if (typeof window === 'undefined') return 'api'
-  return automationKindFromPath(window.location.pathname)
-}
-
 function normalizeNavPath(pathname: string): string {
   if (!pathname || pathname === '/') return '/'
   return pathname.endsWith('/') ? pathname.slice(0, -1) || '/' : pathname
@@ -3682,37 +3329,13 @@ function handlePopState() {
   }
 }
 
-type AuthStatus = 'checking' | 'authenticated' | 'unauthenticated'
 type HomeWorkspaceStatus = 'ready' | 'loading' | 'empty' | 'unavailable' | 'forbidden' | 'error'
-const authStatus = ref<AuthStatus>('checking')
-const currentUser = ref<AuthUser | null>(null)
 const homeWorkspaceStatus = ref<HomeWorkspaceStatus>('loading')
 const homeWorkspaceError = ref('')
 const overviewStatus = ref<OverviewStatus>('unavailable')
 const overviewError = ref('')
 const overviewAvailabilityChecked = ref(false)
-let authDisposed = false
 let passwordOperation = 0
-const isCurrentAuth = (epoch: number): boolean => !authDisposed && epoch === getAuthSessionEpoch()
-const workspaceOperations = new Map<string, number>()
-function beginWorkspaceOperation(resource: string, templateLease = false): () => boolean {
-  if (resource === 'workspace' && !templateLease) templateConfigModule.invalidateWorkspace()
-  const epoch = getAuthSessionEpoch()
-  const operation = (workspaceOperations.get(resource) || 0) + 1
-  workspaceOperations.set(resource, operation)
-  return () => isCurrentAuth(epoch) && authStatus.value === 'authenticated'
-    && workspaceOperations.get(resource) === operation
-}
-
-function workspaceFetch(isCurrent: () => boolean) {
-  return async (input: string, init?: RequestInit): Promise<Response> => {
-    // Check BEFORE every stage: the repository can dispatch multiple requests.
-    if (!isCurrent()) throw new Error('Workspace operation expired')
-    const response = await authedFetch(input, init)
-    if (!isCurrent()) throw new Error('Workspace operation expired')
-    return response
-  }
-}
 
 // Project discovery proves access only; it is not a team/quality aggregate.
 const checkOverviewAvailability = async () => {
@@ -3740,7 +3363,7 @@ watch([activeNav, authStatus], () => {
   if (activeNav.value === 'overview' && authStatus.value === 'authenticated') void checkOverviewAvailability()
   else {
     // Keep sequence monotonic: leaving and returning must never reuse an old authority.
-    if (workspaceOperations.has('overview')) beginWorkspaceOperation('overview')
+    if (workspaceRuntime.hasOperation('overview')) beginWorkspaceOperation('overview')
     overviewStatus.value = 'unavailable'
     overviewError.value = ''
     overviewAvailabilityChecked.value = false
@@ -3751,32 +3374,14 @@ function resetWorkspaceState(): void {
   // Only clear in-memory state. Never delete another account's persistent keys.
   defects.resetDefectRecovery()
   templateConfigModule.invalidateWorkspace()
-  workspaceStorage.invalidate()
-  workspaceSessionStorage.invalidate()
-  stopBackgroundActivity()
   applyJiraConfig({ ...defaultJiraConfig(), maskedToken: undefined, updatedAt: undefined })
   jiraConfigReadState.value = 'idle'
   jiraConfigLoading.value = false
   jiraConfigTesting.value = false
-  webRunCapabilities.value = undefined
-  activeWebRunId.value = ''
-  activeWebRunSnapshot.value = undefined
-  activeWebRunCases.value = []
   finalizedWebRunId = ''
-  webAutomationRunning.value = false
+  webExecutionController.reset()
   apiAutomationRunning.value = false
-  apiRunGeneration += 1
-  apiRunConfirming.value = false
-  apiRunSnapshot.value = undefined
-  apiRunMonitor.value = undefined
-  apiAutomationWorkspaceMode.value = 'prepare'
-  Object.assign(apiAutomationProgress, { completed: 0, total: 0, runningCaseId: '' })
-  webRunConnectionState.value = 'idle'
-  webRunControlLoading.value = ''
-  webAutomationWorkspaceMode.value = 'workbench'
-  clearWebRunLocalMessages()
-  automationRunReport.value = undefined
-  webAutomationRunReport.value = undefined
+  apiExecutionController.reset()
   selectedAutomationResult.value = undefined
   selectedCase.value = undefined
   selectedLibraryId.value = undefined
@@ -3850,18 +3455,6 @@ function resetWorkspaceState(): void {
   webLoginDiscoveryDialogVisible.value = false
   webLoginDiscoveryLoading.value = false
   webLoginDiscoveryConfirming.value = false
-}
-
-function invalidateAuth(): void {
-  advanceAuthSessionEpoch()
-  casesModule.invalidateLibraryActions()
-  if (currentUser.value) writeWebMonitorQuery('workbench', '', 'replace')
-  resetWorkspaceState()
-  passwordOperation += 1
-  changePasswordDialogVisible.value = false
-  Object.assign(changePasswordForm, {
-    currentPassword: '', newPassword: '', confirmPassword: '', error: '', submitting: false
-  })
 }
 
 const currentUserInitials = computed(() => {
@@ -3954,61 +3547,6 @@ function stopBackgroundActivity(): void {
   webLoginDiscoveryAbortController?.abort()
 }
 
-function handleSessionExpired(): void {
-  // A failed login must keep its own error/finally path current.
-  if (authDisposed || authStatus.value === 'unauthenticated') return
-  invalidateAuth()
-  stopBackgroundActivity()
-  currentUser.value = null
-  authStatus.value = 'unauthenticated'
-}
-
-function onLoginSuccess(user: AuthUser): void {
-  if (authDisposed) return
-  invalidateAuth()
-  currentUser.value = user
-  // No stable identity => fail closed for persistence (do not adopt legacy keys).
-  const owner = typeof user.id === 'number' && Number.isSafeInteger(user.id) && user.id > 0 ? `user:${user.id}` : undefined
-  workspaceStorage.activate(owner)
-  workspaceSessionStorage.activate(owner)
-  authStatus.value = 'authenticated'
-  templateConfigModule.bindWorkspace()
-  loadWorkspaceData()
-  if (user.mustChangePassword) {
-    openChangePasswordDialog()
-  }
-}
-
-async function bootstrapAuth(): Promise<void> {
-  const epoch = getAuthSessionEpoch()
-  try {
-    const user = await fetchCurrentUser()
-    if (!isCurrentAuth(epoch)) return
-    if (user) {
-      onLoginSuccess(user)
-    } else {
-      authStatus.value = 'unauthenticated'
-    }
-  } catch {
-    if (isCurrentAuth(epoch)) authStatus.value = 'unauthenticated'
-  }
-}
-
-async function handleLogout(): Promise<void> {
-  if (authDisposed) return
-  invalidateAuth()
-  stopBackgroundActivity()
-  // logout() advances the shared epoch synchronously before its first await.
-  const pending = logout()
-  const epoch = getAuthSessionEpoch()
-  try {
-    await pending
-  } catch {
-    // Ignore logout failures — clear only the session that initiated this logout.
-  }
-  if (isCurrentAuth(epoch)) handleSessionExpired()
-}
-
 onMounted(() => {
   setUnauthorizedHandler(handleSessionExpired)
   window.addEventListener('popstate', handlePopState)
@@ -4017,8 +3555,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   authDisposed = true
-  invalidateAuth()
-  stopBackgroundActivity()
+  authSession.dispose()
   window.removeEventListener('popstate', handlePopState)
   window.removeEventListener('beforeunload', handleJiraBeforeUnload)
   window.removeEventListener('beforeunload', handleDefectBeforeUnload)
@@ -4202,6 +3739,8 @@ onBeforeUnmount(() => {
           :automation-kind="automationKind"
         >
         <template #api>
+        <ApiExecutionPage :active-nav="activeNav" :mode="apiAutomationWorkspaceMode">
+        <template #monitor>
         <ApiRunMonitorView
           v-if="automationKind === 'api' && apiRunMonitor"
           v-show="apiAutomationWorkspaceMode === 'monitor'"
@@ -4210,6 +3749,8 @@ onBeforeUnmount(() => {
           @return-preparation="returnApiRunPreparation"
           @open-report="openReportsModule"
         />
+        </template>
+        <template #preparation>
         <header v-if="automationKind === 'api'" v-show="apiAutomationWorkspaceMode === 'prepare'" class="topbar automation-topbar">
           <div class="automation-topbar__title">
             <h1>自动化</h1>
@@ -4462,6 +4003,8 @@ onBeforeUnmount(() => {
             </div>
           </div>
         </ResponsiveDrawer>
+        </template>
+        </ApiExecutionPage>
         </template>
         <template #web>
         <WebAutomationWorkspace

@@ -89,11 +89,11 @@ controller factory 接收窄端口，组件层可以通过 `provide/inject` 获�
 - Inspect: `apps/web/src/appShellStructure.test.ts`
 - Inspect: `apps/web/src/actionBarLayout.test.ts`
 
-- [ ] **Step 1: 保存完整工作区快照**
+- [x] **Step 1: 保存完整工作区快照**
 
   在第一次修改代码前记录 `git status --short --untracked-files=all`、`git diff --binary HEAD` 和 staged diff。工作区有未跟踪文件时，使用包含未跟踪文件的快照方式；不能只使用默认不会保存未跟踪文件的 `git stash create`。
 
-- [ ] **Step 2: 运行前端基线检查**
+- [x] **Step 2: 运行前端基线检查**
 
   在 `apps/web` 执行：
 
@@ -105,7 +105,7 @@ controller factory 接收窄端口，组件层可以通过 `provide/inject` 获�
 
   将每个命令的退出码、失败测试、失败原因和环境前提写入 `docs/superpowers/baselines/2026-11-19-app-vue-decomposition.md`。基线可以存在既有失败，但每个既有失败必须有明确记录。
 
-- [ ] **Step 3: 建立测试分类清单**
+- [x] **Step 3: 建立测试分类清单**
 
   将 App 测试分为三类并记录到基线文档：
 
@@ -113,7 +113,7 @@ controller factory 接收窄端口，组件层可以通过 `provide/inject` 获�
   2. 迁移到 controller 的业务状态测试。
   3. 只约束当前源码位置的结构测试，例如 `actionBarLayout.test.ts`。
 
-- [ ] **Step 4: 记录基线版本**
+- [x] **Step 4: 记录基线版本**
 
   保存当前 HEAD、工作区快照位置和基线命令输出。每个后续阶段完成后形成一个独立版本控制节点；不把重构阶段和无关业务改动混在同一节点中。
 
@@ -126,15 +126,15 @@ controller factory 接收窄端口，组件层可以通过 `provide/inject` 获�
 - Modify: `apps/web/src/App.vue:303-318, 3685-3715`
 - Modify: `apps/web/src/components/shell/AppShell.vue` only if a typed port is required by the shell
 
-- [ ] **Step 1: 写端口契约测试**
+- [x] **Step 1: 写端口契约测试**
 
   测试 fake `WorkspacePort` 的 operation lease：新 lease 使同 resource 的旧 lease 失效；不同 resource 的 lease 互不影响；未认证时所有 lease 返回 `false`。
 
-- [ ] **Step 2: 定义窄接口**
+- [x] **Step 2: 定义窄接口**
 
   `appPorts.ts` 只放跨域所需的类型和注入 key，不存业务数据、不创建 singleton、不调用 `window`；`NavKey` 从 `domain/appNavigation.ts` 引入，当前位于 `App.vue` 的 `NavHistoryMode` 在此处统一定义并由 App 删除本地副本。
 
-- [ ] **Step 3: 定义 controller 返回值约定**
+- [x] **Step 3: 定义 controller 返回值约定**
 
   每个 controller 返回明确的 readonly view state 和命令函数，例如：
 
@@ -173,19 +173,19 @@ controller factory 接收窄端口，组件层可以通过 `provide/inject` 获�
 - Modify: `apps/web/src/App.environmentsRoute.test.ts`
 - Modify: `apps/web/src/App.webRunStartSnapshot.test.ts` only where it asserts environment navigation
 
-- [ ] **Step 1: 写环境 controller 的失败测试**
+- [x] **Step 1: 写环境 controller 的失败测试**
 
   覆盖以下行为：初始化绑定 active environment；切换环境时 draft 未变更则直接切换；draft 有变更且确认取消时保留原 draft；保存后 dirty 变为 `false`；删除 active environment 后 active id 指向有效环境；API 与 Web 使用各自 storage key。
 
-- [ ] **Step 2: 抽环境库和编辑草稿状态**
+- [x] **Step 2: 抽环境库和编辑草稿状态**
 
   将 `executionEnvironmentLibrary`、`webExecutionEnvironmentLibrary`、`editingEnvironment`、`environmentEditorTarget`、draft comparable/dirty、选择/新增/删除/保存/取消逻辑移入 `useEnvironmentController`。复用现有 `executionEnvironmentRepository.ts` 的 clone、normalize、validate 和 build 函数。
 
-- [ ] **Step 3: 保留登录发现和登录验证在原边界**
+- [x] **Step 3: 保留登录发现和登录验证在原边界**
 
   `startWebLoginDiscovery`、`confirmAndApplyWebLoginDiscovery`、`verifyEditingWebEnvironmentLogin` 及对应弹窗先通过 controller 暴露的最小命令调用，暂不把 Web 长任务和登录 session 状态混入首个 controller。
 
-- [ ] **Step 4: 让环境页面消费 view model**
+- [x] **Step 4: 让环境页面消费 view model**
 
   `EnvironmentManagementView.vue` 继续只处理目录、搜索和 slot；编辑器通过 props 接收 controller 的 view model，通过 emits 发送 `select`、`save`、`discard` 等命令，不直接 import repository 或 App。
 
@@ -217,11 +217,11 @@ controller factory 接收窄端口，组件层可以通过 `provide/inject` 获�
 - Modify: `apps/web/src/App.workspaceBoundary.test.ts`
 - Modify: `apps/web/src/App.workspacePaths.test.ts`
 
-- [ ] **Step 1: 写 session operation lease 测试**
+- [x] **Step 1: 写 session operation lease 测试**
 
   覆盖 bootstrap 竞态、登出使旧请求失效、切换用户使旧 owner 失效、卸载使后台操作失效，以及同一 resource 的后发操作拒绝旧响应写回。
 
-- [ ] **Step 2: 抽 `useWorkspaceRuntime`**
+- [x] **Step 2: 抽 `useWorkspaceRuntime`**
 
   将 `workspaceOperations`、`beginWorkspaceOperation`、`workspaceFetch`、workspace storage capture/invalidate 和 owner 校验移入 runtime。runtime 不知道 defects、reports、cases 等具体模块，只返回 lease、fetch 和失效通知。
 
@@ -229,7 +229,7 @@ controller factory 接收窄端口，组件层可以通过 `provide/inject` 获�
 
   将 `bootstrapAuth`、`onLoginSuccess`、`handleLogout`、`handleSessionExpired` 和 change-password 生命周期移入 session。Session 通过 `onWorkspaceReset` 和 `onAuthenticated` 两个窄 callback 通知 App，不直接 import 任意业务 controller。
 
-- [ ] **Step 4: 建立显式 reset 清单**
+- [x] **Step 4: 建立显式 reset 清单**
 
   App 仍负责调用各 feature 的 `reset`，但将调用表集中为 `resetFeatureState()`，逐项覆盖 template、cases、defects、reports、API run、Web run、environment、Jira、dialogs。新 feature 加入时必须增加 reset 测试。
 
@@ -262,7 +262,7 @@ controller factory 接收窄端口，组件层可以通过 `provide/inject` 获�
 
   覆盖运行快照冻结、循环次数校验、并发/顺序参数、monitor 事件顺序、旧 run generation 丢弃迟到结果、执行完成后报告保存和运行期间环境抽屉关闭。
 
-- [ ] **Step 2: 抽 API 执行状态机**
+- [x] **Step 2: 抽 API 执行状态机**
 
   将 `apiRunSnapshot`、`apiRunMonitor`、`apiAutomationRunning`、progress、确认和 `executeApiAutomationCases` 迁入 controller。controller 只通过 `WorkspacePort`、执行 repository、报告 repository 和 `NoticePort` 工作。
 
@@ -365,15 +365,15 @@ controller factory 接收窄端口，组件层可以通过 `provide/inject` 获�
 - Modify: `apps/web/src/ui/useCases.test.ts`
 - Modify: `apps/web/src/components/views/CasesView.integration.test.ts`
 
-- [ ] **Step 1: 暴露显式 `createCasesState`**
+- [x] **Step 1: 暴露显式 `createCasesState`**
 
   将 cases state 创建函数变成可测试的显式 factory；它接收 storage 和窄端口，不再依赖模块级可变 singleton。
 
-- [ ] **Step 2: 建立 App 级 provider**
+- [x] **Step 2: 建立 App 级 provider**
 
   App 创建一个 cases controller 实例，通过 `InjectionKey<CasesController>` 提供给 `CasesView`。`CasesView` 只通过 `useCasesProvider()` 获取实例，缺少 provider 时立即抛出明确错误。
 
-- [ ] **Step 3: 保留独立单元测试能力**
+- [x] **Step 3: 保留独立单元测试能力**
 
   `useCases.test.ts` 直接调用 `createCasesState`；`CasesView.integration.test.ts` 使用测试 provider；App 集成测试只验证 provider 被正确组装。
 

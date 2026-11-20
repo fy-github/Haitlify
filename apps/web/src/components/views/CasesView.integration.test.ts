@@ -1,10 +1,9 @@
 // @vitest-environment jsdom
 // View-level integration test: mounts the real CasesView with ElementPlus and verifies
 // it renders seeded library data without a backend.
-// NOTE: useCases is a module-level singleton shared with App.vue, so each scenario re-imports
-// the view through vi.resetModules() to get a fresh singleton + fresh localStorage.
+// Each scenario creates a controller and provides it to the real view.
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { nextTick } from 'vue'
+import { defineComponent, h, nextTick } from 'vue'
 import { mount } from '@vue/test-utils'
 import ElementPlus from 'element-plus'
 import { CASE_LIBRARY_STORAGE_KEY, type SavedInterfaceCase } from '../../domain/caseRepository'
@@ -76,10 +75,15 @@ type ViewDeps = {
 
 const loadView = async (deps: ViewDeps = {}) => {
   vi.resetModules()
-  const { useCases } = await import('../../ui/useCases')
-  useCases(deps as never)
+  const { provideCases, useCases } = await import('../../ui/useCases')
+  const controller = useCases({ storage: window.localStorage, ...deps } as never)
   const { default: CasesView } = await import('./CasesView.vue')
-  return CasesView as unknown as { new (): unknown }
+  return defineComponent({
+    setup() {
+      provideCases(controller)
+      return () => h(CasesView)
+    }
+  }) as unknown as { new (): unknown }
 }
 
 const nextFrame = () => new Promise((resolve) => setTimeout(resolve, 0))

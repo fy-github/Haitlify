@@ -5,6 +5,7 @@ declare const process: { cwd: () => string }
 const path = `${process.cwd()}/src/styles/environment-controls.css`
 const css = existsSync(path) ? readFileSync(path, 'utf8') as string : ''
 const app = readFileSync(`${process.cwd()}/src/App.vue`, 'utf8') as string
+const apiController = readFileSync(`${process.cwd()}/src/ui/useApiExecutionController.ts`, 'utf8') as string
 
 describe('environment / runtime controls use their own archived variants', () => {
   it('keeps environment-v1 save, cancel and dangerous actions distinct', () => {
@@ -53,7 +54,7 @@ describe('environment / runtime controls use their own archived variants', () =>
     expect(css).toContain('border-color: transparent')
   })
   it('assigns explicit classes to run confirmation vs destructive environment confirmation', () => {
-    expect(app).toContain("customClass: 'api-execution-confirm'")
+    expect(`${app}\n${apiController}`).toContain("customClass: 'api-execution-confirm'")
     expect(app).toContain("environment-danger-confirm")
     expect(app).toContain("environment-discard-confirm")
   })

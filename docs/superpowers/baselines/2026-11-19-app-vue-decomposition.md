@@ -1,0 +1,71 @@
+# App.vue 拆分基线
+
+日期：2026-11-19
+
+## 工作区
+
+- 分支：`main`
+- 基线提交：`31ce987da7ea95664e6a79489925d001f4e121f3`
+- 进入 Phase 0 时已确认工作区没有业务代码的 staged 或 unstaged 修改。
+- 方案文件 `docs/superpowers/plans/2026-11-19-app-vue-decomposition.md` 已存在于基线提交中。
+- 已在执行前保存工作区和索引二进制快照；快照内容为空，表示执行前没有待保护的代码差异。
+
+## 基线命令
+
+命令均在 `apps/web` 目录执行。
+
+| 命令 | 结果 |
+|---|---|
+| `npm run test -- --run` | 通过：197 个测试文件，1584 个测试 |
+| `npx vue-tsc --noEmit` | 通过 |
+| `npm run build` | 通过 |
+
+## 已知构建提示
+
+- Lightning CSS 报告现有 `.jira-config-switch :deep(.el-switch__label)` 使用了非标准 pseudo-class 写法，建议使用 `::deep`；本次基线不修改。
+- Vite 报告构建后 JavaScript chunk 超过 500 kB；本次基线不修改，不能归因于 App.vue 拆分。
+
+## Phase 1 端口与环境试点
+
+- 新增 `apps/web/src/ui/appPorts.ts`，定义 navigation/workspace/notice 三个窄端口和注入 key。
+- 新增 `apps/web/src/ui/useEnvironmentController.ts`，承载 API/Web 环境库、编辑草稿、选择、新增、删除、保存和 dirty guard。
+- Web 登录发现、登录验证、curl 导入和弹窗可见性仍由 App 协调，未混入首个 controller。
+- `App.vue` 已使用 environment controller 提供的状态和核心命令；现有环境页 props/events 保持兼容。
+- `src/ui/appPorts.test.ts`、`src/ui/useEnvironmentController.test.ts`、环境页和 App 回归测试通过：6 个端口/环境单测，17 个环境集成测试，65 个相关回归测试。
+- `npx vue-tsc --noEmit` 通过。
+
+## Phase 3 API/Web execution state
+
+- 新增 `useApiExecutionController`，接管 API 运行参数、计数校验、确认快照、执行副作用、monitor、报告保存和 generation。
+- 新增 `ApiExecutionPage.vue` 页面边界，保持现有 API slot、focus、scroll 和 `data-testid` 契约。
+- 新增 `useWebExecutionController`，接管 Web 执行准备和 run 状态；Web 长任务函数暂时继续使用原 App handler，后续按同一端口模式迁移。
+- 新增 `useAppNavigation`，接管初始导航状态和 API/Web automation kind；history/离开守卫仍由 App 保持。
+- API/Web 相关 controller、App 集成和结构测试通过；全量基线验证：204 个测试文件，1603 个测试。
+- `npx vue-tsc --noEmit` 和 `npm run build` 通过。
+
+## Phase 4 cases provider
+
+- `useCases` 已改为显式 `createCasesState` 加 App 级 `provide/inject`，移除 module-level singleton。
+- `CasesView` 通过 provider 获取 controller，单元测试和视图集成测试可分别创建独立实例。
+- 用例库、CasesView 和 App 集成相关 36 个测试通过，类型检查通过。
+
+## Latest verification
+
+- `npm run test -- --run`: 204 个测试文件通过，1603 个测试通过。
+- `npx vue-tsc --noEmit`: 通过。
+- `npm run build`: 通过。
+- 构建仍保留基线中的 Lightning CSS `:deep` 提示和 chunk 体积提示。
+
+## Phase 2 workspace/session
+
+- 新增 `apps/web/src/ui/useWorkspaceRuntime.ts`，负责 workspace manager、owner 激活/失效、operation lease、operation id 和 guarded fetch。
+- 新增 `apps/web/src/ui/useAppSession.ts`，负责认证 bootstrap、登录 owner 激活、登出、401 会话失效和卸载清理。
+- App 保留 feature reset 清单，通过 session callback 执行；session 不 import cases、defects、reports 或 template。
+- `useWorkspaceRuntime.test.ts`、`useAppSession.test.ts` 与认证/session/workspace App 测试通过：10 个测试文件，115 个测试。
+- `npx vue-tsc --noEmit` 通过。
+
+## 重构护栏
+
+- 后续阶段出现的测试、类型或构建失败，先与本文件中的基线结果比较，再判断是否由本阶段引入。
+- 基线提示保持单独记录，不在 App.vue 拆分过程中顺手修复。
+- 每个阶段完成后更新本文件的验证记录，并形成独立版本控制节点。

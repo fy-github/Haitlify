@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import appSource from './App.vue?raw'
+import apiControllerSource from './ui/useApiExecutionController.ts?raw'
 
 describe('Automation execution layout', () => {
   it('keeps the API topbar focused on the automation task without duplicate API labels', () => {
@@ -69,7 +70,7 @@ describe('Automation execution layout', () => {
   it('keeps API and Web loop counts independent', () => {
     expect(appSource).toContain(':value="apiRunCountInput"')
     expect(appSource).toContain('@input="onApiRunCountInput"')
-    expect(appSource).toContain('automationRunMode.value === \'concurrent\' ? automationConcurrencyLimit.value : apiAutomationLoopCount.value')
+    expect(apiControllerSource).toContain('automationRunMode.value === \'concurrent\' ? automationConcurrencyLimit.value : apiAutomationLoopCount.value')
     expect(appSource).toContain('loopCount: webAutomationLoopCount.value')
     expect(appSource).toContain('@update-loop-count="updateWebAutomationLoopCount"')
   })

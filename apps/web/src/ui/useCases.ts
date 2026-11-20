@@ -1,4 +1,5 @@
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, inject, provide, reactive, ref, watch } from 'vue'
+import type { InjectionKey } from 'vue'
 import { ElMessage } from 'element-plus'
 import { missingDep } from './depGuard'
 import {
@@ -80,10 +81,6 @@ export interface CasesDeps {
   onProjectDataSelected?: (event: Event) => void
 }
 
-// Module-level singleton so App.vue (sidebar pane + generation/automation
-// bridges) and CasesView.vue share the same case-library state.
-let singleton: ReturnType<typeof createCasesState> | null = null
-
 function moveArrayItem<T>(items: T[], from: number, to: number): T[] {
   const next = [...items]
   const [item] = next.splice(from, 1)
@@ -91,7 +88,14 @@ function moveArrayItem<T>(items: T[], from: number, to: number): T[] {
   return next
 }
 
-function createCasesState(deps: CasesDeps) {
+export type CasesController = ReturnType<typeof createCasesState>
+export const casesControllerKey: InjectionKey<CasesController> = Symbol('cases-controller')
+
+export const provideCases = (controller: CasesController): void => {
+  provide(casesControllerKey, controller)
+}
+
+export function createCasesState(deps: CasesDeps) {
   const localStorage = deps.storage ?? window.localStorage
   const confirmDanger = deps.confirmDanger ?? (async () => missingDep('useCases', 'confirmDanger'))
   const navigateToNav = deps.navigateToNav ?? (() => missingDep('useCases', 'navigateToNav'))
@@ -682,7 +686,9 @@ function createCasesState(deps: CasesDeps) {
   }
 }
 
-export const useCases = (deps: CasesDeps = {}): ReturnType<typeof createCasesState> => {
-  if (!singleton || deps.storage) singleton = createCasesState(deps)
-  return singleton
+export const useCases = (deps: CasesDeps = {}): CasesController => {
+  if (deps.storage) return createCasesState(deps)
+  const controller = inject(casesControllerKey, null)
+  if (!controller) throw new Error('Cases controller is not provided')
+  return controller
 }
