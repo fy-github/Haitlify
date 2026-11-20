@@ -7,6 +7,9 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import appSource from './App.vue?raw'
+import syncSource from './ui/useWorkspaceSync.ts?raw'
+import environmentSource from './components/automation/EnvironmentEditorPanel.vue?raw'
+import editorSource from './components/cases/CaseEditorDrawer.vue?raw'
 
 const studioCanvasStyles = readFileSync(new URL('./styles/studio-canvas.css', import.meta.url), 'utf8')
 
@@ -28,16 +31,14 @@ describe('App shell structure', () => {
   })
 
   it('derives the topbar sync state with conflicts taking priority', () => {
-    expect(appSource).toContain("const workspaceSyncState = computed<'synced' | 'syncing' | 'conflict'>(() => {")
-    expect(appSource).toContain("if (workspaceSyncConflict.value) return 'conflict'")
-    expect(appSource).toContain("if (workspaceSyncLoading.value) return 'syncing'")
+    expect(syncSource).toContain("const workspaceSyncState = computed<'synced' | 'syncing' | 'conflict'>(() => {")
+    expect(syncSource).toContain("if (workspaceSyncConflict.value) return 'conflict'")
+    expect(syncSource).toContain("if (workspaceSyncLoading.value) return 'syncing'")
     expect(appSource).toContain(':sync-state="workspaceSyncState"')
   })
 
   it('keeps the Web execution environment drawer runtime parameters', () => {
-    const drawerStart = appSource.indexOf('v-model="environmentVisible"')
-    const drawerEnd = appSource.indexOf('v-model="automationLogVisible"', drawerStart)
-    const drawerBlock = appSource.slice(drawerStart, drawerEnd)
+    const drawerBlock = environmentSource
 
     for (const label of ['Web 访问入口', '浏览器', '视口', 'Headless', '默认等待超时', '页面加载超时', '等待页面状态', '失败重试次数']) {
       expect(drawerBlock).toContain(label)
@@ -51,13 +52,13 @@ describe('App shell structure', () => {
   })
 
   it('allows editing Web automation cases with runtime environment settings', () => {
-    const editStart = appSource.indexOf('v-model="editVisible"')
-    const editEnd = appSource.indexOf('v-model="curlVisible"', editStart)
+    const editStart = editorSource.indexOf('v-model="editVisible"')
+    const editEnd = editorSource.indexOf('</ResponsiveDrawer>', editStart)
     // The block must stay bounded: a missing sentinel used to degrade this into
     // "whole rest of file", where every label matched outside the drawer.
     expect(editStart).toBeGreaterThan(-1)
     expect(editEnd).toBeGreaterThan(editStart)
-    const editBlock = appSource.slice(editStart, editEnd)
+    const editBlock = editorSource.slice(editStart, editEnd)
 
     for (const label of ['运行环境', '应用访问地址', '浏览器', '视口', '等待策略', '截图策略', '失败重试次数']) {
       expect(editBlock).toContain(label)

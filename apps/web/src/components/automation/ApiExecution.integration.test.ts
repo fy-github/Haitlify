@@ -1,3 +1,4 @@
+import { getAppState } from '../../ui/appTestAccess'
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
@@ -28,7 +29,7 @@ async function boot() {
   const { default: App } = await import('../../App.vue')
   wrapper = mount(App as never, { global: { plugins: [ElementPlus] } })
   await flushPromises()
-  const state = (wrapper.vm.$ as any).setupState
+  const state = getAppState(wrapper)
   state.automationCases = [structuredClone(testCase)]
   state.executionEnvironmentLibrary = { activeEnvironmentId: 'env-one', environments: [{ id: 'env-one', name: '测试环境', baseUrl: 'https://fixture.test', auth: { type: 'none' }, entries: [], updatedAt: '' }] }
   return { state, executed }

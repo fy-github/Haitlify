@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import appSource from './App.vue?raw'
+import admissionSource from './ui/webRunAdmission.ts?raw'
+import lifecycleSource from './ui/webRunLifecycle.ts?raw'
 
 describe('legacy configuration retirement', () => {
   it('removes the retired legacy AI domain modules from the bundle graph', () => {
@@ -37,9 +39,9 @@ describe('legacy configuration retirement', () => {
       'getWebCaseAgentRun', 'listWebCaseAgentEvents', 'listWebCaseAgentArtifacts', 'cancelWebCaseAgentRun']) {
       expect(appSource, symbol).not.toMatch(new RegExp(`\\b${symbol}\\b`))
     }
-    expect(appSource).toContain('await createWebAutomationRun(casesToRun,')
-    expect(appSource).toContain('await getWebAutomationRun(runId)')
-    expect(appSource).toContain('appendAutomationReport(localStorage, reportRecord)')
+    expect(admissionSource).toContain('await api.createWebAutomationRun(frozen.cases,')
+    expect(lifecycleSource).toContain('await api.getWebAutomationRun(runId)')
+    expect(lifecycleSource).toContain('appendAutomationReport(ports.storage, record)')
   })
   it('does not retain the retired multi-agent HTTP call chain', () => {
     for (const symbol of ['aiMultiAgentRunRepository', 'startAiReview', 'startCaseAiReview',

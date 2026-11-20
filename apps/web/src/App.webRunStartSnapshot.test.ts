@@ -1,3 +1,4 @@
+import { getAppState } from './ui/appTestAccess'
 // @vitest-environment jsdom
 // Web 执行发起:确认 → 快照 → POST。跨 await 期间改动 live state 不得进入提交体。
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -128,7 +129,7 @@ const mountWeb = async (projectsGate?: Deferred, snapshot = runSnapshot(), recov
   await flushPromises()
   await vi.waitFor(() => expect(document.querySelector('[data-testid="web-automation-workspace"]')).toBeTruthy())
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const s = ((wrapper.vm as unknown as { $: { setupState: unknown } }).$).setupState as any
+  const s = getAppState(wrapper) as any
   s.webAutomationSelectedIds = [CASES[0].id]
   await flushPromises()
   return { wrapper, s, posts, requests }

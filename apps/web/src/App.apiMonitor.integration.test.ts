@@ -1,3 +1,4 @@
+import { getAppState } from './ui/appTestAccess'
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
@@ -27,7 +28,7 @@ const setup = async () => {
   }))
   const { default: App } = await import('./App.vue')
   const wrapper = mount(App, { global: { plugins: [ElementPlus] } }); wrappers.push(wrapper)
-  const s = (wrapper.vm as unknown as { $: { setupState: Record<string, any> } }).$.setupState
+  const s = getAppState(wrapper)
   await vi.waitFor(() => expect(s.authStatus).toBe('authenticated'))
   await flushPromises()
   s.automationCases = [fixture('A'), fixture('B')]

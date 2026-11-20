@@ -1,3 +1,4 @@
+import { getAppState } from './ui/appTestAccess'
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
@@ -22,10 +23,7 @@ const init = async (fetcher: ReturnType<typeof vi.fn>) => {
   return { wrapper, http }
 }
 // Retain the setup object to observe writes after Vue has removed the DOM.
-const stateOf = (w: ReturnType<typeof mount>) => (w.vm.$ as unknown as { setupState: {
-  currentUser: typeof actor | null; authStatus: string; changePasswordDialogVisible: boolean;
-  changePasswordForm: { error: string; submitting: boolean; currentPassword: string; newPassword: string; confirmPassword: string }
-} }).setupState
+const stateOf = (w: ReturnType<typeof mount>) => getAppState(w)
 
 const authSnapshot = (w: ReturnType<typeof mount>) => {
   const s = stateOf(w)

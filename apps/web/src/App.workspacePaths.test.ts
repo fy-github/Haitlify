@@ -1,3 +1,4 @@
+import { getAppState } from './ui/appTestAccess'
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
@@ -25,7 +26,7 @@ async function setup(route?: (url: string, init?: RequestInit) => Promise<Respon
   vi.stubGlobal('fetch', fetch)
   const { default: App } = await import('./App.vue')
   const w = mount(App as never, { global: { plugins: [ElementPlus] } }); wrappers.push(w)
-  const s = ((w.vm as any).$ as any).setupState
+  const s = getAppState(w)
   await flushPromises()
   return { w, s, fetch }
 }
@@ -250,7 +251,7 @@ it('workspace singleton state rebinds to a new App owner on remount', async () =
   s.handleSessionExpired(); w.unmount(); wrappers.splice(wrappers.indexOf(w), 1)
   const { default: App } = await import('./App.vue')
   const next = mount(App as never, { global: { plugins: [ElementPlus] } }); wrappers.push(next)
-  await flushPromises(); const fresh = ((next.vm as any).$ as any).setupState
+  await flushPromises(); const fresh = getAppState(next)
   const { appendAutomationReport } = await import('./domain/automationReportRepository')
   appendAutomationReport(fresh.localStorage, { ...reportFields, reportId: 'new-app', name: 'new', project: 'new', results: [], summary: {} } as any)
   fresh.refreshAutomationReports()

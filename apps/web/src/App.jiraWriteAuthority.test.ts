@@ -1,3 +1,4 @@
+import { getAppState } from './ui/appTestAccess'
 // @vitest-environment jsdom
 // 复核轮 2(R14/R16/R17):Jira 页写入口的「只读角色拒绝」与「确认回调跨 owner 不生效」。
 // 契约:一个 authority —— 发起时固定会话 epoch/operation,await 之后用同一口径校验,
@@ -103,7 +104,7 @@ const mountApp = async (path: string, options: { user?: Record<string, unknown>;
   await flushPromises()
   await flushPromises()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const s = ((wrapper.vm as any).$).setupState
+  const s = getAppState(wrapper)
   return { wrapper, s, ...stub }
 }
 

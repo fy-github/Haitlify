@@ -1,3 +1,4 @@
+import { getAppState } from './ui/appTestAccess'
 // @vitest-environment jsdom
 // 模板配置保存:后端不可用(本地兜底)时不得对外声称"已保存"。
 // 与设置代理的契约:App 的 persistTemplateConfig 在 source==='local' 时抛出明确错误,
@@ -39,7 +40,7 @@ it('模板配置仅写入本地时保存状态为 failed 且给出明确原因',
   const { default: App } = await import('./App.vue')
   const wrapper = mount(App as never, { global: { plugins: [ElementPlus] }, attachTo: document.body })
   await flushPromises()
-  const s = ((wrapper.vm as unknown as { $: { setupState: any } }).$).setupState
+  const s = getAppState(wrapper)
 
   s.templateConfigModule.patchField('caseId', { label: '本地草稿' })
   await flushPromises()

@@ -69,3 +69,12 @@
 - 后续阶段出现的测试、类型或构建失败，先与本文件中的基线结果比较，再判断是否由本阶段引入。
 - 基线提示保持单独记录，不在 App.vue 拆分过程中顺手修复。
 - 每个阶段完成后更新本文件的验证记录，并形成独立版本控制节点。
+
+## 2026-11-20 阶段核查
+
+- 已建立阶段提交 `01cbbfd`；本轮将剩余页面/弹层拆分和测试迁移单独记录为下一节点。`App.vue` 共 161 行，脚本约 17 行；三个 controller 分别为 359、363、108 行，均未超过 400 行，也没有反向 import `App.vue` 或互相 import。
+- `appWorkspace.ts` 仍为 951 行，承担跨 feature 组装、状态桥接和模型适配，包含较宽的 `presentation` 和仅在 test mode 创建的 `testAccess`。虽然不属于单个业务 controller，也不再直接位于 App，但仍是架构集中点，不能单凭 App 行数宣布整个依赖解耦已经完成。
+- 21 个 App 测试文件中有 16 个通过 `getAppState` 读取测试专用暴露状态；App 测试不再直接访问 `setupState`，但测试仍依赖宽的内部状态接口。其他两个组件测试仍读取 `setupState`，不属于本次 App 测试迁移范围。`useCasesProvider.test.ts` 新增并存实例及卸载隔离回归。
+- API 移动端计数布局测试改为读取实际样式归属 `ApiExecutionPage.vue`；环境页相关类型导入改为 `appPorts.ts`。所有结构扫描测试保留原断言，未通过删除测试规避失败。
+- 本轮最终检查：`npm run test -- --run` 206 文件、1608 测试通过；`npx vue-tsc --noEmit` 和 `npm run build` 通过，`git diff --check` 通过。构建仍有基线已知的 `:deep` 和 chunk 大小提示。
+- 尚未完成计划中更严格的测试迁移：API/Web controller 的运行副作用仍主要由 App 集成测试护航，未完全用 fake ports 独立覆盖；Web 全量生命周期及导航 URL/守卫边界测试仍需补齐。`getAppState` 需逐步收窄为 typed fixture 或 UI 断言，不将测试专用接口作为长期业务 API。

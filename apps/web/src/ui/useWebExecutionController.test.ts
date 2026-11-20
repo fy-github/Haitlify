@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { createWebExecutionController } from './useWebExecutionController'
+import { createWebExecutionState } from './useWebExecutionController'
 
 describe('useWebExecutionController', () => {
   it('owns the Web execution preparation and run state', () => {
-    const controller = createWebExecutionController()
+    const controller = createWebExecutionState()
 
     controller.webAutomationRunMode.value = 'concurrent'
     controller.webAutomationLoopCount.value = 3
@@ -23,7 +23,7 @@ describe('useWebExecutionController', () => {
   })
 
   it('clears local run messages without touching selected cases', () => {
-    const controller = createWebExecutionController()
+    const controller = createWebExecutionState()
     controller.webAutomationSelectedIds.value = ['case-1']
     controller.webRunCreationError.value = 'create failed'
     controller.webRunInterruptionMessage.value = 'interrupted'

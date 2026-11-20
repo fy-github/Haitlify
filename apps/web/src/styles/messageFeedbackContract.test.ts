@@ -108,7 +108,7 @@ describe('Persistent message feedback contracts', () => {
     const recovery = bounded(app, '<section v-if="templateConfigModule.recovery?.reason"', '<DefectFailureBanner')
     expect(recovery).toContain('data-message-level="warning"')
     expect(recovery).toContain('aria-live="assertive"')
-    const offline = bounded(app, '<div v-if="!isOnline"', '<template v-if="isCaseWorkbenchNav"')
+    const offline = bounded(app, '<div v-if="!isOnline"', '<AppRouteView')
     expect(offline).toContain('data-message-level="info"')
     expect(rule(canvas, '.studio-offline-notice')).toContain('display: grid')
   })

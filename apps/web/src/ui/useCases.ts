@@ -604,6 +604,15 @@ export function createCasesState(deps: CasesDeps) {
   )
 
   return {
+    resetWorkspace: () => {
+      Object.assign(bulkEditForm, { matchValue: '', targetValue: '' })
+      Object.assign(fieldAssignmentForm, { path: '', value: '' })
+      Object.assign(libraryFilter, { project: 'ALL', module: 'ALL', keyword: '' })
+      librarySelection.value = []
+      bulkEditVisible.value = false
+      fieldAssignmentVisible.value = false
+      refreshSavedCases()
+    },
     librarySelection,
     libraryPage,
     libraryPageSize,

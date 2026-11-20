@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import appSource from './App.vue?raw'
+import appSource from './components/automation/AutomationConversionDialog.vue?raw'
 import casesViewSource from './components/views/CasesView.vue?raw'
 
 describe('Web case library actions', () => {

@@ -1,3 +1,4 @@
+import { getAppState } from './ui/appTestAccess'
 // @vitest-environment jsdom
 // Jira 配置:真实 App.vue 集成测试(挂载真实组件 + 可控 fetch 桩)。
 // 覆盖审计 read-only-admin 提出的失败路径:保存/测试竞态、token/JQL dirty、
@@ -112,7 +113,7 @@ const mountApp = async (path: string, fetchImpl: unknown): Promise<MountedApp> =
   mountedApps.push(wrapper)
   await flushPromises()
   await vi.waitFor(() => expect(document.querySelector('h1')).toBeTruthy())
-  const s = ((wrapper.vm as unknown as { $: { setupState: unknown } }).$).setupState
+  const s = getAppState(wrapper)
   return { wrapper, s: s as never }
 }
 

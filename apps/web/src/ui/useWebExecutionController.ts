@@ -1,12 +1,12 @@
 import { ref, shallowRef } from 'vue'
 import type { Ref, ShallowRef } from 'vue'
-import { createWebRunPollCoordinator } from '../domain/webAutomationRunSession'
 import type { WebAutomationCapabilities, WebAutomationRunSnapshot } from '../domain/webAutomationRunRepository'
 import type { SavedWebAutomationRunCase } from '../domain/webAutomationRepository'
 import type { WebAutomationRunMode, WebAutomationRunReport } from '../domain/webAutomation'
 import type { WebCaseStatusFilter } from '../components/automation/WebAutomationCaseTable.vue'
-
-type WebRunPollCoordinator = ReturnType<typeof createWebRunPollCoordinator>
+import type { WebExecutionPorts } from './webExecutionPorts'
+import { createWebRunLifecycle } from './webRunLifecycle'
+import { createWebRunAdmission } from './webRunAdmission'
 
 export interface WebExecutionController {
   webAutomationRunning: Ref<boolean>
@@ -26,12 +26,11 @@ export interface WebExecutionController {
   webAutomationTableScrollLeft: Ref<number>
   webRunCreationError: Ref<string>
   webRunInterruptionMessage: Ref<string>
-  webRunPollCoordinator: WebRunPollCoordinator
   clearLocalMessages(): void
   reset(): void
 }
 
-export const createWebExecutionController = (): WebExecutionController => {
+export const createWebExecutionState = (): WebExecutionController => {
   const webAutomationRunning = ref(false)
   const webAutomationRunMode = ref<WebAutomationRunMode>('sequential')
   const webAutomationLoopCount = ref(1)
@@ -49,14 +48,12 @@ export const createWebExecutionController = (): WebExecutionController => {
   const webAutomationTableScrollLeft = ref(0)
   const webRunCreationError = ref('')
   const webRunInterruptionMessage = ref('')
-  const webRunPollCoordinator = createWebRunPollCoordinator()
 
   const clearLocalMessages = (): void => {
     webRunCreationError.value = ''
     webRunInterruptionMessage.value = ''
   }
   const reset = (): void => {
-    webRunPollCoordinator.stop()
     webAutomationRunning.value = false
     webAutomationRunMode.value = 'sequential'
     webAutomationLoopCount.value = 1
@@ -93,8 +90,19 @@ export const createWebExecutionController = (): WebExecutionController => {
     webAutomationTableScrollLeft,
     webRunCreationError,
     webRunInterruptionMessage,
-    webRunPollCoordinator,
     clearLocalMessages,
     reset
   }
+}
+
+export function createWebExecutionController(ports: WebExecutionPorts) {
+  const state = createWebExecutionState()
+  const lifecycle = createWebRunLifecycle(state, ports)
+  const startVisualWebAutomationRun = createWebRunAdmission(state, ports, lifecycle)
+  const reset = () => {
+    lifecycle.stopPolling()
+    lifecycle.clearFinalizedRun()
+    state.reset()
+  }
+  return { ...state, ...lifecycle, startVisualWebAutomationRun, reset }
 }

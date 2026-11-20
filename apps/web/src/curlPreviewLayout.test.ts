@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest'
 declare const process: { cwd: () => string }
 
 // Source contract supplements (does not replace) real-App browser geometry.
-const source = readFileSync(`${process.cwd()}/src/App.vue`, 'utf8')
+const source = readFileSync(`${process.cwd()}/src/components/automation/CurlPreviewDrawer.vue`, 'utf8')
 const template = parse(source).descriptor.template!.content
 
 describe('cURL preview drawer responsive width', () => {

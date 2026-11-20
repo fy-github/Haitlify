@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 declare const process: { cwd: () => string }
 
-const app = readFileSync(`${process.cwd()}/src/App.vue`, 'utf8') as string
+const app = readFileSync(`${process.cwd()}/src/components/views/ApiExecutionPage.vue`, 'utf8') as string
 const css = readFileSync(`${process.cwd()}/src/styles/studio-canvas.css`, 'utf8') as string
 const block = (selector: string): string => {
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')

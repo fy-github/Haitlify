@@ -1,3 +1,4 @@
+import { getAppState } from './ui/appTestAccess'
 // @vitest-environment jsdom
 // Real App/bootstrap/storage wiring; adapted from the independent cross-path oracle.
 import { afterEach, expect, it, vi } from 'vitest'
@@ -30,7 +31,7 @@ it.each(['resetConfig', 'removeField', 'removeCaseTemplate', 'removeCaseType'])(
   vi.stubGlobal('fetch', fetch)
   const { default: App } = await import('./App.vue')
   wrapper = mount(App as never, { global: { plugins: [ElementPlus] } })
-  const s = (wrapper.vm.$ as any).setupState
+  const s = getAppState(wrapper)
   await flushPromises()
   let resolve!: (value: any) => void
   const confirmation = new Promise<any>(done => { resolve = done })

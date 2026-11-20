@@ -1,3 +1,4 @@
+import { getAppState } from './ui/appTestAccess'
 // @vitest-environment jsdom
 // App-level smoke test: mounts the real App.vue (the single wired creation point for every
 // ui/ singleton) with an expired session and verifies it falls back to the login screen.
@@ -222,7 +223,7 @@ describe('App.vue integration', () => {
     const wrapper = mount(App as never, { global: { plugins: [ElementPlus] } })
     try {
       await vi.waitFor(() => expect(wrapper.find('[data-testid="home-open-chain"]').exists()).toBe(true))
-      const state = (wrapper.vm as never as { $: { setupState: Record<string, any> } }).$.setupState
+      const state = getAppState(wrapper)
       expect(state.homeWorkspaceStatus).toBe('empty')
       expect(wrapper.find('[data-home-state="empty"]').exists()).toBe(true)
     } finally {
@@ -329,7 +330,7 @@ describe('App.vue integration', () => {
     const wrapper = mount(App as never, { global: { plugins: [ElementPlus] } })
     try {
       await vi.waitFor(() => expect(wrapper.find('[data-work-id="nav-library-2"]').exists()).toBe(true))
-      const state = (wrapper.vm as never as { $: { setupState: Record<string, any> } }).$.setupState
+      const state = getAppState(wrapper)
       state.apiRunMonitor = {
         snapshot: { cases: [apiCases[0]], options: { mode: 'sequential', loopCount: 1 }, scopeLabel: '旧执行', environment: {}, frozenAt: '2026' },
         status: 'running', startedAt: '2026-10-30T10:00:00.000Z', progress: { completed: 0, total: 1 }, rows: []
@@ -393,7 +394,7 @@ describe('App.vue integration', () => {
     const wrapper = mount(App as never, { global: { plugins: [ElementPlus] } })
     try {
       await vi.waitFor(() => expect(wrapper.find('[data-work-id="report-a"]').exists()).toBe(true))
-      const state = (wrapper.vm as never as { $: { setupState: Record<string, any> } }).$.setupState
+      const state = getAppState(wrapper)
       state.reports.reportKeyword.value = '其他报告'
       state.reports.reportEnvironmentFilter.value = '隐藏环境'
       await wrapper.find('[data-work-id="report-a"] button.home-item-name').trigger('click')
@@ -437,7 +438,7 @@ describe('App.vue integration', () => {
     const wrapper = mount(App as never, { global: { plugins: [ElementPlus] } })
     try {
       await vi.waitFor(() => expect(wrapper.find('[data-work-id="web-nav-library-1"]').exists()).toBe(true))
-      const state = (wrapper.vm as never as { $: { setupState: Record<string, any> } }).$.setupState
+      const state = getAppState(wrapper)
       state.automationFilter.keyword = 'does-not-match'
       state.automationFilter.source = 'design'
       state.webAutomationStatusFilter = 'failed'

@@ -1,3 +1,4 @@
+import { getAppState } from './ui/appTestAccess'
 // @vitest-environment jsdom
 import {afterEach,it,expect,vi} from 'vitest'
 import {mount,flushPromises} from '@vue/test-utils'
@@ -18,7 +19,7 @@ it.each(['reauthenticate','unmount'])('workspace boundary: pending old Jira succ
   return reply({})
  }))
  const {default:App}=await import('./App.vue');const http=await import('./domain/http')
- const w=mount(App as never,{global:{plugins:[ElementPlus]}});const s=((w.vm as any).$ as any).setupState
+ const w=mount(App as never,{global:{plugins:[ElementPlus]}});const s=getAppState(w)
  try{
   await flushPromises();expect(jiraCalls).toBe(1)
   if(boundary==='reauthenticate'){

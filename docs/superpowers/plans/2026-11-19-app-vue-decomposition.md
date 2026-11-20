@@ -153,7 +153,7 @@ controller factory 接收窄端口，组件层可以通过 `provide/inject` 获�
 
   实际接口只暴露页面需要的字段，禁止把整个 App 的 refs 作为返回值。
 
-- [ ] **Step 4: 运行端口测试并形成版本节点**
+- [x] **Step 4: 运行端口测试并形成版本节点**
 
   ```bash
   npm run test -- --run src/ui/appPorts.test.ts
@@ -189,11 +189,11 @@ controller factory 接收窄端口，组件层可以通过 `provide/inject` 获�
 
   `EnvironmentManagementView.vue` 继续只处理目录、搜索和 slot；编辑器通过 props 接收 controller 的 view model，通过 emits 发送 `select`、`save`、`discard` 等命令，不直接 import repository 或 App。
 
-- [ ] **Step 5: 迁移环境测试**
+- [x] **Step 5: 迁移环境测试**
 
   将纯状态和保存规则放入 `useEnvironmentController.test.ts`；保留 `App.environmentEditorGuards.test.ts` 验证真实 App 的导航、确认和页面组合。结构扫描测试只更新到新的文件归属，不删除行为断言。
 
-- [ ] **Step 6: 运行试点验证并形成版本节点**
+- [x] **Step 6: 运行试点验证并形成版本节点**
 
   ```bash
   npm run test -- --run src/ui/useEnvironmentController.test.ts src/App.environmentEditorGuards.test.ts src/App.environmentsRoute.test.ts src/App.webRunStartSnapshot.test.ts
@@ -225,7 +225,7 @@ controller factory 接收窄端口，组件层可以通过 `provide/inject` 获�
 
   将 `workspaceOperations`、`beginWorkspaceOperation`、`workspaceFetch`、workspace storage capture/invalidate 和 owner 校验移入 runtime。runtime 不知道 defects、reports、cases 等具体模块，只返回 lease、fetch 和失效通知。
 
-- [ ] **Step 3: 抽 `useAppSession`**
+- [x] **Step 3: 抽 `useAppSession`**
 
   将 `bootstrapAuth`、`onLoginSuccess`、`handleLogout`、`handleSessionExpired` 和 change-password 生命周期移入 session。Session 通过 `onWorkspaceReset` 和 `onAuthenticated` 两个窄 callback 通知 App，不直接 import 任意业务 controller。
 
@@ -233,11 +233,11 @@ controller factory 接收窄端口，组件层可以通过 `provide/inject` 获�
 
   App 仍负责调用各 feature 的 `reset`，但将调用表集中为 `resetFeatureState()`，逐项覆盖 template、cases、defects、reports、API run、Web run、environment、Jira、dialogs。新 feature 加入时必须增加 reset 测试。
 
-- [ ] **Step 5: 迁移认证和隔离测试**
+- [x] **Step 5: 迁移认证和隔离测试**
 
   controller 测试验证 lease 和 owner；App 测试验证真实登录/登出组合、换账号不读旧 owner 的持久化 key、旧请求不能写回新账号。
 
-- [ ] **Step 6: 运行 session 验证并形成版本节点**
+- [x] **Step 6: 运行 session 验证并形成版本节点**
 
   ```bash
   npm run test -- --run src/ui/useAppSession.test.ts src/ui/useWorkspaceRuntime.test.ts src/App.authLifecycle.test.ts src/App.authSession.test.ts src/App.authContinuation.test.ts src/App.workspaceBoundary.test.ts src/App.workspacePaths.test.ts
@@ -266,15 +266,15 @@ controller factory 接收窄端口，组件层可以通过 `provide/inject` 获�
 
   将 `apiRunSnapshot`、`apiRunMonitor`、`apiAutomationRunning`、progress、确认和 `executeApiAutomationCases` 迁入 controller。controller 只通过 `WorkspacePort`、执行 repository、报告 repository 和 `NoticePort` 工作。
 
-- [ ] **Step 3: 移动 API 页面模板**
+- [x] **Step 3: 移动 API 页面模板**
 
   将 API topbar、筛选区、action bar、`ApiAutomationCaseTable` 和运行配置抽屉移入 `ApiExecutionPage.vue`。保留当前事件语义和 `data-testid`，不要在同一阶段更改 UI 文案或布局。
 
-- [ ] **Step 4: 迁移测试到行为边界**
+- [x] **Step 4: 迁移测试到行为边界**
 
   API controller 测试不挂载 App；App monitor 集成测试只验证页面导航、真实 controller 注入和报告入口。`actionBarLayout.test.ts` 改为扫描 `ApiExecutionPage.vue` 或改为运行时断言。
 
-- [ ] **Step 5: 运行 API 验证并形成版本节点**
+- [x] **Step 5: 运行 API 验证并形成版本节点**
 
   ```bash
   npm run test -- --run src/ui/useApiExecutionController.test.ts src/App.apiMonitor.integration.test.ts src/App.integration.test.ts src/actionBarLayout.test.ts
@@ -297,11 +297,11 @@ controller factory 接收窄端口，组件层可以通过 `provide/inject` 获�
 
   覆盖 create run 的 frozen request、环境快照、poll coordinator、连续失败进入 retrying、终态报告保存、浏览器刷新恢复、run id 不匹配清理、pause/resume/stop 的代次校验和旧响应丢弃。
 
-- [ ] **Step 2: 抽 Web run 状态和命令**
+- [x] **Step 2: 抽 Web run 状态和命令**
 
   将 `activeWebRunId`、snapshot、cases、capabilities、connection state、control loading、recovery、monitor/workbench 状态以及对应命令迁入 controller。保留现有 `domain/webAutomationRunSession.ts` 和 `domain/webAutomationRunRepository.ts` 的职责，不把轮询实现放回组件。
 
-- [ ] **Step 3: 固化 Web workspace view model**
+- [x] **Step 3: 固化 Web workspace view model**
 
   `WebAutomationWorkspace.vue` 只接收 `header`、`preparation`、`scope`、`table`、`preflight`、`run`、`suites` 等 view model，并发送现有事件。事件 handler 由 `WebExecutionPage.vue` 绑定 controller 命令，App 不再列出全部 Web 事件。
 
@@ -309,7 +309,7 @@ controller factory 接收窄端口，组件层可以通过 `provide/inject` 获�
 
   将 run 生命周期和恢复规则放入 controller 测试；保留 App 测试验证 URL 恢复、页面组合和账号边界。原有 `setupState` 访问改为 controller 测试或页面行为测试。
 
-- [ ] **Step 5: 运行 Web 验证并形成版本节点**
+- [x] **Step 5: 运行 Web 验证并形成版本节点**
 
   ```bash
   npm run test -- --run src/ui/useWebExecutionController.test.ts src/App.webRunStartSnapshot.test.ts src/App.integration.test.ts src/components/automation/WebAutomationWorkspace.test.ts
@@ -334,19 +334,19 @@ controller factory 接收窄端口，组件层可以通过 `provide/inject` 获�
 
   覆盖 path 到 `NavKey` 的转换、API/Web automation path、push/replace/skip、`popstate`、Jira/environment draft 离开确认，以及登录状态变化时的导航恢复。
 
-- [ ] **Step 2: 抽 `useAppNavigation`**
+- [x] **Step 2: 抽 `useAppNavigation`**
 
   将 `activeNav`、`automationKind` 的 URL 同步、`navigateToNav`、`syncNavWithLocation`、`handlePopState` 和离开守卫迁入 navigation。保留现有 `domain/appNavigation.ts` 的纯函数和 URL 协议。
 
-- [ ] **Step 3: 抽 `AppRouteView`**
+- [x] **Step 3: 抽 `AppRouteView`**
 
   `AppRouteView.vue` 只根据 navigation view model 选择 `CasesView`、`HomeView`、`AssistantChainView`、`OverviewView`、`SettingsCenterView`、`QualityWorkbenchView`、API/Web execution page 和 environment page；不创建业务请求和 watcher。
 
-- [ ] **Step 4: 抽 `AppOverlays`**
+- [x] **Step 4: 抽 `AppOverlays`**
 
   将用例编辑、curl 预览、环境编辑、登录发现、登录验证、自动化日志、生成对话框和修改密码弹窗移入 `AppOverlays.vue`。通过 typed props/emits 传递状态和命令，保留现有 `data-testid`。
 
-- [ ] **Step 5: 运行壳层验证并形成版本节点**
+- [x] **Step 5: 运行壳层验证并形成版本节点**
 
   ```bash
   npm run test -- --run src/ui/useAppNavigation.test.ts src/App.help.test.ts src/appShellStructure.test.ts src/actionBarLayout.test.ts
@@ -377,11 +377,11 @@ controller factory 接收窄端口，组件层可以通过 `provide/inject` 获�
 
   `useCases.test.ts` 直接调用 `createCasesState`；`CasesView.integration.test.ts` 使用测试 provider；App 集成测试只验证 provider 被正确组装。
 
-- [ ] **Step 4: 验证账号切换和组件卸载**
+- [x] **Step 4: 验证账号切换和组件卸载**
 
   确认卸载一个 App 后不会影响另一个 App 实例，换账号不会复用旧 singleton 的 library state，且现有 cases 行为不变。
 
-- [ ] **Step 5: 运行 cases 验证并形成版本节点**
+- [x] **Step 5: 运行 cases 验证并形成版本节点**
 
   ```bash
   npm run test -- --run src/ui/useCases.test.ts src/ui/useCasesProvider.test.ts src/components/views/CasesView.integration.test.ts
@@ -397,7 +397,7 @@ controller factory 接收窄端口，组件层可以通过 `provide/inject` 获�
 - Modify: `apps/web/src/components/**/*.test.ts` when a moved source contract is referenced
 - Modify: `docs/superpowers/baselines/2026-11-19-app-vue-decomposition.md`
 
-- [ ] **Step 1: 收敛 App 的唯一职责**
+- [x] **Step 1: 收敛 App 的唯一职责**
 
   `App.vue` 最终只保留：认证状态门禁、AppShell 组装、controller 创建/provider、route view、overlays、全局错误和卸载清理。删除业务 repository 调用、执行轮询、环境保存、Jira 保存和跨模块计算。
 
@@ -405,7 +405,7 @@ controller factory 接收窄端口，组件层可以通过 `provide/inject` 获�
 
   新增 controller 测试使用 fake ports；页面测试使用 props/events；App 测试只验证跨模块行为。现有测试如果仍需读取 setup state，优先暴露 typed controller fixture 或改为用户行为，不把更多内部 ref 加回 App。
 
-- [ ] **Step 3: 做结构扫描和依赖反向检查**
+- [x] **Step 3: 做结构扫描和依赖反向检查**
 
   执行以下检查：
 
@@ -417,7 +417,7 @@ controller factory 接收窄端口，组件层可以通过 `provide/inject` 获�
 
   第一条不能出现 controller 对 App 或 controller 之间的直接依赖；第二条只能保留明确标记为遗留迁移护栏的测试；第三条用于验收行数目标。
 
-- [ ] **Step 4: 执行完整验证**
+- [x] **Step 4: 执行完整验证**
 
   ```bash
   npm run test -- --run
@@ -427,7 +427,7 @@ controller factory 接收窄端口，组件层可以通过 `provide/inject` 获�
 
   与 Task 1 基线比较：既有失败不得扩大；新增失败必须定位到本次变更并修复后再结束。
 
-- [ ] **Step 5: 更新台账并形成最终版本节点**
+- [x] **Step 5: 更新台账并形成最终版本节点**
 
   在基线文档中记录最终行数、controller 数量、遗留 setupState 测试、所有结构测试迁移情况和完整验证结果。每个阶段的版本节点都应只包含该阶段拆分内容，不能混入无关业务改动。
 

@@ -1,3 +1,4 @@
+import { getAppState } from './ui/appTestAccess'
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
@@ -13,7 +14,7 @@ async function setup() {
   const { default: App } = await import(app)
   wrapper = mount(App, { global: { plugins: [ElementPlus] } })
   await flushPromises(); await flushPromises()
-  return (wrapper.vm as any).$.setupState
+  return getAppState(wrapper)
 }
 afterEach(() => { wrapper?.unmount(); vi.restoreAllMocks(); vi.unstubAllGlobals() })
 describe('App defect authority and leaving boundary', () => {

@@ -891,6 +891,19 @@ function createDefectsState(deps: DefectsDeps) {
   )
 
   return {
+    resetWorkspace: () => {
+      resetDefectRecovery()
+      jiraCsvTemplate.value = loadJiraCsvTemplate(localStorage)
+      Object.assign(defectFilter, { project: 'ALL', status: 'ALL', issueType: 'ALL', priority: 'ALL', assignee: 'ALL', keyword: '' })
+      for (const key of Object.keys(defectEditForm)) (defectEditForm as Record<string, string>)[key] = ''
+      recentlyTransferredDefectIds.value = []
+      jiraTemplateVisible.value = false
+      defectDrafts.value = []
+      jiraIssues.value = []
+      defectSelection.value = []
+      editingDefect.value = undefined
+      defectEditVisible.value = false
+    },
     defectTemplateCandidate, defectReadBlocked, defectRawStore, exportDefectRawStore,
     defectImportPreview, beginDefectImport, importDefectJsonText, confirmDefectImport, cancelDefectImport,
     defectRecoveryDirty, confirmDiscardDefectChanges, discardDefectRecoveryCandidate,

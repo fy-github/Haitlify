@@ -3,6 +3,13 @@ import type { NavKey } from '../domain/appNavigation'
 
 export type OperationLease = () => boolean
 export type NavHistoryMode = 'push' | 'replace' | 'skip'
+export type EnvironmentKind = 'api' | 'web'
+
+export interface SessionWorkspacePort {
+  activate(identity?: string): void
+  invalidate(): void
+  isCurrentAuth(epoch: number): boolean
+}
 
 export interface NavigationPort {
   currentNav: Readonly<Ref<NavKey>>

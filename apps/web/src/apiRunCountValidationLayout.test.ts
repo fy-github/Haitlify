@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 declare const process: { cwd: () => string }
 
-const source = readFileSync(`${process.cwd()}/src/App.vue`, 'utf8') as string
+const source = readFileSync(`${process.cwd()}/src/components/views/ApiExecutionPage.vue`, 'utf8') as string
 const marker = '@media (max-width: 640px) {\n  .automation-config-drawer .execution-control-group-count'
 const start = source.indexOf(marker)
 const mobile = start >= 0 ? source.slice(start, source.indexOf('\n}\n', start) + 3) : ''

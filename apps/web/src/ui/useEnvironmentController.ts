@@ -21,9 +21,8 @@ import {
   type WebRuntimeBrowser
 } from '../domain/executionEnvironmentRepository'
 import type { ExecutionEnvironment } from '../domain/apiExecution'
-import type { NoticePort, OperationLease } from './appPorts'
+import type { EnvironmentKind, NoticePort, OperationLease } from './appPorts'
 
-export type EnvironmentKind = 'api' | 'web'
 
 export interface EnvironmentControllerOptions {
   storage?: Storage
@@ -61,6 +60,8 @@ export interface EnvironmentController {
   addEnvironment(kind?: EnvironmentKind): SavedExecutionEnvironment
   deleteEnvironment(environmentId: string, kind?: EnvironmentKind): Promise<boolean>
   saveEnvironment(kind?: EnvironmentKind): boolean
+  reset(): void
+  reload(): void
 }
 
 const cloneEnvironment = (environment: SavedExecutionEnvironment): SavedExecutionEnvironment =>
@@ -321,6 +322,16 @@ export const createEnvironmentController = (options: EnvironmentControllerOption
   }
 
   return {
+    reset: () => {
+      executionEnvironmentLibrary.value = defaultExecutionEnvironmentLibrary()
+      webExecutionEnvironmentLibrary.value = defaultWebExecutionEnvironmentLibrary()
+      syncEnvironmentEditorToLibrary()
+    },
+    reload: () => {
+      executionEnvironmentLibrary.value = loadExecutionEnvironmentLibrary(storage)
+      webExecutionEnvironmentLibrary.value = loadExecutionEnvironmentLibrary(storage, WEB_EXECUTION_ENV_LIBRARY_STORAGE_KEY)
+      syncEnvironmentEditorToLibrary()
+    },
     executionEnvironmentLibrary,
     webExecutionEnvironmentLibrary,
     editingEnvironment,

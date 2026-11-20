@@ -1,3 +1,4 @@
+import { getAppState } from './ui/appTestAccess'
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
@@ -84,7 +85,7 @@ it.each([200, 503])('obsolete initial read HTTP %s cannot replace a newer ready 
   let reads = 0
   const wrapper = await mountJira(() => ++reads === 1 ? pending : Promise.resolve(response(200, 'newest-reader')))
   // Trigger the real handler while bootstrap is pending; its button is deliberately loading-disabled.
-  const setup = (wrapper.vm as unknown as { $: { setupState: { loadJiraSettingsFromBackend: () => Promise<void> } } }).$.setupState
+  const setup = getAppState(wrapper)
   await setup.loadJiraSettingsFromBackend()
   await flushPromises()
   release(response(status, 'obsolete-reader'))

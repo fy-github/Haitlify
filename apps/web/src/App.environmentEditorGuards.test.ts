@@ -1,3 +1,4 @@
+import { getAppState } from './ui/appTestAccess'
 // @vitest-environment jsdom
 // 环境配置页:冷启动绑定目录所选环境 + 未保存草稿的统一 guard(切换类别/选择其他/返回/导航/关闭窗口)。
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -102,7 +103,7 @@ const mountEnvironments = async () => {
   await flushPromises()
   await vi.waitFor(() => expect(document.querySelector('[data-testid="environment-inline-editor"]')).toBeTruthy())
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const s = ((wrapper.vm as unknown as { $: { setupState: unknown } }).$).setupState as any
+  const s = getAppState(wrapper) as any
   return { wrapper, s, ...stub }
 }
 

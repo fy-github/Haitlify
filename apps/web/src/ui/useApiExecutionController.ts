@@ -106,12 +106,12 @@ export const createApiExecutionController = (options: ApiExecutionControllerOpti
     error: options.notify?.error ?? (() => undefined)
   }
   const getFilteredCases = options.getFilteredCases ?? (() => [])
-  const getCanEdit = options.getCanEdit ?? (() => true)
+  const getCanEdit = options.getCanEdit ?? (() => false)
   const getOwnerId = options.getOwnerId ?? (() => undefined)
   const getEnvironment = options.getEnvironment ?? (() => undefined)
   const getEnvironmentName = options.getEnvironmentName ?? (() => '默认环境')
-  const beginOperation = options.beginOperation ?? (() => () => true)
-  const captureStorage = options.captureStorage ?? (() => window.localStorage)
+  const beginOperation = options.beginOperation ?? (() => () => false)
+  const captureStorage = options.captureStorage ?? (() => { throw new Error('Workspace storage is not configured') })
   const executeRequest = options.executeRequest ?? (async () => { throw new Error('API request executor is not configured') })
   const enterMonitor = options.enterMonitor ?? (() => undefined)
 

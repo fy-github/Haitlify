@@ -31,6 +31,7 @@ export interface WorkspaceRuntime {
 
 export const createWorkspaceRuntime = (options: WorkspaceRuntimeOptions): WorkspaceRuntime => {
   const ownerId = ref<string | undefined>()
+  let generation = 0
   const authenticated = computed(options.isAuthenticated)
   const operations = new Map<string, number>()
   const fetchImpl = options.fetchImpl ?? authedFetch
@@ -39,12 +40,14 @@ export const createWorkspaceRuntime = (options: WorkspaceRuntimeOptions): Worksp
     !options.isDisposed?.() && epoch === getAuthSessionEpoch()
 
   const activate = (identity?: string): void => {
+    generation += 1
     ownerId.value = identity
     options.storage.activate(identity)
     options.sessionStorage.activate(identity)
   }
 
   const invalidate = (): void => {
+    generation += 1
     ownerId.value = undefined
     options.storage.invalidate()
     options.sessionStorage.invalidate()
@@ -54,9 +57,11 @@ export const createWorkspaceRuntime = (options: WorkspaceRuntimeOptions): Worksp
   const begin = (resource: string, templateLease = false): OperationLease => {
     if (resource === 'workspace') options.onWorkspaceBegin?.(templateLease)
     const epoch = getAuthSessionEpoch()
+    const capturedGeneration = generation
     const operation = (operations.get(resource) || 0) + 1
     operations.set(resource, operation)
     return () => isCurrentAuth(epoch)
+      && generation === capturedGeneration
       && options.isAuthenticated()
       && operations.get(resource) === operation
   }

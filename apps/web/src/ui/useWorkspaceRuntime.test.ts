@@ -73,4 +73,16 @@ describe('useWorkspaceRuntime', () => {
     expect(fetcher).not.toHaveBeenCalled()
 
   })
+
+  it('invalidates an old lease when the owner changes without an epoch change', () => {
+    const runtime = createWorkspaceRuntime({
+      storage: createWorkspaceStorage(localStorage),
+      sessionStorage: createWorkspaceStorage(sessionStorage),
+      isAuthenticated: () => true
+    })
+    runtime.activate('user:1')
+    const oldLease = runtime.begin('webRun')
+    runtime.activate('user:2')
+    expect(oldLease()).toBe(false)
+  })
 })

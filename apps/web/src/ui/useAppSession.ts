@@ -2,12 +2,12 @@ import { ref } from 'vue'
 import type { Ref } from 'vue'
 import { advanceAuthSessionEpoch, getAuthSessionEpoch } from '../domain/http'
 import type { AuthUser } from '../domain/authRepository'
-import type { WorkspaceRuntime } from './useWorkspaceRuntime'
+import type { SessionWorkspacePort } from './appPorts'
 
 export type AuthStatus = 'checking' | 'authenticated' | 'unauthenticated'
 
 export interface AppSessionOptions {
-  workspace: Pick<WorkspaceRuntime, 'activate' | 'invalidate' | 'isCurrentAuth'>
+  workspace: SessionWorkspacePort
   fetchCurrentUser: () => Promise<AuthUser | null>
   logout: () => Promise<unknown>
   authStatus?: Ref<AuthStatus>

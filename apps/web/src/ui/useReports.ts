@@ -266,6 +266,13 @@ function createReportsState(deps: ReportsDeps) {
   )
 
   return {
+    resetWorkspace: () => {
+      reportEnvironmentFilter.value = 'ALL'
+      closeReportScreenshotPreview()
+      expandedReportHtmlCaseIds.value = []
+      reportKeyword.value = ''
+      refreshAutomationReports()
+    },
     automationReports,
     selectedReportProject,
     selectedReportId,

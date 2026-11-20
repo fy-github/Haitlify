@@ -6,6 +6,9 @@ const path = `${process.cwd()}/src/styles/environment-controls.css`
 const css = existsSync(path) ? readFileSync(path, 'utf8') as string : ''
 const app = readFileSync(`${process.cwd()}/src/App.vue`, 'utf8') as string
 const apiController = readFileSync(`${process.cwd()}/src/ui/useApiExecutionController.ts`, 'utf8') as string
+const environmentEditor = readFileSync(`${process.cwd()}/src/ui/useEnvironmentController.ts`, 'utf8') as string
+const environmentPanel = readFileSync(`${process.cwd()}/src/components/automation/EnvironmentEditorPanel.vue`, 'utf8') as string
+const workspace = readFileSync(`${process.cwd()}/src/ui/appWorkspace.ts`, 'utf8') as string
 
 describe('environment / runtime controls use their own archived variants', () => {
   it('keeps environment-v1 save, cancel and dangerous actions distinct', () => {
@@ -55,8 +58,8 @@ describe('environment / runtime controls use their own archived variants', () =>
   })
   it('assigns explicit classes to run confirmation vs destructive environment confirmation', () => {
     expect(`${app}\n${apiController}`).toContain("customClass: 'api-execution-confirm'")
-    expect(app).toContain("environment-danger-confirm")
-    expect(app).toContain("environment-discard-confirm")
+    expect(workspace).toContain("environment-danger-confirm")
+    expect(workspace).toContain("environment-discard-confirm")
   })
 
   it('explicitly preserves secondary confirmation ink and border across hover and keyboard focus', () => {
