@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import type { Ref } from 'vue'
 import {
   automationKindFromPath,
@@ -24,6 +24,7 @@ export interface AppNavigationOptions {
   guards?: NavigationGuard[]
   beforeChange?(from: NavKey, to: NavKey): void
   afterPop?(): void
+  onLeaveWebWorkspace?(): void
 }
 
 export interface AppNavigation {
@@ -43,6 +44,9 @@ export const createAppNavigation = (options: AppNavigationOptions = {}): AppNavi
   const pathname = options.pathname ?? (typeof window === 'undefined' ? '/' : window.location.pathname)
   const activeNav = ref<NavKey>(navKeyFromPath(pathname) || defaultNavKey)
   const automationKind = ref<'api' | 'web'>(automationKindFromPath(pathname))
+  watch([activeNav, automationKind], ([nav, kind]) => {
+    if (nav !== 'automation' || kind !== 'web') options.onLeaveWebWorkspace?.()
+  })
   const location = options.location ?? (typeof window === 'undefined' ? undefined : window.location)
   const history = options.history ?? (typeof window === 'undefined' ? undefined : window.history)
   let intent = 0

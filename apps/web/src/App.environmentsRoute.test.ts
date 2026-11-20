@@ -1,4 +1,3 @@
-import { getAppState } from './ui/appTestAccess'
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
@@ -21,9 +20,7 @@ it('renders the standalone environment page on /environments with the third exec
   wrapper = mount(App as never, { global: { plugins: [ElementPlus] }, attachTo: document.body })
   await vi.waitFor(() => expect(wrapper!.find('[data-testid="environment-management-page"]').exists()).toBe(true))
   await flushPromises()
-  const state = getAppState(wrapper)
-  expect(state.activeNav).toBe('environments')
-  expect(state.activeSidebarItemId).toBe('environments')
+  expect(wrapper.get('.studio-sidebar__item[aria-label="环境配置"]').attributes('aria-current')).toBe('page')
   expect(wrapper.find('[data-testid="environment-management-page"] h1').text()).toBe('环境配置')
   expect(window.location.pathname).toBe('/environments')
   expect(wrapper.find('[data-testid="environment-inline-editor"]').exists()).toBe(true)

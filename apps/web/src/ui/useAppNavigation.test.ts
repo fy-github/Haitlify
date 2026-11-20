@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
+import { effectScope, nextTick } from 'vue'
 import { createAppNavigation } from './useAppNavigation'
 
 describe('useAppNavigation', () => {
@@ -104,5 +105,26 @@ describe('useAppNavigation', () => {
     location.href = 'https://app.example.test/automation/web'
     navigation.writeWebMonitorQuery('monitor', 'run-1', 'replace')
     expect(history.replaceState).toHaveBeenLastCalledWith({}, '', '/automation/web?view=monitor&runId=run-1')
+  })
+
+  it('leaves the Web workspace when either the page or automation kind changes', async () => {
+    const scope = effectScope()
+    const onLeaveWebWorkspace = vi.fn()
+    const navigation = scope.run(() => createAppNavigation({ pathname: '/automation/web', onLeaveWebWorkspace }))!
+    try {
+      navigation.setAutomationKind('api')
+      await nextTick()
+      expect(onLeaveWebWorkspace).toHaveBeenCalledTimes(1)
+
+      navigation.setAutomationKind('web')
+      await nextTick()
+      expect(onLeaveWebWorkspace).toHaveBeenCalledTimes(1)
+
+      navigation.setActiveNav('reports')
+      await nextTick()
+      expect(onLeaveWebWorkspace).toHaveBeenCalledTimes(2)
+    } finally {
+      scope.stop()
+    }
   })
 })

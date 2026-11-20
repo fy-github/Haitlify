@@ -94,3 +94,10 @@
 - `appWorkspace.ts` 的返回值仅含页面展示对象和仅在 test mode 创建的测试接口，不再向外暴露未使用的所有 controllers、项目状态及导航内部对象。文件仍有 948 行，但承担的是每个 App 实例一次性的 feature 组装与窄端口接线；保留在此处的 UI 状态/副作用需要后续按实际变更风险持续评审，不能把行数下降当成行为解耦的唯一证据。
 - `App.vue` 161 行（script setup 约 17 行）；三个执行/环境 controller 分别为 359、363、108 行；未出现 controller 反向 import App 或相互 import。计划中的所有步骤已验证，但现有 16 份 App 测试仍通过类型化测试入口访问内部状态，这是后续继续收窄测试契约的维护债务，不属于生产 API。
 - `npm run test -- --run`：207 文件、1622 测试通过；`npm run build`（含 `vue-tsc --noEmit`）通过；`git diff --check` 通过。构建的 `:deep` 及 chunk 提示与基线一致。
+
+## 2026-11-20 定向维护优化与页面验证
+
+- `useAppNavigation` 现在持有 Web 工作台离开时的状态监听，组装根只提供清理监控 URL 和模式的窄回调。新增切换 automation kind / 导航时的 controller 测试。
+- 环境页 App 测试改为验证真实侧边栏 `aria-current`，不再读取内部导航状态；Jira 旧请求被新请求覆盖的规则移至 `useJiraSettings.test.ts` 的假 lease 测试，App 保留读取失败、重试与加载状态的页面验证。读取 App 测试专用状态的文件由 16 降至 14 个。
+- `npm run test -- --run`：208 文件、1623 测试通过；`npm run build`（含 `vue-tsc --noEmit`）通过；`git diff --check` 通过。构建仍只有基线已知的 `:deep` 和 chunk 体积提示。
+- Vite 已在 `http://127.0.0.1:51731/` 运行。后端代理默认目标 `127.0.0.1:38082` 本次未运行，因此浏览器采用 Playwright 合成 API 响应（包含真实前端默认模板）验证桌面 1280×800、移动端 390×844：环境页 API/Web 切换、返回 API 执行准备、Jira 重新加载后新数据展示均通过；无页面脚本错误或横向溢出。此验证不代表真实后端联调或 Web Runner 执行通过。

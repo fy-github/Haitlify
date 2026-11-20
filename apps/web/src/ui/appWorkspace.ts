@@ -189,6 +189,10 @@ const appNavigation = createAppNavigation({
   afterPop: () => {
     if (activeNav.value === 'automation' && automationKind.value === 'web') void recoverWebRunSession('replace')
     else webAutomationWorkspaceMode.value = 'workbench'
+  },
+  onLeaveWebWorkspace: () => {
+    if (typeof window !== 'undefined') writeWebMonitorQuery('workbench', '', 'replace')
+    webAutomationWorkspaceMode.value = 'workbench'
   }
 })
 
@@ -656,12 +660,6 @@ watch([viewportMode, generationKind], () => {
   compactContextVisible.value = false
   compactInspectorVisible.value = false
   if (viewportMode.value !== 'narrow') narrowNavigationVisible.value = false
-})
-
-watch([activeNav, automationKind], () => {
-  if (activeNav.value === 'automation' && automationKind.value === 'web') return
-  if (typeof window !== 'undefined') writeWebMonitorQuery('workbench', '', 'replace')
-  webAutomationWorkspaceMode.value = 'workbench'
 })
 
 const generationTemplateOptions = computed(() =>
